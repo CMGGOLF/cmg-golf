@@ -98,7 +98,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
 <div class="app-header">
   <h1>⛳ CMG 골프클럽</h1>
-  <div class="sub">대회 참석자 핸디관리 시스템</div>
+  <div class="sub">실시간 순위 시스템</div>
   <div id="roomBadge" style="display:none">
     <div class="room-badge" id="roomBadgeText"></div>
   </div>
@@ -107,7 +107,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>방선택</button>
   <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
-  <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
+  <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>점수입력</button>
   <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
   <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
 </div>
@@ -129,8 +129,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div style="font-size:13px; color:var(--text-2); line-height:1.9;">
       1. 위 목록에서 참가할 경기방을 터치하여 입장하세요.<br>
       2. 경기 전 이름과 핸디캡만 입력하여 사전 등록하세요.<br>
-      3. 라운드가 끝나면 친타수를 추가로 입력해 주세요.예:7.<br>
-      <span style="color: #b91c1c; font-weight: bold;">5. 본인 G핸디 다를시 무조건 시상에서 제외 됩니다.
+      3. 라운드가 끝나면 총타수를 추가로 입력해 주세요.<br>
+      <span style="color: #b91c1c; font-weight: bold;">※ 새 경기방 생성은 [관리자] 탭에서 가능합니다.</span>
     </div>
   </div>
 </div>
@@ -293,7 +293,7 @@ if (firebaseConfig.apiKey !== "YOUR_KEY") {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     useFirebase = true;
-    listenAllRooms(); // 초기 로드 시 생성된 전체 방 목록을 불러옵니다.
+    listenAllRooms(); 
   } catch(e) { console.error("Firebase 오류:", e.message); useFirebase = false; }
 }
 
@@ -408,11 +408,14 @@ function saveMyScore() {
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
   
   const net = score - handi;
+  
+  // 최초 신청 시간(timestamp) 기억 혹은 생성
+  const timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
 
   if (useFirebase) {
-    db.ref("rooms/" + currentRoom + "/players/" + name).set({ name, handi, score });
+    db.ref("rooms/" + currentRoom + "/players/" + name).set({ name, handi, score, timestamp });
   } else {
-    localData[name] = { name, handi, score };
+    localData[name] = { name, handi, score, timestamp };
     renderRank(); renderParticipantList();
     if (admin) refreshAdminPlayerList();
   }
@@ -512,7 +515,9 @@ function buildRankHTML(arr, isPreview) {
 function renderParticipantList() {
   const listEl = document.getElementById("participantList");
   const statusEl = document.getElementById("participantStatusBar");
-  const arr = Object.values(localData || {}).sort((a,b) => a.name.localeCompare(b.name));
+  
+  // 이름 가나다순 대신 시간(timestamp) 오름차순(신청순)으로 정렬되도록 변경
+  const arr = Object.values(localData || {}).sort((a,b) => (a.timestamp || 0) - (b.timestamp || 0));
 
   if (!currentRoom) {
     statusEl.innerHTML = "";
@@ -525,7 +530,7 @@ function renderParticipantList() {
     return;
   }
 
-  statusEl.innerHTML = `<div class="status-bar status-live">✓ 총 ${arr.length}명 참가 중 (가나다 순)</div>`;
+  statusEl.innerHTML = `<div class="status-bar status-live">✓ 총 ${arr.length}명 참가 중 (신청 순)</div>`;
   listEl.innerHTML = arr.map(p => `
     <div class="rank-item">
       <div class="rank-num" style="font-size:16px;">👤</div>
