@@ -503,7 +503,7 @@ function buildRankHTML(arr, isPreview) {
       <div class="rank-num ${p.rank <= 3 && p.score > 0 ? 'n' + p.rank : ''}">${p.rank}</div>
       <div class="rank-info">
         <div class="rank-name">${p.name}</div>
-        <div class="rank-detail">총타 ${p.score > 0 ? p.score : '?'} · 핸디 ${p.handi}</div>
+        <div class="rank-detail">친타수 ${p.score > 0 ? p.score : '?'} · 핸디 ${p.handi}</div>
       </div>
       <div class="rank-score">
         <div class="rank-net" style="color:${p.score > 0 ? 'var(--text)' : 'var(--text-3)'}">${p.score > 0 ? p.net : '-'}</div>
