@@ -131,6 +131,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="qr-wrap">
       <div id="qr"></div>
       <div class="qr-label">스캔하면 자동으로 방에 입장합니다</div>
+      <button class="btn btn-gold btn-sm" style="margin-top: 15px;" onclick="shareRoomLink()">🔗 링크 복사 / 모바일 공유하기</button>
     </div>
   </div>
 </div>
@@ -328,6 +329,27 @@ function generateQR() {
   try { new QRCode(document.getElementById("qr"), { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M }); } catch(e) {}
 }
 
+// ─────────────────────────────────────────
+//  공유하기 기능
+// ─────────────────────────────────────────
+function shareRoomLink() {
+  if (!currentRoom) { toast("방을 먼저 생성해주세요."); return; }
+  const url = location.href.split("?")[0] + "?room=" + encodeURIComponent(currentRoom);
+  if (navigator.share) {
+    navigator.share({
+      title: 'CMG 골프클럽',
+      text: `⛳ CMG 골프클럽 [${currentRoom}] 경기방에 초대합니다! 접속해서 이름과 핸디캡을 입력해주세요.`,
+      url: url
+    }).catch(console.error);
+  } else {
+    navigator.clipboard.writeText(url).then(() => {
+      toast("🔗 초대 링크가 복사되었습니다! 카카오톡 창에 붙여넣기 하세요.");
+    }).catch(() => {
+      toast("링크 복사에 실패했습니다. QR코드를 활용해주세요.");
+    });
+  }
+}
+
 function saveMyScore() {
   const name = document.getElementById("pName").value.trim();
   const handi = Number(document.getElementById("pHandi").value) || 0;
@@ -439,7 +461,6 @@ function buildRankHTML(arr, isPreview) {
   `).join("");
 }
 
-// [추가됨] 참가자 명단 렌더링 함수
 function renderParticipantList() {
   const listEl = document.getElementById("participantList");
   const statusEl = document.getElementById("participantStatusBar");
