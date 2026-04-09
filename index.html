@@ -613,7 +613,7 @@ if (firebaseConfig.apiKey !== "YOUR_KEY") {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     useFirebase = true;
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error("Firebase 오류:", e.message); useFirebase = false; }
 }
 
 if (!useFirebase) {
