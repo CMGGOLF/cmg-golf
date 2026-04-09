@@ -131,6 +131,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       2. 경기 전 이름과 핸디캡만 입력하여 사전 등록하세요.<br>
       3. 라운드가 끝나면 친타수를 추가로 입력해 주세요.<br>
       <span style="color: #b91c1c; font-weight: bold;">4. 본인 G핸디와 다를 시 무조건 시상에서 제외 됩니다.</span><br>
+      <span style="color: #b91c1c; font-weight: bold;">※ 새 경기방 생성은 [관리자] 탭에서 가능합니다.</span>
     </div>
   </div>
 </div>
@@ -396,6 +397,38 @@ function shareRoomLink() {
   }
 }
 
+// ─────────────────────────────────────────
+//  터치 시 점수 입력 탭으로 이동하고 정보 채우는 기능
+// ─────────────────────────────────────────
+function editMyScore(name) {
+  const d = localData[name];
+  if (!d) return;
+
+  // 정보 채우기
+  document.getElementById("pName").value = d.name;
+  document.getElementById("pHandi").value = d.handi;
+  document.getElementById("pScore").value = d.score > 0 ? d.score : "";
+
+  // 넷 스코어 보이기/숨기기
+  if (d.score > 0) {
+    const net = parseFloat((d.score - d.handi).toFixed(1));
+    document.getElementById("myNetCard").style.display = "block";
+    document.getElementById("myNetDisplay").textContent = net;
+  } else {
+    document.getElementById("myNetCard").style.display = "none";
+  }
+
+  // 탭 이동
+  switchTab('score');
+
+  // 사용자 편의를 위해 친타수 입력칸으로 포커스
+  setTimeout(() => {
+    document.getElementById("pScore").focus();
+  }, 300);
+
+  toast("라운드 종료 후 친타수를 입력해주세요.");
+}
+
 function saveMyScore() {
   const name = document.getElementById("pName").value.trim();
   const handi = Number(document.getElementById("pHandi").value) || 0;
@@ -405,9 +438,7 @@ function saveMyScore() {
   if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
   
-  // ▼ 소수점 계산 오류 완벽 해결! (소수점 1자리로 깔끔하게 반올림 처리)
   const net = parseFloat((score - handi).toFixed(1));
-  
   const timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
 
   if (useFirebase) {
@@ -471,7 +502,6 @@ function listenRoom() {
 function getSorted(data) {
   let arr = Object.values(data || {});
   
-  // ▼ 소수점 오류 해결 반영
   arr.forEach(p => p.net = parseFloat((p.score - p.handi).toFixed(1)));
   
   arr.sort((a, b) => {
@@ -530,9 +560,14 @@ function renderParticipantList() {
     return;
   }
 
-  statusEl.innerHTML = `<div class="status-bar status-live">✓ 총 ${arr.length}명 참가 중 (신청 순)</div>`;
+  statusEl.innerHTML = `
+    <div class="status-bar status-live" style="justify-content: space-between;">
+      <span>✓ 총 ${arr.length}명 참가 중 (신청 순)</span>
+    </div>`;
+
+  // 터치(클릭) 시 editMyScore 호출
   listEl.innerHTML = arr.map(p => `
-    <div class="rank-item">
+    <div class="rank-item" style="cursor:pointer;" onclick="editMyScore('${p.name}')">
       <div class="rank-num" style="font-size:16px;">👤</div>
       <div class="rank-info">
         <div class="rank-name">${p.name}</div>
@@ -540,6 +575,7 @@ function renderParticipantList() {
       </div>
       <div class="rank-score">
         <div style="font-size:12px; font-weight:700; color:${p.score > 0 ? 'var(--green)' : 'var(--text-3)'}">${p.score > 0 ? '경기종료' : '대기중'}</div>
+        <div style="font-size:10px; color:var(--text-3); margin-top:4px;">터치하여 점수입력 ❯</div>
       </div>
     </div>
   `).join("");
