@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>CMG 골프클럽 순위 시스템</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+:root {
+  --green: #1a6b3a;
+  --green-light: #e8f5ee;
+  --green-mid: #2d8a50;
+  --gold: #c9a84c;
+  --gold-light: #fdf6e3;
+  --silver: #8a9bb0;
+  --bronze: #b87333;
+  --bg: #f4f6f4;
+  --surface: #ffffff;
+  --border: #e2e8e2;
+  --text: #1a2318;
+  --text-2: #4a5a48;
+  --text-3: #7a8a78;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(26,107,58,0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.app-header {
+  background: var(--green);
+  color: white;
+  padding: 20px 16px 16px;
+  padding-top: calc(20px + env(safe-area-inset-top));
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.app-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.app-header .sub {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 2px;
+  font-family: 'DM Mono', monospace;
+}
+.room-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  margin-top: 6px;
+}
+
+/* ── TAB NAV ── */
+.tab-nav {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 76px;
+  z-index: 99;
+}
+.tab-btn {
+  flex: 1;
+  padding: 13px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+}
+.tab-btn .icon { display: block; font-size: 18px; margin-bottom: 2px; }
+
+/* ── PAGES ── */
+.page { display: none; padding: 16px; padding-bottom: 100px; }
+.page.active { display: block; }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+.card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 14px;
+}
+
+/* ── FORM ── */
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+.field input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 16px;
+  font-family: 'Noto Sans KR', sans-serif;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fafafa;
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.field input:focus {
+  outline: none;
+  border-color: var(--green-mid);
+  box-shadow: 0 0 0 3px rgba(45,138,80,0.1);
+  background: white;
+}
+.field-row { display: flex; gap: 10px; }
+.field-row .field { flex: 1; }
+
+/* ── BUTTONS ── */
+.btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s;
+  letter-spacing: -0.01em;
+}
+.btn:active { transform: scale(0.97); }
+.btn-green { background: var(--green); color: white; }
+.btn-green-outline { background: white; color: var(--green); border: 1.5px solid var(--green); }
+.btn-gray { background: #f0f2f0; color: var(--text-2); }
+.btn-dark { background: var(--text); color: white; }
+.btn-gold { background: var(--gold); color: white; }
+.btn-danger { background: #fee2e2; color: #b91c1c; }
+.btn-sm { padding: 10px 14px; font-size: 14px; }
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1; }
+
+/* ── NOTICE ── */
+.notice {
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 10px;
+}
+.notice-warn { background: #fff8e6; color: #92400e; border: 1px solid #fde68a; }
+.notice-info { background: var(--green-light); color: var(--green); border: 1px solid #a7d7b8; }
+.notice-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+/* ── QR ── */
+.qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 0 4px;
+}
+.qr-label { font-size: 12px; color: var(--text-3); }
+
+/* ── STATUS BAR ── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.status-pending { background: #fff8e6; color: #92400e; border: 1px solid #fde68a; }
+.status-preview { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.status-live { background: var(--green-light); color: var(--green); border: 1px solid #a7d7b8; }
+
+/* ── RANK LIST ── */
+.rank-list { display: flex; flex-direction: column; gap: 8px; }
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  animation: slideIn 0.3s ease both;
+}
+.rank-item:nth-child(1) { animation-delay: 0s; }
+.rank-item:nth-child(2) { animation-delay: 0.05s; }
+.rank-item:nth-child(3) { animation-delay: 0.1s; }
+.rank-item:nth-child(n+4) { animation-delay: 0.15s; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rank-item.rank-1 { border-color: var(--gold); background: var(--gold-light); }
+.rank-item.rank-2 { border-color: var(--silver); background: #f8f9fa; }
+.rank-item.rank-3 { border-color: var(--bronze); background: #fdf5ef; }
+
+.rank-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 20px;
+  font-weight: 500;
+  width: 36px;
+  text-align: center;
+  color: var(--text-3);
+}
+.rank-num.n1 { color: var(--gold); }
+.rank-num.n2 { color: var(--silver); }
+.rank-num.n3 { color: var(--bronze); }
+
+.rank-info { flex: 1; min-width: 0; }
+.rank-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rank-detail {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+  font-family: 'DM Mono', monospace;
+}
+
+.rank-score {
+  text-align: right;
+}
+.rank-net {
+  font-family: 'DM Mono', monospace;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text);
+}
+.rank-net-label { font-size: 11px; color: var(--text-3); }
+
+.medal { font-size: 22px; }
+
+/* ── ADMIN PREVIEW ── */
+.preview-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-3);
+}
+.empty-state .big { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; line-height: 1.7; }
+
+/* ── ADMIN SECTION ── */
+.admin-section {
+  border: 1.5px dashed var(--green-mid);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+  background: var(--green-light);
+}
+.admin-section .card-title { color: var(--green); }
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
+
+/* ── PUBLISH STATE ── */
+.publish-state {
+  text-align: center;
+  padding: 20px;
+}
+.publish-state .big-icon { font-size: 48px; margin-bottom: 10px; }
+.publish-state h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.publish-state p { font-size: 13px; color: var(--text-3); }
+
+/* ── STICKY BOTTOM ── */
+.sticky-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+  z-index: 200;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-handle {
+  width: 40px;
+  height: 4px;
+  background: #ddd;
+  border-radius: 2px;
+  margin: 0 auto 18px;
+}
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: var(--text);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- HEADER -->
+<div class="app-header">
+  <h1>⛳ CMG 골프클럽</h1>
+  <div class="sub">실시간 순위 시스템</div>
+  <div id="roomBadge" style="display:none">
+    <div class="room-badge" id="roomBadgeText"></div>
+  </div>
+</div>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('room')" id="tab-room">
+    <span class="icon">🏠</span>경기방
+  </button>
+  <button class="tab-btn" onclick="switchTab('score')" id="tab-score">
+    <span class="icon">✏️</span>점수입력
+  </button>
+  <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank">
+    <span class="icon">🏆</span>순위
+  </button>
+  <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin">
+    <span class="icon">⚙️</span>관리자
+  </button>
+</div>
+
+<!-- PAGE: 경기방 -->
+<div class="page active" id="page-room">
+  <div class="card">
+    <div class="card-title">경기방 설정</div>
+    <div class="field">
+      <label>방 이름</label>
+      <input id="roomInput" placeholder="예: 2026-04-09-봄대회" autocomplete="off">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green-outline btn-sm" onclick="createRoom()">방 생성</button>
+      <button class="btn btn-green btn-sm" onclick="joinRoom()">입장</button>
+    </div>
+    <div id="roomNotice" class="notice notice-warn" style="display:none"></div>
+  </div>
+
+  <div class="card" id="qrCard" style="display:none">
+    <div class="card-title">참가자 초대 QR</div>
+    <div class="qr-wrap">
+      <div id="qr"></div>
+      <div class="qr-label">스캔하면 자동으로 방에 입장합니다</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">사용 안내</div>
+    <div style="font-size:13px; color:var(--text-2); line-height:1.9;">
+      1. 방장이 경기방을 생성합니다<br>
+      2. QR 코드로 참가자를 초대합니다<br>
+      3. 각자 점수를 입력하고 저장합니다<br>
+      4. 관리자가 순위를 확인 후 공개합니다
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: 점수입력 -->
+<div class="page" id="page-score">
+  <div class="card">
+    <div class="card-title">내 정보</div>
+    <div class="field">
+      <label>이름</label>
+      <input id="pName" placeholder="이름을 입력하세요" autocomplete="off">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>핸디캡</label>
+        <input id="pHandi" type="number" inputmode="numeric" placeholder="0">
+      </div>
+      <div class="field">
+        <label>총타수</label>
+        <input id="pScore" type="number" inputmode="numeric" placeholder="0">
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-gray btn-sm" onclick="loadMyData()">불러오기</button>
+      <button class="btn btn-green btn-sm" onclick="saveMyScore()">저장하기</button>
+    </div>
+    <div id="scoreNotice" style="display:none" class="notice"></div>
+  </div>
+
+  <div class="card" id="myNetCard" style="display:none">
+    <div class="card-title">내 NET 스코어</div>
+    <div style="text-align:center; padding: 10px 0;">
+      <div style="font-family:'DM Mono',monospace; font-size:48px; font-weight:500; color:var(--green);" id="myNetDisplay">-</div>
+      <div style="font-size:13px; color:var(--text-3); margin-top:4px">총타수 - 핸디캡 = NET</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: 순위 -->
+<div class="page" id="page-rank">
+  <div id="rankStatusBar"></div>
+  <div id="rankList">
+    <div class="empty-state">
+      <div class="big">⛳</div>
+      <p>방에 입장하면<br>순위가 표시됩니다</p>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: 관리자 -->
+<div class="page" id="page-admin">
+  <!-- 비인증 상태 -->
+  <div id="adminLocked">
+    <div class="card">
+      <div class="card-title">관리자 인증</div>
+      <div class="field">
+        <label>비밀번호</label>
+        <input id="adminPw" type="password" placeholder="관리자 비밀번호 입력">
+      </div>
+      <button class="btn btn-dark" onclick="unlockAdmin()">인증하기</button>
+    </div>
+  </div>
+
+  <!-- 인증 후 -->
+  <div id="adminUnlocked" style="display:none">
+    <!-- 방 상태 -->
+    <div class="card">
+      <div class="card-title">방 상태</div>
+      <div id="adminRoomStatus" class="empty-state" style="padding:16px 0">
+        <p>방에 입장하지 않았습니다</p>
+      </div>
+    </div>
+
+    <!-- 순위 관리 -->
+    <div class="admin-section">
+      <div class="card-title">🏆 순위 관리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.7;">
+        미리보기로 순위를 먼저 확인하고,<br>준비가 되면 전체 공개하세요.
+      </div>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn btn-gray btn-sm" onclick="adminPreview()">👁 미리보기</button>
+        <button class="btn btn-gold btn-sm" onclick="adminPublish()">🚀 전체 공개</button>
+      </div>
+      <button class="btn btn-green-outline btn-sm" onclick="adminHide()">🔒 공개 취소 (숨기기)</button>
+    </div>
+
+    <!-- 참가자 관리 -->
+    <div class="card">
+      <div class="card-title">참가자 관리</div>
+      <div id="adminPlayerList">
+        <div class="empty-state" style="padding:16px 0">
+          <p>참가자가 없습니다</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 위험 구역 -->
+    <div class="card">
+      <div class="card-title" style="color:#b91c1c">⚠ 위험 구역</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">
+        아래 작업은 되돌릴 수 없습니다.
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="resetRoom()">전체 데이터 초기화</button>
+    </div>
+  </div>
+</div>
+
+<!-- 하단 저장 버튼 (점수 탭에서만) -->
+<div class="sticky-bottom" id="stickyScore" style="display:none">
+  <button class="btn btn-green" onclick="saveMyScore()">✓ 내 점수 저장</button>
+</div>
+
+<!-- 관리자 미리보기 모달 -->
+<div class="modal-overlay" id="previewModal" onclick="closePreview(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">순위 미리보기 <span class="preview-tag">관리자 전용</span></div>
+    <div id="previewContent"></div>
+    <div style="margin-top:16px">
+      <button class="btn btn-gold" onclick="adminPublish()">🚀 지금 전체 공개</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+//  Firebase 설정 (아래 값을 실제 값으로 교체)
+// ─────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  databaseURL: "YOUR_DB_URL",
+  projectId: "YOUR_ID",
+};
+
+// ─────────────────────────────────────────
+//  앱 상태
+// ─────────────────────────────────────────
+let useFirebase = false;
+let db = null;
+let admin = false;
+let currentRoom = "";
+let localData = {};
+let published = false; // 0=숨김, 1=공개
+let currentTab = "room";
+
+// Firebase 초기화
+if (firebaseConfig.apiKey !== "YOUR_KEY") {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    useFirebase = true;
+  } catch(e) { console.error(e); }
+}
+
+if (!useFirebase) {
+  document.getElementById("roomNotice").style.display = "block";
+  document.getElementById("roomNotice").textContent = "⚠ Firebase 미설정 — 테스트 모드 (데이터가 로컬에만 저장됩니다)";
+}
+
+// ─────────────────────────────────────────
+//  탭 전환
+// ─────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("page-" + tab).classList.add("active");
+  document.getElementById("tab-" + tab).classList.add("active");
+  currentTab = tab;
+  document.getElementById("stickyScore").style.display = (tab === "score") ? "block" : "none";
+}
+
+// ─────────────────────────────────────────
+//  토스트
+// ─────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+// ─────────────────────────────────────────
+//  경기방
+// ─────────────────────────────────────────
+function createRoom() {
+  const name = document.getElementById("roomInput").value.trim();
+  if (!name) { toast("방 이름을 입력하세요"); return; }
+  currentRoom = name;
+  updateRoomBadge();
+  generateQR();
+  if (useFirebase) {
+    db.ref("rooms/" + currentRoom + "/meta").set({ published: false, created: Date.now() });
+  }
+  toast("방 [" + name + "] 생성 완료!");
+  document.getElementById("qrCard").style.display = "block";
+}
+
+function joinRoom() {
+  const name = document.getElementById("roomInput").value.trim();
+  if (!name) { toast("방 이름을 입력하세요"); return; }
+  currentRoom = name;
+  updateRoomBadge();
+  listenRoom();
+  toast("방 [" + name + "] 입장!");
+}
+
+function updateRoomBadge() {
+  document.getElementById("roomBadge").style.display = "block";
+  document.getElementById("roomBadgeText").textContent = "📍 " + currentRoom;
+  if (admin) refreshAdminRoomStatus();
+}
+
+function generateQR() {
+  document.getElementById("qr").innerHTML = "";
+  const url = location.href.split("?")[0] + "?room=" + encodeURIComponent(currentRoom);
+  try {
+    new QRCode(document.getElementById("qr"), { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M });
+  } catch(e) {}
+}
+
+// ─────────────────────────────────────────
+//  점수 저장 / 불러오기
+// ─────────────────────────────────────────
+function saveMyScore() {
+  const name = document.getElementById("pName").value.trim();
+  const handi = Number(document.getElementById("pHandi").value) || 0;
+  const score = Number(document.getElementById("pScore").value);
+  const notice = document.getElementById("scoreNotice");
+
+  if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
+  if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
+  if (!score) { showNotice(notice, "error", "총타수를 입력하세요"); return; }
+
+  const net = score - handi;
+
+  if (useFirebase) {
+    db.ref("rooms/" + currentRoom + "/players/" + name).set({ name, handi, score });
+  } else {
+    localData[name] = { name, handi, score };
+    renderRank();
+    if (admin) refreshAdminPlayerList();
+  }
+
+  showNotice(notice, "info", `저장 완료! NET 스코어: ${net}타`);
+  document.getElementById("myNetCard").style.display = "block";
+  document.getElementById("myNetDisplay").textContent = net;
+
+  if (navigator.vibrate) navigator.vibrate([30, 10, 30]);
+}
+
+function loadMyData() {
+  const name = document.getElementById("pName").value.trim();
+  if (!name) { toast("이름을 먼저 입력하세요"); return; }
+  if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
+
+  if (useFirebase) {
+    db.ref("rooms/" + currentRoom + "/players/" + name).once("value", snap => {
+      const d = snap.val();
+      if (!d) { toast("저장된 데이터가 없습니다"); return; }
+      document.getElementById("pHandi").value = d.handi;
+      document.getElementById("pScore").value = d.score;
+      toast("불러오기 완료");
+    });
+  } else {
+    const d = localData[name];
+    if (!d) { toast("저장된 데이터가 없습니다"); return; }
+    document.getElementById("pHandi").value = d.handi;
+    document.getElementById("pScore").value = d.score;
+    toast("불러오기 완료");
+  }
+}
+
+function showNotice(el, type, msg) {
+  el.style.display = "block";
+  el.className = "notice notice-" + (type === "error" ? "error" : "info");
+  el.textContent = msg;
+  setTimeout(() => { el.style.display = "none"; }, 3000);
+}
+
+// ─────────────────────────────────────────
+//  Firebase 리스너
+// ─────────────────────────────────────────
+function listenRoom() {
+  if (!useFirebase) return;
+  db.ref("rooms/" + currentRoom).on("value", snap => {
+    const room = snap.val();
+    if (!room) return;
+    published = room.meta ? !!room.meta.published : false;
+    const players = room.players || {};
+    localData = players;
+    renderRank();
+    if (admin) {
+      refreshAdminRoomStatus();
+      refreshAdminPlayerList();
+    }
+  });
+}
+
+// ─────────────────────────────────────────
+//  순위 렌더
+// ─────────────────────────────────────────
+function getSorted(data) {
+  let arr = Object.values(data || {});
+  arr.forEach(p => p.net = p.score - p.handi);
+  arr.sort((a, b) => a.net - b.net);
+  let rank = 1;
+  arr.forEach((p, i) => {
+    if (i > 0 && p.net !== arr[i-1].net) rank = i + 1;
+    p.rank = rank;
+  });
+  return arr;
+}
+
+function medalIcon(rank) {
+  if (rank === 1) return "🥇";
+  if (rank === 2) return "🥈";
+  if (rank === 3) return "🥉";
+  return "";
+}
+
+function buildRankHTML(arr, isPreview) {
+  if (!arr.length) {
+    return `<div class="empty-state"><div class="big">👋</div><p>아직 점수를 입력한<br>참가자가 없습니다</p></div>`;
+  }
+  return arr.map(p => `
+    <div class="rank-item ${p.rank <= 3 ? 'rank-' + p.rank : ''}">
+      <div class="rank-num ${p.rank <= 3 ? 'n' + p.rank : ''}">${p.rank}</div>
+      <div class="rank-info">
+        <div class="rank-name">${p.name}</div>
+        <div class="rank-detail">총타 ${p.score} · 핸디 ${p.handi}</div>
+      </div>
+      <div class="rank-score">
+        <div class="rank-net">${p.net}</div>
+        <div class="rank-net-label">NET</div>
+      </div>
+      <div class="medal">${medalIcon(p.rank)}</div>
+    </div>
+  `).join("");
+}
+
+function renderRank() {
+  const listEl = document.getElementById("rankList");
+  const statusEl = document.getElementById("rankStatusBar");
+  const arr = getSorted(localData);
+
+  if (!currentRoom) {
+    listEl.innerHTML = `<div class="empty-state"><div class="big">⛳</div><p>방에 입장하면<br>순위가 표시됩니다</p></div>`;
+    statusEl.innerHTML = "";
+    return;
+  }
+
+  if (admin) {
+    statusEl.innerHTML = `<div class="status-bar status-preview">👁 관리자 모드 — 항상 순위가 보입니다</div>`;
+    listEl.innerHTML = `<div class="rank-list">${buildRankHTML(arr, true)}</div>`;
+    return;
+  }
+
+  if (!published) {
+    statusEl.innerHTML = `<div class="status-bar status-pending">⏳ 집계 중 — 관리자가 공개하면 표시됩니다</div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="big">🔒</div><p>순위 집계 중입니다<br>잠시만 기다려 주세요</p></div>`;
+    return;
+  }
+
+  statusEl.innerHTML = `<div class="status-bar status-live">✓ 최종 순위가 공개되었습니다</div>`;
+  listEl.innerHTML = `<div class="rank-list">${buildRankHTML(arr, false)}</div>`;
+}
+
+// ─────────────────────────────────────────
+//  관리자
+// ─────────────────────────────────────────
+function unlockAdmin() {
+  const pw = document.getElementById("adminPw").value;
+  if (pw === "1234") {
+    admin = true;
+    document.getElementById("adminLocked").style.display = "none";
+    document.getElementById("adminUnlocked").style.display = "block";
+    document.getElementById("tab-admin").innerHTML = `<span class="icon">⚙️</span>관리자✓`;
+    toast("관리자 모드 활성화");
+    refreshAdminRoomStatus();
+    refreshAdminPlayerList();
+    renderRank();
+  } else {
+    toast("비밀번호가 틀렸습니다");
+  }
+}
+
+function refreshAdminRoomStatus() {
+  const el = document.getElementById("adminRoomStatus");
+  if (!currentRoom) {
+    el.innerHTML = `<p style="font-size:13px; color:var(--text-3)">방에 입장하지 않았습니다</p>`;
+    return;
+  }
+  const count = Object.keys(localData).length;
+  const statusText = published ? "🟢 순위 공개 중" : "🟡 집계 중 (비공개)";
+  el.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+      <span style="font-size:15px; font-weight:700">${currentRoom}</span>
+      <span style="font-size:13px; color:var(--text-2)">${statusText}</span>
+    </div>
+    <div style="font-size:13px; color:var(--text-3)">참가자 ${count}명 입력 완료</div>
+  `;
+}
+
+function refreshAdminPlayerList() {
+  const el = document.getElementById("adminPlayerList");
+  const arr = getSorted(localData);
+  if (!arr.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:12px 0"><p>참가자가 없습니다</p></div>`;
+    return;
+  }
+  el.innerHTML = arr.map(p => `
+    <div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--border)">
+      <div style="width:28px; font-family:'DM Mono',monospace; font-size:14px; color:var(--text-3)">${p.rank}</div>
+      <div style="flex:1; font-size:14px; font-weight:500">${p.name}</div>
+      <div style="font-size:13px; color:var(--text-3); margin-right:12px; font-family:'DM Mono',monospace">
+        ${p.score} - ${p.handi} = <strong style="color:var(--green)">${p.net}</strong>
+      </div>
+      <button onclick="deletePlayer('${p.name}')" style="background:none; border:none; font-size:16px; cursor:pointer; padding:4px">🗑</button>
+    </div>
+  `).join("");
+}
+
+function deletePlayer(name) {
+  if (!confirm(`[${name}] 을 삭제할까요?`)) return;
+  if (useFirebase) {
+    db.ref("rooms/" + currentRoom + "/players/" + name).remove();
+  } else {
+    delete localData[name];
+    renderRank();
+    refreshAdminPlayerList();
+    refreshAdminRoomStatus();
+  }
+  toast(name + " 삭제됨");
+}
+
+function adminPreview() {
+  if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
+  const arr = getSorted(localData);
+  document.getElementById("previewContent").innerHTML =
+    `<div class="rank-list">${buildRankHTML(arr, true)}</div>`;
+  document.getElementById("previewModal").classList.add("open");
+}
+
+function closePreview(e) {
+  if (e.target.id === "previewModal") {
+    document.getElementById("previewModal").classList.remove("open");
+  }
+}
+
+function adminPublish() {
+  if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
+  if (!confirm("순위를 전체 공개할까요?")) return;
+  document.getElementById("previewModal").classList.remove("open");
+  if (useFirebase) {
+    db.ref("rooms/" + currentRoom + "/meta/published").set(true);
+  } else {
+    published = true;
+    renderRank();
+    refreshAdminRoomStatus();
+  }
+  toast("🚀 순위 공개 완료!");
+}
+
+function adminHide() {
+  if (!confirm("순위를 다시 숨길까요?")) return;
+  if (useFirebase) {
+    db.ref("rooms/" + currentRoom + "/meta/published").set(false);
+  } else {
+    published = false;
+    renderRank();
+    refreshAdminRoomStatus();
+  }
+  toast("🔒 순위 숨김 처리");
+}
+
+function resetRoom() {
+  if (!admin) { toast("관리자만 가능"); return; }
+  if (!confirm("모든 데이터를 삭제합니다. 계속할까요?")) return;
+  if (useFirebase) {
+    db.ref("rooms/" + currentRoom).remove();
+    db.ref("rooms/" + currentRoom + "/meta").set({ published: false });
+  } else {
+    localData = {};
+    published = false;
+    renderRank();
+    refreshAdminPlayerList();
+    refreshAdminRoomStatus();
+  }
+  toast("초기화 완료");
+}
+
+// ─────────────────────────────────────────
+//  URL 파라미터로 자동 입장
+// ─────────────────────────────────────────
+const urlRoom = new URLSearchParams(location.search).get("room");
+if (urlRoom) {
+  currentRoom = urlRoom;
+  document.getElementById("roomInput").value = urlRoom;
+  updateRoomBadge();
+  generateQR();
+  document.getElementById("qrCard").style.display = "block";
+  listenRoom();
+}
+</script>
+</body>
+</html>
