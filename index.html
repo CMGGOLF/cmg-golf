@@ -402,7 +402,6 @@ body {
 
 <div id="toast"></div>
 
-<!-- HEADER -->
 <div class="app-header">
   <h1>⛳ CMG 골프클럽</h1>
   <div class="sub">실시간 순위 시스템</div>
@@ -411,7 +410,6 @@ body {
   </div>
 </div>
 
-<!-- TAB NAV -->
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('room')" id="tab-room">
     <span class="icon">🏠</span>경기방
@@ -427,7 +425,6 @@ body {
   </button>
 </div>
 
-<!-- PAGE: 경기방 -->
 <div class="page active" id="page-room">
   <div class="card">
     <div class="card-title">경기방 설정</div>
@@ -461,7 +458,6 @@ body {
   </div>
 </div>
 
-<!-- PAGE: 점수입력 -->
 <div class="page" id="page-score">
   <div class="card">
     <div class="card-title">내 정보</div>
@@ -495,7 +491,6 @@ body {
   </div>
 </div>
 
-<!-- PAGE: 순위 -->
 <div class="page" id="page-rank">
   <div id="rankStatusBar"></div>
   <div id="rankList">
@@ -506,9 +501,7 @@ body {
   </div>
 </div>
 
-<!-- PAGE: 관리자 -->
 <div class="page" id="page-admin">
-  <!-- 비인증 상태 -->
   <div id="adminLocked">
     <div class="card">
       <div class="card-title">관리자 인증</div>
@@ -520,9 +513,7 @@ body {
     </div>
   </div>
 
-  <!-- 인증 후 -->
   <div id="adminUnlocked" style="display:none">
-    <!-- 방 상태 -->
     <div class="card">
       <div class="card-title">방 상태</div>
       <div id="adminRoomStatus" class="empty-state" style="padding:16px 0">
@@ -530,7 +521,6 @@ body {
       </div>
     </div>
 
-    <!-- 순위 관리 -->
     <div class="admin-section">
       <div class="card-title">🏆 순위 관리</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.7;">
@@ -543,7 +533,6 @@ body {
       <button class="btn btn-green-outline btn-sm" onclick="adminHide()">🔒 공개 취소 (숨기기)</button>
     </div>
 
-    <!-- 참가자 관리 -->
     <div class="card">
       <div class="card-title">참가자 관리</div>
       <div id="adminPlayerList">
@@ -553,7 +542,6 @@ body {
       </div>
     </div>
 
-    <!-- 위험 구역 -->
     <div class="card">
       <div class="card-title" style="color:#b91c1c">⚠ 위험 구역</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">
@@ -564,12 +552,10 @@ body {
   </div>
 </div>
 
-<!-- 하단 저장 버튼 (점수 탭에서만) -->
 <div class="sticky-bottom" id="stickyScore" style="display:none">
   <button class="btn btn-green" onclick="saveMyScore()">✓ 내 점수 저장</button>
 </div>
 
-<!-- 관리자 미리보기 모달 -->
 <div class="modal-overlay" id="previewModal" onclick="closePreview(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -583,7 +569,7 @@ body {
 
 <script>
 // ─────────────────────────────────────────
-//  Firebase 설정 (아래 값을 실제 값으로 교체)
+//  Firebase 설정
 // ─────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyAXrZPMhTZXdj5uJufyj3ZyS5wbOiZfU9Y",
@@ -604,10 +590,9 @@ let db = null;
 let admin = false;
 let currentRoom = "";
 let localData = {};
-let published = false; // 0=숨김, 1=공개
+let published = false; 
 let currentTab = "room";
 
-// Firebase 초기화
 if (firebaseConfig.apiKey !== "YOUR_KEY") {
   try {
     firebase.initializeApp(firebaseConfig);
@@ -633,9 +618,6 @@ function switchTab(tab) {
   document.getElementById("stickyScore").style.display = (tab === "score") ? "block" : "none";
 }
 
-// ─────────────────────────────────────────
-//  토스트
-// ─────────────────────────────────────────
 function toast(msg) {
   const el = document.getElementById("toast");
   el.textContent = msg;
@@ -659,6 +641,7 @@ function createRoom() {
   document.getElementById("qrCard").style.display = "block";
 }
 
+// 오타 수정됨
 function joinRoom() {
   const name = document.getElementById("roomInput").value.trim();
   if (!name) { toast("방 이름을 입력하세요"); return; }
@@ -761,7 +744,7 @@ function listenRoom() {
 }
 
 // ─────────────────────────────────────────
-//  순위 렌더
+//  순위 렌더 (참석자 리스트 표시 추가됨)
 // ─────────────────────────────────────────
 function getSorted(data) {
   let arr = Object.values(data || {});
@@ -802,6 +785,25 @@ function buildRankHTML(arr, isPreview) {
   `).join("");
 }
 
+/* 추가됨: 미공개 상태에서 보여줄 참석자 명단 뷰어 */
+function buildParticipantHTML(arr) {
+  if (!arr.length) {
+    return `<div class="empty-state"><div class="big">👋</div><p>아직 점수를 입력한<br>참가자가 없습니다</p></div>`;
+  }
+  return arr.map(p => `
+    <div class="rank-item">
+      <div class="rank-num" style="font-size:16px;">👤</div>
+      <div class="rank-info">
+        <div class="rank-name">${p.name}</div>
+        <div class="rank-detail">핸디캡 ${p.handi}</div>
+      </div>
+      <div class="rank-score">
+        <div style="font-size:12px; color:var(--green); font-weight:700;">입력 완료</div>
+      </div>
+    </div>
+  `).join("");
+}
+
 function renderRank() {
   const listEl = document.getElementById("rankList");
   const statusEl = document.getElementById("rankStatusBar");
@@ -814,14 +816,18 @@ function renderRank() {
   }
 
   if (admin) {
-    statusEl.innerHTML = `<div class="status-bar status-preview">👁 관리자 모드 — 항상 순위가 보입니다</div>`;
+    statusEl.innerHTML = `<div class="status-bar status-preview">👁 관리자 모드 — 항상 전체 타수와 순위가 보입니다</div>`;
     listEl.innerHTML = `<div class="rank-list">${buildRankHTML(arr, true)}</div>`;
     return;
   }
 
+  // 수정됨: 순위 비공개일 때 기존의 '자물쇠' 아이콘 대신 누구나 볼 수 있는 참석자(이름, 핸디) 리스트 출력
   if (!published) {
-    statusEl.innerHTML = `<div class="status-bar status-pending">⏳ 집계 중 — 관리자가 공개하면 표시됩니다</div>`;
-    listEl.innerHTML = `<div class="empty-state"><div class="big">🔒</div><p>순위 집계 중입니다<br>잠시만 기다려 주세요</p></div>`;
+    statusEl.innerHTML = `<div class="status-bar status-pending">⏳ 순위 집계 중 — 참가자 명단 및 핸디캡 확인 가능</div>`;
+    
+    // 가나다 순으로 정렬하여 점수 유추 방지
+    const participantArr = Object.values(localData || {}).sort((a,b) => a.name.localeCompare(b.name));
+    listEl.innerHTML = `<div class="rank-list">${buildParticipantHTML(participantArr)}</div>`;
     return;
   }
 
@@ -834,7 +840,7 @@ function renderRank() {
 // ─────────────────────────────────────────
 function unlockAdmin() {
   const pw = document.getElementById("adminPw").value;
-  if (pw === "1217") {
+  if (pw === "1217") { // 이전에 사용자가 설정했던 1217 유지
     admin = true;
     document.getElementById("adminLocked").style.display = "none";
     document.getElementById("adminUnlocked").style.display = "block";
