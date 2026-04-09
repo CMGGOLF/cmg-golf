@@ -155,11 +155,11 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="field-row">
       <div class="field">
         <label>핸디캡</label>
-        <input id="pHandi" type="number" inputmode="numeric" placeholder="소숫점 포함(예:7.6)">
+        <input id="pHandi" type="number" inputmode="decimal" placeholder="소수점 포함(예:7.6)">
       </div>
       <div class="field">
         <label>친타수</label>
-        <input id="pScore" type="number" inputmode="numeric" placeholder="게임 종료 후 입력(예:79)">
+        <input id="pScore" type="number" placeholder="종료 후 입력(예:-2 또는 72)">
       </div>
     </div>
     <div class="btn-row" style="margin-top:4px">
@@ -302,9 +302,6 @@ if (!useFirebase) {
   document.getElementById("roomNotice").textContent = "⚠ Firebase 연결 오류 (데이터베이스 규칙을 확인하세요)";
 }
 
-// ─────────────────────────────────────────
-//  스마트폰에 내 이름 기억하기 초기화
-// ─────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
   const savedName = localStorage.getItem("myGolfName");
   if(savedName) {
@@ -406,14 +403,10 @@ function shareRoomLink() {
   }
 }
 
-// ─────────────────────────────────────────
-//  본인 점수 편집 모드로 이동하는 기능
-// ─────────────────────────────────────────
 function editMyScore(name) {
   const d = localData[name];
   if (!d) return;
 
-  // 내 이름이 맞는지, 관리자인지 확인
   const myName = localStorage.getItem("myGolfName");
   if (!admin && name !== myName) {
     toast("🔒 본인의 점수만 수정할 수 있습니다.");
@@ -422,9 +415,12 @@ function editMyScore(name) {
 
   document.getElementById("pName").value = d.name;
   document.getElementById("pHandi").value = d.handi;
-  document.getElementById("pScore").value = d.score > 0 ? d.score : "";
+  
+  // ▼ 빈칸 체크 기능 추가 (0이나 -1도 정상적으로 값 세팅)
+  const hasScore = (d.score !== "" && d.score !== undefined);
+  document.getElementById("pScore").value = hasScore ? d.score : "";
 
-  if (d.score > 0) {
+  if (hasScore) {
     const net = parseFloat((d.score - d.handi).toFixed(1));
     document.getElementById("myNetCard").style.display = "block";
     document.getElementById("myNetDisplay").textContent = net;
@@ -442,16 +438,18 @@ function editMyScore(name) {
 function saveMyScore() {
   const name = document.getElementById("pName").value.trim();
   const handi = Number(document.getElementById("pHandi").value) || 0;
-  const score = Number(document.getElementById("pScore").value) || 0;
+  const scoreStr = document.getElementById("pScore").value.trim();
   const notice = document.getElementById("scoreNotice");
 
   if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
   
-  // ▼ 저장할 때 로컬 스토리지에 내 이름 각인시키기
   localStorage.setItem("myGolfName", name);
 
-  const net = parseFloat((score - handi).toFixed(1));
+  // ▼ 입력값이 있는지 체크 (0이나 음수 포함)
+  const hasScore = scoreStr !== "";
+  const score = hasScore ? Number(scoreStr) : "";
+
   const timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
 
   if (useFirebase) {
@@ -462,7 +460,8 @@ function saveMyScore() {
     if (admin) refreshAdminPlayerList();
   }
 
-  if(score > 0) {
+  if(hasScore) {
+    const net = parseFloat((score - handi).toFixed(1));
     showNotice(notice, "info", `스코어 저장 완료! NET: ${net}타`);
     document.getElementById("myNetCard").style.display = "block";
     document.getElementById("myNetDisplay").textContent = net;
@@ -478,22 +477,25 @@ function loadMyData() {
   if (!name) { toast("이름을 먼저 입력하세요"); return; }
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
 
-  // 불러오기 시에도 내 이름 각인시키기
   localStorage.setItem("myGolfName", name);
 
   if (useFirebase) {
     db.ref("rooms/" + currentRoom + "/players/" + name).once("value", snap => {
       const d = snap.val();
       if (!d) { toast("저장된 데이터가 없습니다"); return; }
+      
+      const hasScore = (d.score !== "" && d.score !== undefined);
       document.getElementById("pHandi").value = d.handi;
-      document.getElementById("pScore").value = d.score > 0 ? d.score : "";
+      document.getElementById("pScore").value = hasScore ? d.score : "";
       toast("불러오기 완료");
     });
   } else {
     const d = localData[name];
     if (!d) { toast("저장된 데이터가 없습니다"); return; }
+    
+    const hasScore = (d.score !== "" && d.score !== undefined);
     document.getElementById("pHandi").value = d.handi;
-    document.getElementById("pScore").value = d.score > 0 ? d.score : "";
+    document.getElementById("pScore").value = hasScore ? d.score : "";
     toast("불러오기 완료");
   }
 }
@@ -518,19 +520,25 @@ function listenRoom() {
 function getSorted(data) {
   let arr = Object.values(data || {});
   
-  arr.forEach(p => p.net = parseFloat((p.score - p.handi).toFixed(1)));
+  // ▼ 점수가 입력되었는지 여부 체크 추가
+  arr.forEach(p => {
+    p.hasScore = (p.score !== "" && p.score !== undefined);
+    if(p.hasScore) {
+      p.net = parseFloat((p.score - p.handi).toFixed(1));
+    }
+  });
   
   arr.sort((a, b) => {
-    if (a.score === 0) return 1;
-    if (b.score === 0) return -1;
+    if (!a.hasScore) return 1;
+    if (!b.hasScore) return -1;
     return a.net - b.net;
   });
 
   let rank = 1; let actualIndex = 1;
   arr.forEach((p, i) => {
-    if (p.score === 0) { p.rank = '-'; } 
+    if (!p.hasScore) { p.rank = '-'; } 
     else {
-      if (i > 0 && p.score > 0 && p.net !== arr[i-1].net) rank = actualIndex;
+      if (i > 0 && p.hasScore && p.net !== arr[i-1].net) rank = actualIndex;
       p.rank = rank; actualIndex++;
     }
   });
@@ -544,28 +552,25 @@ function medalIcon(rank) {
 function buildRankHTML(arr, isPreview) {
   if (!arr.length) return `<div class="empty-state"><div class="big">👋</div><p>아직 참가자가 없습니다</p></div>`;
   return arr.map(p => `
-    <div class="rank-item ${p.rank <= 3 && p.score > 0 ? 'rank-' + p.rank : ''}">
-      <div class="rank-num ${p.rank <= 3 && p.score > 0 ? 'n' + p.rank : ''}">${p.rank}</div>
+    <div class="rank-item ${p.rank <= 3 && p.hasScore ? 'rank-' + p.rank : ''}">
+      <div class="rank-num ${p.rank <= 3 && p.hasScore ? 'n' + p.rank : ''}">${p.rank}</div>
       <div class="rank-info">
         <div class="rank-name">${p.name}</div>
-        <div class="rank-detail">친타수 ${p.score > 0 ? p.score : '?'} · 핸디 ${p.handi}</div>
+        <div class="rank-detail">친타수 ${p.hasScore ? p.score : '?'} · 핸디 ${p.handi}</div>
       </div>
       <div class="rank-score">
-        <div class="rank-net" style="color:${p.score > 0 ? 'var(--text)' : 'var(--text-3)'}">${p.score > 0 ? p.net : '-'}</div>
+        <div class="rank-net" style="color:${p.hasScore ? 'var(--text)' : 'var(--text-3)'}">${p.hasScore ? p.net : '-'}</div>
         <div class="rank-net-label">NET</div>
       </div>
-      <div class="medal">${p.score > 0 ? medalIcon(p.rank) : ''}</div>
+      <div class="medal">${p.hasScore ? medalIcon(p.rank) : ''}</div>
     </div>
   `).join("");
 }
 
-// ─────────────────────────────────────────
-//  참가자 렌더링 시 본인 여부 체크하여 버튼 모양 변경
-// ─────────────────────────────────────────
 function renderParticipantList() {
   const listEl = document.getElementById("participantList");
   const statusEl = document.getElementById("participantStatusBar");
-  const myName = localStorage.getItem("myGolfName") || ""; // 내 이름 불러오기
+  const myName = localStorage.getItem("myGolfName") || "";
   
   const arr = Object.values(localData || {}).sort((a,b) => (a.timestamp || 0) - (b.timestamp || 0));
 
@@ -588,6 +593,7 @@ function renderParticipantList() {
   listEl.innerHTML = arr.map(p => {
     const isMe = (p.name === myName);
     const canEdit = isMe || admin;
+    const hasScore = (p.score !== "" && p.score !== undefined); // ▼ 수정된 점수 확인 로직 적용
 
     return `
     <div class="rank-item" style="${canEdit ? 'cursor:pointer; border:1px solid var(--green);' : 'opacity:0.8;'}" onclick="${canEdit ? `editMyScore('${p.name}')` : `toast('🔒 본인의 점수만 수정할 수 있습니다.')`}">
@@ -597,7 +603,7 @@ function renderParticipantList() {
         <div class="rank-detail">핸디캡 ${p.handi}</div>
       </div>
       <div class="rank-score">
-        <div style="font-size:12px; font-weight:700; color:${p.score > 0 ? 'var(--green)' : 'var(--text-3)'}">${p.score > 0 ? '경기종료' : '대기중'}</div>
+        <div style="font-size:12px; font-weight:700; color:${hasScore ? 'var(--green)' : 'var(--text-3)'}">${hasScore ? '경기종료' : '대기중'}</div>
         ${canEdit 
           ? `<div style="font-size:10px; color:var(--green); margin-top:4px;">터치하여 점수입력 ❯</div>` 
           : `<div style="font-size:10px; color:#ccc; margin-top:4px;">🔒 수정불가</div>`}
@@ -635,7 +641,7 @@ function unlockAdmin() {
     document.getElementById("adminLocked").style.display = "none"; document.getElementById("adminUnlocked").style.display = "block";
     document.getElementById("tab-admin").innerHTML = `<span class="icon">⚙️</span>관리자✓`;
     toast("관리자 모드 활성화"); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank();
-    renderParticipantList(); // 관리자가 되면 잠금 아이콘들이 풀리도록 리스트 다시 그림
+    renderParticipantList(); 
   } else toast("비밀번호가 틀렸습니다");
 }
 
@@ -661,7 +667,7 @@ function refreshAdminPlayerList() {
       <div style="width:28px; font-family:'DM Mono',monospace; font-size:14px; color:var(--text-3)">${p.rank}</div>
       <div style="flex:1; font-size:14px; font-weight:500">${p.name}</div>
       <div style="font-size:13px; color:var(--text-3); margin-right:12px; font-family:'DM Mono',monospace">
-        ${p.score > 0 ? p.score + ' - ' + p.handi + ' = <strong style="color:var(--green)">' + p.net + '</strong>' : '<span style="color:#b91c1c">점수입력 대기중</span>'}
+        ${p.hasScore ? p.score + ' - ' + p.handi + ' = <strong style="color:var(--green)">' + p.net + '</strong>' : '<span style="color:#b91c1c">점수입력 대기중</span>'}
       </div>
       <button onclick="deletePlayer('${p.name}')" style="background:none; border:none; font-size:16px; cursor:pointer; padding:4px">🗑</button>
     </div>
