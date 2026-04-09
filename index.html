@@ -130,7 +130,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       1. 위 목록에서 참가할 경기방을 터치하여 입장하세요.<br>
       2. 경기 전 이름과 핸디캡만 입력하여 사전 등록하세요.<br>
       3. 라운드가 끝나면 친타수를 추가로 입력해 주세요.<br>
-      <span style="color: #b91c1c; font-weight: bold;">4. 본인 G핸디와 다를 시 무조건 시상에서 제외 됩니다.</span>
+      <span style="color: #b91c1c; font-weight: bold;">4. 본인 G핸디와 다를 시 무조건 시상에서 제외 됩니다.</span><br>
+      <span style="color: #b91c1c; font-weight: bold;">※ 새 경기방 생성은 [관리자] 탭에서 가능합니다.</span>
     </div>
   </div>
 </div>
@@ -159,7 +160,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
       <div class="field">
         <label>친타수</label>
-        <input id="pScore" type="number" inputmode="numeric" placeholder="게임 종료 후 입력(예:7)">
+        <input id="pScore" type="number" inputmode="numeric" placeholder="게임 종료 후 입력(예:79)">
       </div>
     </div>
     <div class="btn-row" style="margin-top:4px">
@@ -317,7 +318,6 @@ function toast(msg) {
   setTimeout(() => el.classList.remove("show"), 2200);
 }
 
-// 홈 화면에 개설된 전체 방 목록 표시
 function listenAllRooms() {
   if (!useFirebase) return;
   db.ref("rooms").on("value", snap => {
@@ -328,7 +328,6 @@ function listenAllRooms() {
       return;
     }
     
-    // 생성된 시간 역순으로 정렬 (최신 방이 위로)
     const roomsArray = Object.keys(data).map(key => ({
       id: key,
       created: data[key].meta?.created || 0
@@ -356,8 +355,8 @@ function createRoom() {
   
   toast("방 [" + name + "] 생성 완료!");
   document.getElementById("qrCard").style.display = "block";
-  document.getElementById("newRoomInput").value = ""; // 입력창 비우기
-  listenRoom(); // 자동으로 방 리스너 작동
+  document.getElementById("newRoomInput").value = ""; 
+  listenRoom(); 
 }
 
 function joinRoom(roomName) {
@@ -365,7 +364,7 @@ function joinRoom(roomName) {
   updateRoomBadge(); 
   listenRoom();
   toast("방 [" + roomName + "] 입장 완료!");
-  switchTab('list'); // 입장 시 자동으로 [참가자] 탭으로 이동
+  switchTab('list'); 
 }
 
 function updateRoomBadge() {
@@ -407,9 +406,9 @@ function saveMyScore() {
   if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
   
-  const net = score - handi;
+  // ▼ 소수점 계산 오류 완벽 해결! (소수점 1자리로 깔끔하게 반올림 처리)
+  const net = parseFloat((score - handi).toFixed(1));
   
-  // 최초 신청 시간(timestamp) 기억 혹은 생성
   const timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
 
   if (useFirebase) {
@@ -472,7 +471,10 @@ function listenRoom() {
 
 function getSorted(data) {
   let arr = Object.values(data || {});
-  arr.forEach(p => p.net = p.score - p.handi);
+  
+  // ▼ 소수점 오류 해결 반영
+  arr.forEach(p => p.net = parseFloat((p.score - p.handi).toFixed(1)));
+  
   arr.sort((a, b) => {
     if (a.score === 0) return 1;
     if (b.score === 0) return -1;
@@ -516,7 +518,6 @@ function renderParticipantList() {
   const listEl = document.getElementById("participantList");
   const statusEl = document.getElementById("participantStatusBar");
   
-  // 이름 가나다순 대신 시간(timestamp) 오름차순(신청순)으로 정렬되도록 변경
   const arr = Object.values(localData || {}).sort((a,b) => (a.timestamp || 0) - (b.timestamp || 0));
 
   if (!currentRoom) {
@@ -643,14 +644,13 @@ function resetRoom() {
   if (!confirm("이 경기방을 완전히 삭제하시겠습니까? (목록에서도 영구적으로 사라집니다)")) return;
   
   if (useFirebase) { 
-    db.ref("rooms/" + currentRoom).remove(); // DB에서 방 자체를 완전 삭제
+    db.ref("rooms/" + currentRoom).remove(); 
   } else { 
     localData = {}; published = false; 
   }
   
   toast("경기방이 완전히 삭제되었습니다.");
   
-  // 삭제 후 1.5초 뒤에 메인 화면(방선택)으로 자동 이동 및 새로고침
   setTimeout(() => {
     location.href = location.href.split("?")[0];
   }, 1500);
@@ -659,7 +659,7 @@ function resetRoom() {
 const urlRoom = new URLSearchParams(location.search).get("room");
 if (urlRoom) {
   currentRoom = urlRoom; updateRoomBadge(); 
-  listenRoom(); switchTab('list'); // URL로 들어오면 바로 참가자 목록으로 
+  listenRoom(); switchTab('list'); 
 }
 </script>
 </body>
