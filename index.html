@@ -249,9 +249,9 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="card">
       <div class="card-title" style="color:#b91c1c">⚠ 위험 구역</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">
-        아래 작업은 되돌릴 수 없습니다.
+        아래 작업은 되돌릴 수 없습니다. (방 폭파)
       </div>
-      <button class="btn btn-danger btn-sm" onclick="resetRoom()">전체 데이터 초기화</button>
+      <button class="btn btn-danger btn-sm" onclick="resetRoom()">방 완전 삭제 (영구 삭제)</button>
     </div>
   </div>
 </div>
@@ -635,10 +635,20 @@ function adminHide() {
 
 function resetRoom() {
   if (!admin) { toast("관리자만 가능"); return; }
-  if (!confirm("모든 데이터를 삭제합니다. 계속할까요?")) return;
-  if (useFirebase) { db.ref("rooms/" + currentRoom).remove(); db.ref("rooms/" + currentRoom + "/meta").set({ published: false }); }
-  else { localData = {}; published = false; renderRank(); renderParticipantList(); refreshAdminPlayerList(); refreshAdminRoomStatus(); }
-  toast("초기화 완료");
+  if (!confirm("이 경기방을 완전히 삭제하시겠습니까? (목록에서도 영구적으로 사라집니다)")) return;
+  
+  if (useFirebase) { 
+    db.ref("rooms/" + currentRoom).remove(); // DB에서 방 자체를 완전 삭제
+  } else { 
+    localData = {}; published = false; 
+  }
+  
+  toast("경기방이 완전히 삭제되었습니다.");
+  
+  // 삭제 후 1.5초 뒤에 메인 화면(방선택)으로 자동 이동 및 새로고침
+  setTimeout(() => {
+    location.href = location.href.split("?")[0];
+  }, 1500);
 }
 
 const urlRoom = new URLSearchParams(location.search).get("room");
