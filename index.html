@@ -107,7 +107,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>방선택</button>
   <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
-  <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>핸디입력</button>
+  <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참석자등록</button>
   <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
   <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
 </div>
@@ -130,7 +130,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       1. 위 목록에서 참가할 경기방을 터치하여 입장하세요.<br>
       2. 경기 전 이름과 핸디캡만 입력하여 사전 등록하세요.<br>
       3. 라운드가 끝나면 친타수를 추가로 입력해 주세요.<br>
-      <span style="color: #b91c1c; font-weight: bold;">4. 핸디, 스코어 정확히 적어주세요. 다를 시 시상에서 제외 됩니다.</span><br>
+      <span style="color: #b91c1c; font-weight: bold;">4. 본인 G핸디와 다를 시 무조건 시상에서 제외 됩니다.</span><br>
     </div>
   </div>
 </div>
@@ -155,11 +155,11 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="field-row">
       <div class="field">
         <label>핸디캡</label>
-        <input id="pHandi" type="number" inputmode="decimal" placeholder="소수점 포함(예:7.6)">
+        <input id="pHandi" type="text" inputmode="decimal" placeholder="소수점 포함(예:7.6)">
       </div>
       <div class="field">
         <label>친타수</label>
-        <input id="pScore" type="number" placeholder="종료 후 입력(예:-2 또는 72)">
+        <input id="pScore" type="text" placeholder="종료 후 입력(예:-2 또는 72)">
       </div>
     </div>
     <div class="btn-row" style="margin-top:4px">
@@ -416,7 +416,6 @@ function editMyScore(name) {
   document.getElementById("pName").value = d.name;
   document.getElementById("pHandi").value = d.handi;
   
-  // ▼ 빈칸 체크 기능 추가 (0이나 -1도 정상적으로 값 세팅)
   const hasScore = (d.score !== "" && d.score !== undefined);
   document.getElementById("pScore").value = hasScore ? d.score : "";
 
@@ -437,7 +436,7 @@ function editMyScore(name) {
 
 function saveMyScore() {
   const name = document.getElementById("pName").value.trim();
-  const handi = Number(document.getElementById("pHandi").value) || 0;
+  const handiStr = document.getElementById("pHandi").value.trim();
   const scoreStr = document.getElementById("pScore").value.trim();
   const notice = document.getElementById("scoreNotice");
 
@@ -446,7 +445,7 @@ function saveMyScore() {
   
   localStorage.setItem("myGolfName", name);
 
-  // ▼ 입력값이 있는지 체크 (0이나 음수 포함)
+  const handi = handiStr !== "" ? Number(handiStr) : 0;
   const hasScore = scoreStr !== "";
   const score = hasScore ? Number(scoreStr) : "";
 
@@ -520,7 +519,6 @@ function listenRoom() {
 function getSorted(data) {
   let arr = Object.values(data || {});
   
-  // ▼ 점수가 입력되었는지 여부 체크 추가
   arr.forEach(p => {
     p.hasScore = (p.score !== "" && p.score !== undefined);
     if(p.hasScore) {
@@ -593,7 +591,7 @@ function renderParticipantList() {
   listEl.innerHTML = arr.map(p => {
     const isMe = (p.name === myName);
     const canEdit = isMe || admin;
-    const hasScore = (p.score !== "" && p.score !== undefined); // ▼ 수정된 점수 확인 로직 적용
+    const hasScore = (p.score !== "" && p.score !== undefined);
 
     return `
     <div class="rank-item" style="${canEdit ? 'cursor:pointer; border:1px solid var(--green);' : 'opacity:0.8;'}" onclick="${canEdit ? `editMyScore('${p.name}')` : `toast('🔒 본인의 점수만 수정할 수 있습니다.')`}">
