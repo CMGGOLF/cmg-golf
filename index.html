@@ -107,7 +107,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>방선택</button>
   <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
-  <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참석자등록</button>
+  <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
   <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
   <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
 </div>
@@ -159,8 +159,12 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
       <div class="field">
         <label>친타수</label>
-        <input id="pScore" type="text" placeholder="종료 후 입력(예:-2 또는 72)">
-      </div>
+        
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn btn-gray" style="flex:0 0 45px; padding:0; font-size:24px; font-weight:bold; border-radius:var(--radius-sm);" onclick="toggleMinus()">-</button>
+          <input id="pScore" type="text" inputmode="numeric" placeholder="예: 72 (언더는 - 버튼)" style="flex:1;">
+        </div>
+        </div>
     </div>
     <div class="btn-row" style="margin-top:4px">
       <button class="btn btn-gray btn-sm" onclick="loadMyData()">불러오기</button>
@@ -302,6 +306,9 @@ if (!useFirebase) {
   document.getElementById("roomNotice").textContent = "⚠ Firebase 연결 오류 (데이터베이스 규칙을 확인하세요)";
 }
 
+// ─────────────────────────────────────────
+//  스마트폰에 내 이름 기억하기 초기화
+// ─────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
   const savedName = localStorage.getItem("myGolfName");
   if(savedName) {
@@ -403,10 +410,32 @@ function shareRoomLink() {
   }
 }
 
+// ─────────────────────────────────────────
+//  마이너스(-) 기호 토글 기능 (아이폰 자판 대응)
+// ─────────────────────────────────────────
+function toggleMinus() {
+  const el = document.getElementById("pScore");
+  let val = el.value.trim();
+  
+  // 마이너스가 이미 있으면 제거, 없으면 붙여줌
+  if (val.startsWith("-")) {
+    el.value = val.substring(1);
+  } else {
+    el.value = "-" + val;
+  }
+  
+  // 버튼 누르고 바로 숫자 자판 올라오도록 포커스 이동
+  el.focus();
+}
+
+// ─────────────────────────────────────────
+//  본인 점수 편집 모드로 이동하는 기능
+// ─────────────────────────────────────────
 function editMyScore(name) {
   const d = localData[name];
   if (!d) return;
 
+  // 내 이름이 맞는지, 관리자인지 확인
   const myName = localStorage.getItem("myGolfName");
   if (!admin && name !== myName) {
     toast("🔒 본인의 점수만 수정할 수 있습니다.");
@@ -443,10 +472,11 @@ function saveMyScore() {
   if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
   
+  // 저장할 때 로컬 스토리지에 내 이름 각인시키기
   localStorage.setItem("myGolfName", name);
 
   const handi = handiStr !== "" ? Number(handiStr) : 0;
-  const hasScore = scoreStr !== "";
+  const hasScore = scoreStr !== "" && scoreStr !== "-"; // "-" 기호만 있는 경우는 제외
   const score = hasScore ? Number(scoreStr) : "";
 
   const timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
@@ -476,6 +506,7 @@ function loadMyData() {
   if (!name) { toast("이름을 먼저 입력하세요"); return; }
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
 
+  // 불러오기 시에도 내 이름 각인시키기
   localStorage.setItem("myGolfName", name);
 
   if (useFirebase) {
