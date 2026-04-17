@@ -37,8 +37,9 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .field label { display: block; font-size: 12px; color: var(--text-3); margin-bottom: 5px; font-weight: 500; }
 .field input { width: 100%; padding: 12px 14px; font-size: 16px; font-family: 'Noto Sans KR', sans-serif; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fafafa; color: var(--text); transition: 0.2s; }
 .field input:focus { outline: none; border-color: var(--green-mid); box-shadow: 0 0 0 3px rgba(45,138,80,0.1); background: white; }
+.field input.input-error { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(185,28,28,0.1); }
 .field-row { display: flex; gap: 10px; }
-.field-row .field { flex: 1; min-width: 0; } /* min-width 추가하여 버튼 비율 유지 */
+.field-row .field { flex: 1; min-width: 0; }
 .btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 700; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: transform 0.1s; }
 .btn:active { transform: scale(0.97); }
 .btn-green { background: var(--green); color: white; }
@@ -114,23 +115,20 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
 <div class="page active" id="page-room">
   <div id="roomNotice" class="notice notice-warn" style="display:none; margin-bottom:14px;"></div>
-  
   <div class="card">
     <div class="card-title">진행 중인 경기방</div>
     <div id="availableRoomsList">
-      <div class="empty-state">
-        <p>목록을 불러오는 중...</p>
-      </div>
+      <div class="empty-state"><p>목록을 불러오는 중...</p></div>
     </div>
   </div>
-
   <div class="card">
     <div class="card-title">사용 안내</div>
     <div style="font-size:13px; color:var(--text-2); line-height:1.9;">
       1. 위 목록에서 참가할 경기방을 터치하여 입장하세요.<br>
       2. 경기 전 이름과 핸디캡만 입력하여 사전 등록하세요.<br>
       3. 라운드가 끝나면 친타수를 추가로 입력해 주세요.<br>
-      <span style="color: #b91c1c; font-weight: bold;">4. 본인 G핸디와 다를 시 무조건 시상에서 제외 됩니다.</span><br>
+      <span style="color:#b91c1c; font-weight:bold;">4. 핸디캡은 최대 14까지만 입력 가능합니다.</span><br>
+      <span style="color:#b91c1c; font-weight:bold;">5. 본인 G핸디와 다를 시 무조건 시상에서 제외 됩니다.</span>
     </div>
   </div>
 </div>
@@ -152,14 +150,14 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <label>이름</label>
       <input id="pName" placeholder="이름을 입력하세요" autocomplete="off">
     </div>
-    
     <div class="field-row">
       <div class="field">
-        <label>핸디캡</label>
+        <label>핸디캡 <span style="color:#b91c1c; font-size:11px;">(최대 14)</span></label>
         <div style="display:flex; gap:6px;">
           <button type="button" class="btn btn-gray" style="flex:0 0 35px; padding:0; font-size:24px; font-weight:bold; border-radius:var(--radius-sm);" onclick="toggleMinus('pHandi')">-</button>
-          <input id="pHandi" type="text" inputmode="decimal" placeholder="예: 7.6" style="flex:1;">
+          <input id="pHandi" type="text" inputmode="decimal" placeholder="예: 7.6" style="flex:1;" oninput="validateHandi(this)">
         </div>
+        <div id="handiError" style="display:none; font-size:11px; color:#b91c1c; margin-top:4px;">⚠ 핸디캡은 최대 14까지만 입력 가능합니다</div>
       </div>
       <div class="field">
         <label>친타수</label>
@@ -169,7 +167,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
         </div>
       </div>
     </div>
-    
     <div class="btn-row" style="margin-top:4px">
       <button class="btn btn-gray btn-sm" onclick="loadMyData()">불러오기</button>
       <button class="btn btn-green btn-sm" onclick="saveMyScore()">저장하기</button>
@@ -179,7 +176,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
   <div class="card" id="myNetCard" style="display:none">
     <div class="card-title">내 NET 스코어</div>
-    <div style="text-align:center; padding: 10px 0;">
+    <div style="text-align:center; padding:10px 0;">
       <div style="font-family:'DM Mono',monospace; font-size:48px; font-weight:500; color:var(--green);" id="myNetDisplay">-</div>
       <div style="font-size:13px; color:var(--text-3); margin-top:4px">친타수 - 핸디캡 = NET</div>
     </div>
@@ -209,9 +206,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   </div>
 
   <div id="adminUnlocked" style="display:none">
-    
-    <div class="admin-section" style="border-color: var(--gold); background: var(--gold-light);">
-      <div class="card-title" style="color: var(--gold);">⭐ 새 경기방 생성</div>
+    <div class="admin-section" style="border-color:var(--gold); background:var(--gold-light);">
+      <div class="card-title" style="color:var(--gold);">⭐ 새 경기방 생성</div>
       <div class="field">
         <input id="newRoomInput" placeholder="예: 2026-04-09-봄대회" autocomplete="off">
       </div>
@@ -222,7 +218,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <div class="card-title">초대 QR 및 링크 공유</div>
       <div class="qr-wrap">
         <div id="qr"></div>
-        <button class="btn btn-gold btn-sm" style="margin-top: 15px;" onclick="shareRoomLink()">🔗 링크 복사 / 모바일 공유하기</button>
+        <button class="btn btn-gold btn-sm" style="margin-top:15px;" onclick="shareRoomLink()">🔗 링크 복사 / 모바일 공유하기</button>
       </div>
     </div>
 
@@ -248,17 +244,13 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="card">
       <div class="card-title">참가자 관리</div>
       <div id="adminPlayerList">
-        <div class="empty-state" style="padding:16px 0">
-          <p>참가자가 없습니다</p>
-        </div>
+        <div class="empty-state" style="padding:16px 0"><p>참가자가 없습니다</p></div>
       </div>
     </div>
 
     <div class="card">
       <div class="card-title" style="color:#b91c1c">⚠ 위험 구역</div>
-      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">
-        아래 작업은 되돌릴 수 없습니다. (방 폭파)
-      </div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">아래 작업은 되돌릴 수 없습니다. (방 폭파)</div>
       <button class="btn btn-danger btn-sm" onclick="resetRoom()">방 완전 삭제 (영구 삭제)</button>
     </div>
   </div>
@@ -280,9 +272,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-// ─────────────────────────────────────────
-//  Firebase 설정
-// ─────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyAXrZPMhTZXdj5uJufyj3ZyS5wbOiZfU9Y",
   authDomain: "cmg-golf.firebaseapp.com",
@@ -294,32 +283,61 @@ const firebaseConfig = {
   measurementId: "G-7TGYE2GL3P"
 };
 
-let useFirebase = false; let db = null; let admin = false; let currentRoom = ""; let localData = {}; let published = false; let currentTab = "room";
+let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room";
 
-if (firebaseConfig.apiKey !== "YOUR_KEY") {
-  try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    useFirebase = true;
-    listenAllRooms(); 
-  } catch(e) { console.error("Firebase 오류:", e.message); useFirebase = false; }
-}
-
-if (!useFirebase) {
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  useFirebase = true;
+  listenAllRooms();
+} catch(e) {
+  console.error("Firebase 오류:", e.message);
   document.getElementById("roomNotice").style.display = "block";
   document.getElementById("roomNotice").textContent = "⚠ Firebase 연결 오류 (데이터베이스 규칙을 확인하세요)";
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  const savedName = localStorage.getItem("myGolfName");
-  if(savedName) {
-    document.getElementById("pName").value = savedName;
-  }
+window.addEventListener("DOMContentLoaded", function() {
+  var savedName = localStorage.getItem("myGolfName");
+  if (savedName) document.getElementById("pName").value = savedName;
 });
 
+// ── 핸디캡 유효성 검사 (최대 14) ──
+function validateHandi(el) {
+  var val = el.value.trim();
+  var errEl = document.getElementById("handiError");
+
+  // 마이너스 허용, 숫자+소수점만 입력 가능
+  if (val === "" || val === "-") { errEl.style.display = "none"; el.classList.remove("input-error"); return; }
+
+  var num = parseFloat(val);
+
+  if (isNaN(num)) { errEl.style.display = "none"; el.classList.remove("input-error"); return; }
+
+  if (num > 14) {
+    el.classList.add("input-error");
+    errEl.style.display = "block";
+  } else {
+    el.classList.remove("input-error");
+    errEl.style.display = "none";
+  }
+}
+
+function checkHandiValid() {
+  var val = document.getElementById("pHandi").value.trim();
+  if (val === "" || val === "-") return true;
+  var num = parseFloat(val);
+  if (isNaN(num)) return true;
+  if (num > 14) {
+    toast("⚠ 핸디캡은 최대 14까지만 입력 가능합니다");
+    document.getElementById("pHandi").focus();
+    return false;
+  }
+  return true;
+}
+
 function switchTab(tab) {
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(function(p) { p.classList.remove("active"); });
+  document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
   document.getElementById("page-" + tab).classList.add("active");
   document.getElementById("tab-" + tab).classList.add("active");
   currentTab = tab;
@@ -327,58 +345,49 @@ function switchTab(tab) {
 }
 
 function toast(msg) {
-  const el = document.getElementById("toast");
+  var el = document.getElementById("toast");
   el.textContent = msg; el.classList.add("show");
-  setTimeout(() => el.classList.remove("show"), 2200);
+  setTimeout(function() { el.classList.remove("show"); }, 2200);
 }
 
 function listenAllRooms() {
   if (!useFirebase) return;
-  db.ref("rooms").on("value", snap => {
-    const data = snap.val();
-    const listEl = document.getElementById("availableRoomsList");
+  db.ref("rooms").on("value", function(snap) {
+    var data = snap.val();
+    var listEl = document.getElementById("availableRoomsList");
     if (!data) {
-      listEl.innerHTML = `<div class="empty-state"><p>현재 진행 중인 경기방이 없습니다.<br>[관리자] 탭에서 방을 생성해주세요.</p></div>`;
+      listEl.innerHTML = '<div class="empty-state"><p>현재 진행 중인 경기방이 없습니다.<br>[관리자] 탭에서 방을 생성해주세요.</p></div>';
       return;
     }
-    
-    const roomsArray = Object.keys(data).map(key => ({
-      id: key,
-      created: data[key].meta?.created || 0
-    })).sort((a,b) => b.created - a.created);
+    var roomsArray = Object.keys(data).map(function(key) {
+      return { id: key, created: (data[key].meta && data[key].meta.created) ? data[key].meta.created : 0 };
+    }).sort(function(a, b) { return b.created - a.created; });
 
-    listEl.innerHTML = roomsArray.map(r => `
-      <button class="btn btn-gray" style="margin-bottom:10px; text-align:left; padding:18px; display:flex; justify-content:space-between; align-items:center; background: #fff; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);" onclick="joinRoom('${r.id}')">
-        <span style="font-size:16px; font-weight:700; color:var(--text);">📍 ${r.id}</span>
-        <span style="font-size:13px; color:var(--green); font-weight:700;">입장하기 ❯</span>
-      </button>
-    `).join("");
+    listEl.innerHTML = roomsArray.map(function(r) {
+      return '<button class="btn btn-gray" style="margin-bottom:10px; text-align:left; padding:18px; display:flex; justify-content:space-between; align-items:center; background:#fff; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,0.05);" onclick="joinRoom(\'' + r.id + '\')">' +
+        '<span style="font-size:16px; font-weight:700; color:var(--text);">📍 ' + r.id + '</span>' +
+        '<span style="font-size:13px; color:var(--green); font-weight:700;">입장하기 ❯</span>' +
+        '</button>';
+    }).join("");
   });
 }
 
 function createRoom() {
   if (!admin) { toast("관리자 인증이 풀렸습니다."); return; }
-  const name = document.getElementById("newRoomInput").value.trim();
+  var name = document.getElementById("newRoomInput").value.trim();
   if (!name) { toast("새로운 방 이름을 입력하세요"); return; }
-  
-  currentRoom = name; 
-  updateRoomBadge(); 
-  generateQR();
-  
+  currentRoom = name; updateRoomBadge(); generateQR();
   if (useFirebase) db.ref("rooms/" + currentRoom + "/meta").set({ published: false, created: Date.now() });
-  
   toast("방 [" + name + "] 생성 완료!");
   document.getElementById("qrCard").style.display = "block";
-  document.getElementById("newRoomInput").value = ""; 
-  listenRoom(); 
+  document.getElementById("newRoomInput").value = "";
+  listenRoom();
 }
 
 function joinRoom(roomName) {
-  currentRoom = roomName; 
-  updateRoomBadge(); 
-  listenRoom();
+  currentRoom = roomName; updateRoomBadge(); listenRoom();
   toast("방 [" + roomName + "] 입장 완료!");
-  switchTab('list'); 
+  switchTab('list');
 }
 
 function updateRoomBadge() {
@@ -389,185 +398,146 @@ function updateRoomBadge() {
 
 function generateQR() {
   document.getElementById("qr").innerHTML = "";
-  const url = location.href.split("?")[0] + "?room=" + encodeURIComponent(currentRoom);
+  var url = location.href.split("?")[0] + "?room=" + encodeURIComponent(currentRoom);
   try { new QRCode(document.getElementById("qr"), { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M }); } catch(e) {}
 }
 
 function shareRoomLink() {
   if (!currentRoom) { toast("방을 먼저 생성해주세요."); return; }
-  const url = location.href.split("?")[0] + "?room=" + encodeURIComponent(currentRoom);
+  var url = location.href.split("?")[0] + "?room=" + encodeURIComponent(currentRoom);
   if (navigator.share) {
-    navigator.share({
-      title: 'CMG 골프클럽',
-      text: `⛳ CMG 골프클럽 [${currentRoom}] 경기방에 초대합니다! 접속해서 이름과 핸디캡을 입력해주세요.`,
-      url: url
-    }).catch(console.error);
+    navigator.share({ title: 'CMG 골프클럽', text: "⛳ CMG 골프클럽 [" + currentRoom + "] 경기방에 초대합니다!", url: url }).catch(console.error);
   } else {
-    navigator.clipboard.writeText(url).then(() => {
+    navigator.clipboard.writeText(url).then(function() {
       toast("🔗 초대 링크가 복사되었습니다! 카카오톡에 붙여넣기 하세요.");
-    }).catch(() => {
-      toast("링크 복사에 실패했습니다.");
-    });
+    }).catch(function() { toast("링크 복사에 실패했습니다."); });
   }
 }
 
-// ─────────────────────────────────────────
-//  통합 마이너스(-) 기호 토글 기능
-// ─────────────────────────────────────────
 function toggleMinus(targetId) {
-  const el = document.getElementById(targetId);
-  let val = el.value.trim();
-  
-  if (val.startsWith("-")) {
-    el.value = val.substring(1);
-  } else {
-    el.value = "-" + val;
-  }
+  var el = document.getElementById(targetId);
+  var val = el.value.trim();
+  el.value = val.startsWith("-") ? val.substring(1) : "-" + val;
+  if (targetId === "pHandi") validateHandi(el);
   el.focus();
 }
 
 function editMyScore(name) {
-  const d = localData[name];
-  if (!d) return;
-
-  const myName = localStorage.getItem("myGolfName");
-  if (!admin && name !== myName) {
-    toast("🔒 본인의 점수만 수정할 수 있습니다.");
-    return;
-  }
-
+  var d = localData[name]; if (!d) return;
+  var myName = localStorage.getItem("myGolfName");
+  if (!admin && name !== myName) { toast("🔒 본인의 점수만 수정할 수 있습니다."); return; }
   document.getElementById("pName").value = d.name;
   document.getElementById("pHandi").value = d.handi;
-  
-  const hasScore = (d.score !== "" && d.score !== undefined);
+  var hasScore = (d.score !== "" && d.score !== undefined);
   document.getElementById("pScore").value = hasScore ? d.score : "";
-
   if (hasScore) {
-    // 0.19999... 오류 방지를 위해 .toFixed(1) 적용
-    const net = parseFloat((d.score - d.handi).toFixed(1));
+    var net = parseFloat((d.score - d.handi).toFixed(1));
     document.getElementById("myNetCard").style.display = "block";
     document.getElementById("myNetDisplay").textContent = net;
   } else {
     document.getElementById("myNetCard").style.display = "none";
   }
-
+  // 핸디 유효성 검사 재실행
+  validateHandi(document.getElementById("pHandi"));
   switchTab('score');
-
-  setTimeout(() => {
-    document.getElementById("pScore").focus();
-  }, 300);
+  setTimeout(function() { document.getElementById("pScore").focus(); }, 300);
 }
 
 function saveMyScore() {
-  const name = document.getElementById("pName").value.trim();
-  let handiStr = document.getElementById("pHandi").value.trim();
-  let scoreStr = document.getElementById("pScore").value.trim();
-  const notice = document.getElementById("scoreNotice");
+  var name = document.getElementById("pName").value.trim();
+  var handiStr = document.getElementById("pHandi").value.trim();
+  var scoreStr = document.getElementById("pScore").value.trim();
+  var notice = document.getElementById("scoreNotice");
 
   if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
-  
+
+  // ── 핸디캡 최대 14 검증 ──
+  if (!checkHandiValid()) return;
+
   localStorage.setItem("myGolfName", name);
 
-  // "-"만 입력된 경우 예외 처리
-  if(handiStr === "-") handiStr = "0";
-  if(scoreStr === "-") scoreStr = "";
+  if (handiStr === "-") handiStr = "0";
+  if (scoreStr === "-") scoreStr = "";
 
-  const handi = handiStr !== "" ? Number(handiStr) : 0;
-  const hasScore = scoreStr !== "";
-  const score = hasScore ? Number(scoreStr) : "";
-
-  const timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
+  var handi = handiStr !== "" ? Number(handiStr) : 0;
+  var hasScore = scoreStr !== "";
+  var score = hasScore ? Number(scoreStr) : "";
+  var timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
 
   if (useFirebase) {
-    db.ref("rooms/" + currentRoom + "/players/" + name).set({ name, handi, score, timestamp });
+    db.ref("rooms/" + currentRoom + "/players/" + name).set({ name: name, handi: handi, score: score, timestamp: timestamp });
   } else {
-    localData[name] = { name, handi, score, timestamp };
+    localData[name] = { name: name, handi: handi, score: score, timestamp: timestamp };
     renderRank(); renderParticipantList();
     if (admin) refreshAdminPlayerList();
   }
 
-  if(hasScore) {
-    // 0.19999... 오류 방지를 위해 .toFixed(1) 적용
-    const net = parseFloat((score - handi).toFixed(1));
-    showNotice(notice, "info", `스코어 저장 완료! NET: ${net}타`);
+  if (hasScore) {
+    var net = parseFloat((score - handi).toFixed(1));
+    showNotice(notice, "info", "스코어 저장 완료! NET: " + net + "타");
     document.getElementById("myNetCard").style.display = "block";
     document.getElementById("myNetDisplay").textContent = net;
   } else {
-    showNotice(notice, "info", `사전 등록(이름/핸디캡) 완료!`);
+    showNotice(notice, "info", "사전 등록(이름/핸디캡) 완료!");
     document.getElementById("myNetCard").style.display = "none";
   }
   if (navigator.vibrate) navigator.vibrate([30, 10, 30]);
 }
 
 function loadMyData() {
-  const name = document.getElementById("pName").value.trim();
+  var name = document.getElementById("pName").value.trim();
   if (!name) { toast("이름을 먼저 입력하세요"); return; }
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
-
   localStorage.setItem("myGolfName", name);
-
   if (useFirebase) {
-    db.ref("rooms/" + currentRoom + "/players/" + name).once("value", snap => {
-      const d = snap.val();
-      if (!d) { toast("저장된 데이터가 없습니다"); return; }
-      
-      const hasScore = (d.score !== "" && d.score !== undefined);
+    db.ref("rooms/" + currentRoom + "/players/" + name).once("value", function(snap) {
+      var d = snap.val(); if (!d) { toast("저장된 데이터가 없습니다"); return; }
+      var hasScore = (d.score !== "" && d.score !== undefined);
       document.getElementById("pHandi").value = d.handi;
       document.getElementById("pScore").value = hasScore ? d.score : "";
+      validateHandi(document.getElementById("pHandi"));
       toast("불러오기 완료");
     });
   } else {
-    const d = localData[name];
-    if (!d) { toast("저장된 데이터가 없습니다"); return; }
-    
-    const hasScore = (d.score !== "" && d.score !== undefined);
+    var d = localData[name]; if (!d) { toast("저장된 데이터가 없습니다"); return; }
+    var hasScore = (d.score !== "" && d.score !== undefined);
     document.getElementById("pHandi").value = d.handi;
     document.getElementById("pScore").value = hasScore ? d.score : "";
+    validateHandi(document.getElementById("pHandi"));
     toast("불러오기 완료");
   }
 }
 
 function showNotice(el, type, msg) {
   el.style.display = "block"; el.className = "notice notice-" + (type === "error" ? "error" : "info");
-  el.textContent = msg; setTimeout(() => { el.style.display = "none"; }, 3000);
+  el.textContent = msg; setTimeout(function() { el.style.display = "none"; }, 3000);
 }
 
 function listenRoom() {
   if (!useFirebase) return;
-  db.ref("rooms/" + currentRoom).on("value", snap => {
-    const room = snap.val(); if (!room) return;
+  db.ref("rooms/" + currentRoom).on("value", function(snap) {
+    var room = snap.val(); if (!room) return;
     published = room.meta ? !!room.meta.published : false;
     localData = room.players || {};
-    renderRank();
-    renderParticipantList();
+    renderRank(); renderParticipantList();
     if (admin) { refreshAdminRoomStatus(); refreshAdminPlayerList(); }
   });
 }
 
 function getSorted(data) {
-  let arr = Object.values(data || {});
-  
-  arr.forEach(p => {
+  var arr = Object.values(data || {});
+  arr.forEach(function(p) {
     p.hasScore = (p.score !== "" && p.score !== undefined);
-    if(p.hasScore) {
-      p.net = parseFloat((p.score - p.handi).toFixed(1));
-    }
+    if (p.hasScore) p.net = parseFloat((p.score - p.handi).toFixed(1));
   });
-  
-  arr.sort((a, b) => {
-    if (!a.hasScore) return 1;
-    if (!b.hasScore) return -1;
-    return a.net - b.net;
+  arr.sort(function(a, b) {
+    if (!a.hasScore) return 1; if (!b.hasScore) return -1; return a.net - b.net;
   });
-
-  let rank = 1; let actualIndex = 1;
-  arr.forEach((p, i) => {
-    if (!p.hasScore) { p.rank = '-'; } 
-    else {
-      if (i > 0 && p.hasScore && p.net !== arr[i-1].net) rank = actualIndex;
-      p.rank = rank; actualIndex++;
-    }
+  var rank = 1, actualIndex = 1;
+  arr.forEach(function(p, i) {
+    if (!p.hasScore) { p.rank = '-'; }
+    else { if (i > 0 && p.hasScore && p.net !== arr[i-1].net) rank = actualIndex; p.rank = rank; actualIndex++; }
   });
   return arr;
 }
@@ -576,133 +546,122 @@ function medalIcon(rank) {
   if (rank === 1) return "🥇"; if (rank === 2) return "🥈"; if (rank === 3) return "🥉"; return "";
 }
 
-function buildRankHTML(arr, isPreview) {
-  if (!arr.length) return `<div class="empty-state"><div class="big">👋</div><p>아직 참가자가 없습니다</p></div>`;
-  return arr.map(p => `
-    <div class="rank-item ${p.rank <= 3 && p.hasScore ? 'rank-' + p.rank : ''}">
-      <div class="rank-num ${p.rank <= 3 && p.hasScore ? 'n' + p.rank : ''}">${p.rank}</div>
-      <div class="rank-info">
-        <div class="rank-name">${p.name}</div>
-        <div class="rank-detail">친타수 ${p.hasScore ? p.score : '?'} · 핸디 ${p.handi}</div>
-      </div>
-      <div class="rank-score">
-        <div class="rank-net" style="color:${p.hasScore ? 'var(--text)' : 'var(--text-3)'}">${p.hasScore ? p.net : '-'}</div>
-        <div class="rank-net-label">NET</div>
-      </div>
-      <div class="medal">${p.hasScore ? medalIcon(p.rank) : ''}</div>
-    </div>
-  `).join("");
+function buildRankHTML(arr) {
+  if (!arr.length) return '<div class="empty-state"><div class="big">👋</div><p>아직 참가자가 없습니다</p></div>';
+  return arr.map(function(p) {
+    return '<div class="rank-item ' + (p.rank <= 3 && p.hasScore ? 'rank-' + p.rank : '') + '">' +
+      '<div class="rank-num ' + (p.rank <= 3 && p.hasScore ? 'n' + p.rank : '') + '">' + p.rank + '</div>' +
+      '<div class="rank-info">' +
+        '<div class="rank-name">' + p.name + '</div>' +
+        '<div class="rank-detail">친타수 ' + (p.hasScore ? p.score : '?') + ' · 핸디 ' + p.handi + '</div>' +
+      '</div>' +
+      '<div class="rank-score">' +
+        '<div class="rank-net" style="color:' + (p.hasScore ? 'var(--text)' : 'var(--text-3)') + '">' + (p.hasScore ? p.net : '-') + '</div>' +
+        '<div class="rank-net-label">NET</div>' +
+      '</div>' +
+      '<div class="medal">' + (p.hasScore ? medalIcon(p.rank) : '') + '</div>' +
+    '</div>';
+  }).join("");
 }
 
 function renderParticipantList() {
-  const listEl = document.getElementById("participantList");
-  const statusEl = document.getElementById("participantStatusBar");
-  const myName = localStorage.getItem("myGolfName") || "";
-  
-  const arr = Object.values(localData || {}).sort((a,b) => (a.timestamp || 0) - (b.timestamp || 0));
+  var listEl = document.getElementById("participantList");
+  var statusEl = document.getElementById("participantStatusBar");
+  var myName = localStorage.getItem("myGolfName") || "";
+  var arr = Object.values(localData || {}).sort(function(a, b) { return (a.timestamp || 0) - (b.timestamp || 0); });
 
   if (!currentRoom) {
     statusEl.innerHTML = "";
-    listEl.innerHTML = `<div class="empty-state"><div class="big">⛳</div><p>방에 입장하면<br>참가자 명단이 표시됩니다</p></div>`;
+    listEl.innerHTML = '<div class="empty-state"><div class="big">⛳</div><p>방에 입장하면<br>참가자 명단이 표시됩니다</p></div>';
     return;
   }
   if (!arr.length) {
-    statusEl.innerHTML = `<div class="status-bar status-pending">현재 등록된 참가자가 없습니다.</div>`;
-    listEl.innerHTML = `<div class="empty-state"><div class="big">👋</div><p>아직 참가자가 없습니다</p></div>`;
+    statusEl.innerHTML = '<div class="status-bar status-pending">현재 등록된 참가자가 없습니다.</div>';
+    listEl.innerHTML = '<div class="empty-state"><div class="big">👋</div><p>아직 참가자가 없습니다</p></div>';
     return;
   }
 
-  statusEl.innerHTML = `
-    <div class="status-bar status-live" style="justify-content: space-between;">
-      <span>✓ 총 ${arr.length}명 참가 중 (신청 순)</span>
-    </div>`;
+  statusEl.innerHTML = '<div class="status-bar status-live" style="justify-content:space-between;"><span>✓ 총 ' + arr.length + '명 참가 중 (신청 순)</span></div>';
 
-  listEl.innerHTML = arr.map(p => {
-    const isMe = (p.name === myName);
-    const canEdit = isMe || admin;
-    const hasScore = (p.score !== "" && p.score !== undefined);
-
-    return `
-    <div class="rank-item" style="${canEdit ? 'cursor:pointer; border:1px solid var(--green);' : 'opacity:0.8;'}" onclick="${canEdit ? `editMyScore('${p.name}')` : `toast('🔒 본인의 점수만 수정할 수 있습니다.')`}">
-      <div class="rank-num" style="font-size:16px;">${isMe ? '⛳' : '👤'}</div>
-      <div class="rank-info">
-        <div class="rank-name" style="${isMe ? 'color:var(--green); font-weight:800;' : ''}">${p.name} ${isMe ? '<span style="font-size:10px; background:var(--green-light); color:var(--green); padding:2px 6px; border-radius:10px; margin-left:4px;">나</span>' : ''}</div>
-        <div class="rank-detail">핸디캡 ${p.handi}</div>
-      </div>
-      <div class="rank-score">
-        <div style="font-size:12px; font-weight:700; color:${hasScore ? 'var(--green)' : 'var(--text-3)'}">${hasScore ? '경기종료' : '대기중'}</div>
-        ${canEdit 
-          ? `<div style="font-size:10px; color:var(--green); margin-top:4px;">터치하여 점수입력 ❯</div>` 
-          : `<div style="font-size:10px; color:#ccc; margin-top:4px;">🔒 수정불가</div>`}
-      </div>
-    </div>
-  `}).join("");
+  listEl.innerHTML = arr.map(function(p) {
+    var isMe = (p.name === myName);
+    var canEdit = isMe || admin;
+    var hasScore = (p.score !== "" && p.score !== undefined);
+    return '<div class="rank-item" style="' + (canEdit ? 'cursor:pointer; border:1px solid var(--green);' : 'opacity:0.8;') + '" onclick="' + (canEdit ? "editMyScore('" + p.name + "')" : "toast('🔒 본인의 점수만 수정할 수 있습니다.')") + '">' +
+      '<div class="rank-num" style="font-size:16px;">' + (isMe ? '⛳' : '👤') + '</div>' +
+      '<div class="rank-info">' +
+        '<div class="rank-name" style="' + (isMe ? 'color:var(--green); font-weight:800;' : '') + '">' + p.name + (isMe ? ' <span style="font-size:10px; background:var(--green-light); color:var(--green); padding:2px 6px; border-radius:10px; margin-left:4px;">나</span>' : '') + '</div>' +
+        '<div class="rank-detail">핸디캡 ' + p.handi + '</div>' +
+      '</div>' +
+      '<div class="rank-score">' +
+        '<div style="font-size:12px; font-weight:700; color:' + (hasScore ? 'var(--green)' : 'var(--text-3)') + '">' + (hasScore ? '경기종료' : '대기중') + '</div>' +
+        (canEdit ? '<div style="font-size:10px; color:var(--green); margin-top:4px;">터치하여 점수입력 ❯</div>' : '<div style="font-size:10px; color:#ccc; margin-top:4px;">🔒 수정불가</div>') +
+      '</div>' +
+    '</div>';
+  }).join("");
 }
 
 function renderRank() {
-  const listEl = document.getElementById("rankList");
-  const statusEl = document.getElementById("rankStatusBar");
-  const arr = getSorted(localData);
-
+  var listEl = document.getElementById("rankList");
+  var statusEl = document.getElementById("rankStatusBar");
+  var arr = getSorted(localData);
   if (!currentRoom) {
-    listEl.innerHTML = `<div class="empty-state"><div class="big">⛳</div><p>방에 입장하면<br>순위가 표시됩니다</p></div>`;
+    listEl.innerHTML = '<div class="empty-state"><div class="big">⛳</div><p>방에 입장하면<br>순위가 표시됩니다</p></div>';
     statusEl.innerHTML = ""; return;
   }
   if (admin) {
-    statusEl.innerHTML = `<div class="status-bar status-preview">👁 관리자 모드 — 항상 전체 타수와 순위가 보입니다</div>`;
-    listEl.innerHTML = `<div class="rank-list">${buildRankHTML(arr, true)}</div>`; return;
+    statusEl.innerHTML = '<div class="status-bar status-preview">👁 관리자 모드 — 항상 전체 타수와 순위가 보입니다</div>';
+    listEl.innerHTML = '<div class="rank-list">' + buildRankHTML(arr) + '</div>'; return;
   }
   if (!published) {
-    statusEl.innerHTML = `<div class="status-bar status-pending">⏳ 아직 순위가 공개되지 않았습니다</div>`;
-    listEl.innerHTML = `<div class="empty-state"><div class="big">🔒</div><p>순위 집계 중입니다.<br>명단은 [참가자] 탭에서 확인하세요.</p></div>`; return;
+    statusEl.innerHTML = '<div class="status-bar status-pending">⏳ 아직 순위가 공개되지 않았습니다</div>';
+    listEl.innerHTML = '<div class="empty-state"><div class="big">🔒</div><p>순위 집계 중입니다.<br>명단은 [참가자] 탭에서 확인하세요.</p></div>'; return;
   }
-
-  statusEl.innerHTML = `<div class="status-bar status-live">✓ 최종 순위가 공개되었습니다</div>`;
-  listEl.innerHTML = `<div class="rank-list">${buildRankHTML(arr, false)}</div>`;
+  statusEl.innerHTML = '<div class="status-bar status-live">✓ 최종 순위가 공개되었습니다</div>';
+  listEl.innerHTML = '<div class="rank-list">' + buildRankHTML(arr) + '</div>';
 }
 
 function unlockAdmin() {
-  const pw = document.getElementById("adminPw").value;
-  if (pw === "1217") { 
+  var pw = document.getElementById("adminPw").value;
+  if (pw === "1217") {
     admin = true;
-    document.getElementById("adminLocked").style.display = "none"; document.getElementById("adminUnlocked").style.display = "block";
-    document.getElementById("tab-admin").innerHTML = `<span class="icon">⚙️</span>관리자✓`;
-    toast("관리자 모드 활성화"); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank();
-    renderParticipantList(); 
+    document.getElementById("adminLocked").style.display = "none";
+    document.getElementById("adminUnlocked").style.display = "block";
+    document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
+    toast("관리자 모드 활성화");
+    refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
   } else toast("비밀번호가 틀렸습니다");
 }
 
 function refreshAdminRoomStatus() {
-  const el = document.getElementById("adminRoomStatus");
-  if (!currentRoom) { el.innerHTML = `<p style="font-size:13px; color:var(--text-3)">방에 입장하지 않았습니다</p>`; return; }
-  const count = Object.keys(localData).length;
-  const statusText = published ? "🟢 순위 공개 중" : "🟡 집계 중 (비공개)";
-  el.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-      <span style="font-size:15px; font-weight:700">${currentRoom}</span><span style="font-size:13px; color:var(--text-2)">${statusText}</span>
-    </div>
-    <div style="font-size:13px; color:var(--text-3)">총 참가자 ${count}명 등록됨</div>
-  `;
+  var el = document.getElementById("adminRoomStatus");
+  if (!currentRoom) { el.innerHTML = '<p style="font-size:13px; color:var(--text-3)">방에 입장하지 않았습니다</p>'; return; }
+  var count = Object.keys(localData).length;
+  var statusText = published ? "🟢 순위 공개 중" : "🟡 집계 중 (비공개)";
+  el.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">' +
+    '<span style="font-size:15px; font-weight:700">' + currentRoom + '</span>' +
+    '<span style="font-size:13px; color:var(--text-2)">' + statusText + '</span></div>' +
+    '<div style="font-size:13px; color:var(--text-3)">총 참가자 ' + count + '명 등록됨</div>';
 }
 
 function refreshAdminPlayerList() {
-  const el = document.getElementById("adminPlayerList");
-  const arr = getSorted(localData);
-  if (!arr.length) { el.innerHTML = `<div class="empty-state" style="padding:12px 0"><p>참가자가 없습니다</p></div>`; return; }
-  el.innerHTML = arr.map(p => `
-    <div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--border)">
-      <div style="width:28px; font-family:'DM Mono',monospace; font-size:14px; color:var(--text-3)">${p.rank}</div>
-      <div style="flex:1; font-size:14px; font-weight:500">${p.name}</div>
-      <div style="font-size:13px; color:var(--text-3); margin-right:12px; font-family:'DM Mono',monospace">
-        ${p.hasScore ? p.score + ' - ' + p.handi + ' = <strong style="color:var(--green)">' + p.net + '</strong>' : '<span style="color:#b91c1c">점수입력 대기중</span>'}
-      </div>
-      <button onclick="deletePlayer('${p.name}')" style="background:none; border:none; font-size:16px; cursor:pointer; padding:4px">🗑</button>
-    </div>
-  `).join("");
+  var el = document.getElementById("adminPlayerList");
+  var arr = getSorted(localData);
+  if (!arr.length) { el.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>참가자가 없습니다</p></div>'; return; }
+  el.innerHTML = arr.map(function(p) {
+    return '<div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--border)">' +
+      '<div style="width:28px; font-family:\'DM Mono\',monospace; font-size:14px; color:var(--text-3)">' + p.rank + '</div>' +
+      '<div style="flex:1; font-size:14px; font-weight:500">' + p.name + '</div>' +
+      '<div style="font-size:13px; color:var(--text-3); margin-right:12px; font-family:\'DM Mono\',monospace">' +
+        (p.hasScore ? p.score + ' - ' + p.handi + ' = <strong style="color:var(--green)">' + p.net + '</strong>' : '<span style="color:#b91c1c">점수입력 대기중</span>') +
+      '</div>' +
+      '<button onclick="deletePlayer(\'' + p.name + '\')" style="background:none; border:none; font-size:16px; cursor:pointer; padding:4px">🗑</button>' +
+    '</div>';
+  }).join("");
 }
 
 function deletePlayer(name) {
-  if (!confirm(`[${name}] 을 삭제할까요?`)) return;
+  if (!confirm("[" + name + "] 을 삭제할까요?")) return;
   if (useFirebase) db.ref("rooms/" + currentRoom + "/players/" + name).remove();
   else { delete localData[name]; renderRank(); renderParticipantList(); refreshAdminPlayerList(); refreshAdminRoomStatus(); }
   toast(name + " 삭제됨");
@@ -710,8 +669,7 @@ function deletePlayer(name) {
 
 function adminPreview() {
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
-  const arr = getSorted(localData);
-  document.getElementById("previewContent").innerHTML = `<div class="rank-list">${buildRankHTML(arr, true)}</div>`;
+  document.getElementById("previewContent").innerHTML = '<div class="rank-list">' + buildRankHTML(getSorted(localData)) + '</div>';
   document.getElementById("previewModal").classList.add("open");
 }
 
@@ -736,25 +694,14 @@ function adminHide() {
 function resetRoom() {
   if (!admin) { toast("관리자만 가능"); return; }
   if (!confirm("이 경기방을 완전히 삭제하시겠습니까? (목록에서도 영구적으로 사라집니다)")) return;
-  
-  if (useFirebase) { 
-    db.ref("rooms/" + currentRoom).remove(); 
-  } else { 
-    localData = {}; published = false; 
-  }
-  
+  if (useFirebase) db.ref("rooms/" + currentRoom).remove();
+  else { localData = {}; published = false; }
   toast("경기방이 완전히 삭제되었습니다.");
-  
-  setTimeout(() => {
-    location.href = location.href.split("?")[0];
-  }, 1500);
+  setTimeout(function() { location.href = location.href.split("?")[0]; }, 1500);
 }
 
-const urlRoom = new URLSearchParams(location.search).get("room");
-if (urlRoom) {
-  currentRoom = urlRoom; updateRoomBadge(); 
-  listenRoom(); switchTab('list'); 
-}
+var urlRoom = new URLSearchParams(location.search).get("room");
+if (urlRoom) { currentRoom = urlRoom; updateRoomBadge(); listenRoom(); switchTab('list'); }
 </script>
 </body>
 </html>
