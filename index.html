@@ -106,7 +106,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 </div>
 
 <div class="tab-nav">
-  <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>방선택</button>
+  <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>경기안내</button>
   <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
   <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
   <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
@@ -124,7 +124,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   <div class="card">
     <div class="card-title">사용 안내</div>
     <div style="font-size:13px; color:var(--text-2); line-height:1.9;">
-      1. 위 목록에서 참가할 경기방을 터치하여 입장하세요.<br>
+      1. 현재 운영 중인 방이 자동으로 연결됩니다.<br>
       2. 경기 전 이름과 핸디캡만 입력하여 사전 등록하세요.<br>
       3. 라운드가 끝나면 친타수를 추가로 입력해 주세요.<br>
       <span style="color:#b91c1c; font-weight:bold;">4. 핸디캡은 최대 14까지만 입력 가능합니다.</span><br>
@@ -138,7 +138,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   <div id="participantList">
     <div class="empty-state">
       <div class="big">⛳</div>
-      <p>방에 입장하면<br>참가자 명단이 표시됩니다</p>
+      <p>운영 중인 방이 연결되면<br>참가자 명단이 표시됩니다</p>
     </div>
   </div>
 </div>
@@ -188,7 +188,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   <div id="rankList">
     <div class="empty-state">
       <div class="big">⛳</div>
-      <p>방에 입장하면<br>순위가 표시됩니다</p>
+      <p>운영 중인 방이 연결되면<br>순위가 표시됩니다</p>
     </div>
   </div>
 </div>
@@ -225,7 +225,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="card">
       <div class="card-title">현재 접속한 방 상태</div>
       <div id="adminRoomStatus" class="empty-state" style="padding:16px 0">
-        <p>방에 입장하지 않았습니다</p>
+        <p>현재 연결된 방이 없습니다</p>
       </div>
     </div>
 
@@ -238,7 +238,13 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
         <button class="btn btn-gray btn-sm" onclick="adminPreview()">👁 미리보기</button>
         <button class="btn btn-gold btn-sm" onclick="adminPublish()">🚀 전체 공개</button>
       </div>
-      <button class="btn btn-green-outline btn-sm" onclick="adminHide()">🔒 공개 취소 (숨기기)</button>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn btn-gray btn-sm" id="autoPublishBtn" onclick="toggleAutoPublish()">⚫ 자동 공개 OFF</button>
+        <button class="btn btn-green-outline btn-sm" onclick="adminHide()">🔒 공개 취소</button>
+      </div>
+      <div class="notice notice-info" style="margin-top:0;">
+        자동 공개를 켜면 한 명이라도 친타수를 입력하는 즉시 순위가 공개되고,<br>입력한 사람들 기준으로 실시간 순위가 갱신됩니다. 미입력자는 <strong>순위밖</strong>으로 표시됩니다.
+      </div>
     </div>
 
     <div class="card">
@@ -283,7 +289,7 @@ const firebaseConfig = {
   measurementId: "G-7TGYE2GL3P"
 };
 
-let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room";
+let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room", allRooms = {}, autoPublishEnabled = false;
 
 try {
   firebase.initializeApp(firebaseConfig);
@@ -355,20 +361,38 @@ function listenAllRooms() {
   db.ref("rooms").on("value", function(snap) {
     var data = snap.val();
     var listEl = document.getElementById("availableRoomsList");
+    allRooms = data || {};
+
     if (!data) {
+      currentRoom = "";
+      localData = {};
+      published = false;
+      autoPublishEnabled = false;
+      updateAutoPublishButton();
       listEl.innerHTML = '<div class="empty-state"><p>현재 진행 중인 경기방이 없습니다.<br>[관리자] 탭에서 방을 생성해주세요.</p></div>';
+      renderRank();
+      renderParticipantList();
+      if (admin) refreshAdminRoomStatus();
       return;
     }
+
     var roomsArray = Object.keys(data).map(function(key) {
-      return { id: key, created: (data[key].meta && data[key].meta.created) ? data[key].meta.created : 0 };
+      return {
+        id: key,
+        created: (data[key].meta && data[key].meta.created) ? data[key].meta.created : 0
+      };
     }).sort(function(a, b) { return b.created - a.created; });
 
-    listEl.innerHTML = roomsArray.map(function(r) {
-      return '<button class="btn btn-gray" style="margin-bottom:10px; text-align:left; padding:18px; display:flex; justify-content:space-between; align-items:center; background:#fff; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,0.05);" onclick="joinRoom(\'' + r.id + '\')">' +
-        '<span style="font-size:16px; font-weight:700; color:var(--text);">📍 ' + r.id + '</span>' +
-        '<span style="font-size:13px; color:var(--green); font-weight:700;">입장하기 ❯</span>' +
+    listEl.innerHTML = roomsArray.map(function(r, idx) {
+      return '<button class="btn btn-gray" style="margin-bottom:10px; text-align:left; padding:18px; display:flex; justify-content:space-between; align-items:center; background:' + (currentRoom === r.id ? 'var(--green-light)' : '#fff') + '; border:1px solid ' + (currentRoom === r.id ? 'var(--green)' : 'var(--border)') + '; box-shadow:0 1px 3px rgba(0,0,0,0.05);" onclick="joinRoom(\'' + r.id + '\')">' +
+        '<span style="font-size:16px; font-weight:700; color:var(--text);">📍 ' + r.id + (idx === 0 ? ' <span style="font-size:11px; color:var(--green); font-weight:700;">(현재 운영 방)</span>' : '') + '</span>' +
+        '<span style="font-size:13px; color:var(--green); font-weight:700;">바로 보기 ❯</span>' +
         '</button>';
     }).join("");
+
+    if ((!currentRoom || !data[currentRoom]) && roomsArray.length) {
+      joinRoom(roomsArray[0].id, true);
+    }
   });
 }
 
@@ -377,17 +401,22 @@ function createRoom() {
   var name = document.getElementById("newRoomInput").value.trim();
   if (!name) { toast("새로운 방 이름을 입력하세요"); return; }
   currentRoom = name; updateRoomBadge(); generateQR();
-  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta").set({ published: false, created: Date.now() });
+  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta").set({ published: false, autoPublish: false, created: Date.now() });
   toast("방 [" + name + "] 생성 완료!");
   document.getElementById("qrCard").style.display = "block";
   document.getElementById("newRoomInput").value = "";
   listenRoom();
 }
 
-function joinRoom(roomName) {
-  currentRoom = roomName; updateRoomBadge(); listenRoom();
-  toast("방 [" + roomName + "] 입장 완료!");
-  switchTab('list');
+function joinRoom(roomName, silent) {
+  if (!roomName) return;
+  currentRoom = roomName;
+  updateRoomBadge();
+  listenRoom();
+  if (!silent) {
+    toast("방 [" + roomName + "] 연결 완료!");
+    switchTab('list');
+  }
 }
 
 function updateRoomBadge() {
@@ -413,6 +442,55 @@ function shareRoomLink() {
     }).catch(function() { toast("링크 복사에 실패했습니다."); });
   }
 }
+
+function updateAutoPublishButton() {
+  var btn = document.getElementById("autoPublishBtn");
+  if (!btn) return;
+  btn.textContent = autoPublishEnabled ? "🟢 자동 공개 ON" : "⚫ 자동 공개 OFF";
+  btn.className = autoPublishEnabled ? "btn btn-gold btn-sm" : "btn btn-gray btn-sm";
+}
+
+function canAutoPublish() {
+  var players = Object.values(localData || {});
+  if (!players.length) return false;
+  return players.some(function(p) {
+    return p.score !== "" && p.score !== undefined && !isNaN(Number(p.score));
+  });
+}
+
+function runAutoPublishIfNeeded() {
+  if (!useFirebase || !currentRoom || !autoPublishEnabled || published) return;
+  if (!canAutoPublish()) return;
+  db.ref("rooms/" + currentRoom + "/meta/published").set(true).then(function() {
+    toast("🤖 첫 점수 입력 감지 — 순위가 자동 공개되었습니다.");
+  }).catch(function() {
+    toast("자동 공개 처리 중 오류가 발생했습니다.");
+  });
+}
+
+function toggleAutoPublish() {
+  if (!currentRoom) { toast("먼저 운영할 방을 선택하세요"); return; }
+  if (!useFirebase) {
+    autoPublishEnabled = !autoPublishEnabled;
+    updateAutoPublishButton();
+    if (autoPublishEnabled && canAutoPublish()) {
+      published = true;
+      renderRank();
+      refreshAdminRoomStatus();
+      toast("🤖 첫 점수 입력 기준 자동 공개가 적용되었습니다.");
+    } else {
+      toast("자동 공개 설정이 변경되었습니다.");
+    }
+    return;
+  }
+  var next = !autoPublishEnabled;
+  db.ref("rooms/" + currentRoom + "/meta/autoPublish").set(next).then(function() {
+    toast(next ? "🤖 자동 공개가 켜졌습니다." : "자동 공개가 꺼졌습니다.");
+  }).catch(function() {
+    toast("자동 공개 설정 저장에 실패했습니다.");
+  });
+}
+
 
 function toggleMinus(targetId) {
   var el = document.getElementById(targetId);
@@ -517,11 +595,19 @@ function showNotice(el, type, msg) {
 function listenRoom() {
   if (!useFirebase) return;
   db.ref("rooms/" + currentRoom).on("value", function(snap) {
-    var room = snap.val(); if (!room) return;
+    var room = snap.val();
+    if (!room) return;
     published = room.meta ? !!room.meta.published : false;
+    autoPublishEnabled = room.meta ? !!room.meta.autoPublish : false;
     localData = room.players || {};
-    renderRank(); renderParticipantList();
-    if (admin) { refreshAdminRoomStatus(); refreshAdminPlayerList(); }
+    updateAutoPublishButton();
+    renderRank();
+    renderParticipantList();
+    if (admin) {
+      refreshAdminRoomStatus();
+      refreshAdminPlayerList();
+      runAutoPublishIfNeeded();
+    }
   });
 }
 
@@ -536,7 +622,7 @@ function getSorted(data) {
   });
   var rank = 1, actualIndex = 1;
   arr.forEach(function(p, i) {
-    if (!p.hasScore) { p.rank = '-'; }
+    if (!p.hasScore) { p.rank = '순위밖'; }
     else { if (i > 0 && p.hasScore && p.net !== arr[i-1].net) rank = actualIndex; p.rank = rank; actualIndex++; }
   });
   return arr;
@@ -550,13 +636,13 @@ function buildRankHTML(arr) {
   if (!arr.length) return '<div class="empty-state"><div class="big">👋</div><p>아직 참가자가 없습니다</p></div>';
   return arr.map(function(p) {
     return '<div class="rank-item ' + (p.rank <= 3 && p.hasScore ? 'rank-' + p.rank : '') + '">' +
-      '<div class="rank-num ' + (p.rank <= 3 && p.hasScore ? 'n' + p.rank : '') + '">' + p.rank + '</div>' +
+      '<div class="rank-num ' + (p.rank <= 3 && p.hasScore ? 'n' + p.rank : '') + '" style="font-size:' + (p.hasScore ? '20px' : '12px') + '; width:' + (p.hasScore ? '36px' : '52px') + ';">' + p.rank + '</div>' +
       '<div class="rank-info">' +
         '<div class="rank-name">' + p.name + '</div>' +
-        '<div class="rank-detail">친타수 ' + (p.hasScore ? p.score : '?') + ' · 핸디 ' + p.handi + '</div>' +
+        '<div class="rank-detail">' + (p.hasScore ? ('친타수 ' + p.score + ' · 핸디 ' + p.handi) : ('친타수 미입력 · 핸디 ' + p.handi)) + '</div>' +
       '</div>' +
       '<div class="rank-score">' +
-        '<div class="rank-net" style="color:' + (p.hasScore ? 'var(--text)' : 'var(--text-3)') + '">' + (p.hasScore ? p.net : '-') + '</div>' +
+        '<div class="rank-net" style="color:' + (p.hasScore ? 'var(--text)' : 'var(--text-3)') + '">' + (p.hasScore ? p.net : '대기') + '</div>' +
         '<div class="rank-net-label">NET</div>' +
       '</div>' +
       '<div class="medal">' + (p.hasScore ? medalIcon(p.rank) : '') + '</div>' +
@@ -614,10 +700,10 @@ function renderRank() {
     listEl.innerHTML = '<div class="rank-list">' + buildRankHTML(arr) + '</div>'; return;
   }
   if (!published) {
-    statusEl.innerHTML = '<div class="status-bar status-pending">⏳ 아직 순위가 공개되지 않았습니다</div>';
-    listEl.innerHTML = '<div class="empty-state"><div class="big">🔒</div><p>순위 집계 중입니다.<br>명단은 [참가자] 탭에서 확인하세요.</p></div>'; return;
+    statusEl.innerHTML = '<div class="status-bar status-pending">⏳ 아직 공개된 순위가 없습니다</div>';
+    listEl.innerHTML = '<div class="empty-state"><div class="big">🔒</div><p>첫 친타수가 입력되면<br>순위가 자동/수동으로 공개됩니다.</p></div>'; return;
   }
-  statusEl.innerHTML = '<div class="status-bar status-live">✓ 최종 순위가 공개되었습니다</div>';
+  statusEl.innerHTML = '<div class="status-bar status-live">✓ 입력된 친타수 기준 실시간 순위가 공개 중입니다</div>';
   listEl.innerHTML = '<div class="rank-list">' + buildRankHTML(arr) + '</div>';
 }
 
@@ -629,18 +715,19 @@ function unlockAdmin() {
     document.getElementById("adminUnlocked").style.display = "block";
     document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
     toast("관리자 모드 활성화");
-    refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
+    updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
   } else toast("비밀번호가 틀렸습니다");
 }
 
 function refreshAdminRoomStatus() {
   var el = document.getElementById("adminRoomStatus");
-  if (!currentRoom) { el.innerHTML = '<p style="font-size:13px; color:var(--text-3)">방에 입장하지 않았습니다</p>'; return; }
+  if (!currentRoom) { el.innerHTML = '<p style="font-size:13px; color:var(--text-3)">현재 연결된 방이 없습니다</p>'; return; }
   var count = Object.keys(localData).length;
   var statusText = published ? "🟢 순위 공개 중" : "🟡 집계 중 (비공개)";
+  var autoText = autoPublishEnabled ? " / 자동 공개 ON" : " / 자동 공개 OFF";
   el.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">' +
     '<span style="font-size:15px; font-weight:700">' + currentRoom + '</span>' +
-    '<span style="font-size:13px; color:var(--text-2)">' + statusText + '</span></div>' +
+    '<span style="font-size:13px; color:var(--text-2)">' + statusText + autoText + '</span></div>' +
     '<div style="font-size:13px; color:var(--text-3)">총 참가자 ' + count + '명 등록됨</div>';
 }
 
@@ -701,7 +788,12 @@ function resetRoom() {
 }
 
 var urlRoom = new URLSearchParams(location.search).get("room");
-if (urlRoom) { currentRoom = urlRoom; updateRoomBadge(); listenRoom(); switchTab('list'); }
+if (urlRoom) {
+  currentRoom = urlRoom;
+  updateRoomBadge();
+  listenRoom();
+  switchTab('list');
+}
 </script>
 </body>
 </html>
