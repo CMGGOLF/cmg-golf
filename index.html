@@ -622,7 +622,7 @@ function getSorted(data) {
   });
   var rank = 1, actualIndex = 1;
   arr.forEach(function(p, i) {
-    if (!p.hasScore) { p.rank = '순위밖'; }
+    if (!p.hasScore) { p.rank = '통계전'; }
     else { if (i > 0 && p.hasScore && p.net !== arr[i-1].net) rank = actualIndex; p.rank = rank; actualIndex++; }
   });
   return arr;
