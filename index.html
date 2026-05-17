@@ -6,8 +6,8 @@
 <title>CMG 골프클럽 순위 시스템</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
@@ -311,14 +311,9 @@ window.addEventListener("DOMContentLoaded", function() {
 function validateHandi(el) {
   var val = el.value.trim();
   var errEl = document.getElementById("handiError");
-
-  // 마이너스 허용, 숫자+소수점만 입력 가능
   if (val === "" || val === "-") { errEl.style.display = "none"; el.classList.remove("input-error"); return; }
-
   var num = parseFloat(val);
-
   if (isNaN(num)) { errEl.style.display = "none"; el.classList.remove("input-error"); return; }
-
   if (num > 14) {
     el.classList.add("input-error");
     errEl.style.display = "block";
@@ -458,6 +453,7 @@ function canAutoPublish() {
   });
 }
 
+// ✅ 수정된 함수: 모든 접속 사용자(비관리자 포함)가 자동 공개를 트리거할 수 있음
 function runAutoPublishIfNeeded() {
   if (!useFirebase || !currentRoom || !autoPublishEnabled || published) return;
   if (!canAutoPublish()) return;
@@ -491,7 +487,6 @@ function toggleAutoPublish() {
   });
 }
 
-
 function toggleMinus(targetId) {
   var el = document.getElementById(targetId);
   var val = el.value.trim();
@@ -515,7 +510,6 @@ function editMyScore(name) {
   } else {
     document.getElementById("myNetCard").style.display = "none";
   }
-  // 핸디 유효성 검사 재실행
   validateHandi(document.getElementById("pHandi"));
   switchTab('score');
   setTimeout(function() { document.getElementById("pScore").focus(); }, 300);
@@ -529,8 +523,6 @@ function saveMyScore() {
 
   if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
-
-  // ── 핸디캡 최대 14 검증 ──
   if (!checkHandiValid()) return;
 
   localStorage.setItem("myGolfName", name);
@@ -592,6 +584,8 @@ function showNotice(el, type, msg) {
   el.textContent = msg; setTimeout(function() { el.style.display = "none"; }, 3000);
 }
 
+// ✅ 핵심 수정: runAutoPublishIfNeeded()를 if(admin) 블록 밖으로 이동
+//    → 관리자가 없어도 모든 접속 유저 브라우저에서 자동 공개 트리거 가능
 function listenRoom() {
   if (!useFirebase) return;
   db.ref("rooms/" + currentRoom).on("value", function(snap) {
@@ -606,8 +600,9 @@ function listenRoom() {
     if (admin) {
       refreshAdminRoomStatus();
       refreshAdminPlayerList();
-      runAutoPublishIfNeeded();
     }
+    // ✅ 관리자 여부와 관계없이 자동 공개 조건 체크
+    runAutoPublishIfNeeded();
   });
 }
 
@@ -784,7 +779,7 @@ function resetRoom() {
   if (useFirebase) db.ref("rooms/" + currentRoom).remove();
   else { localData = {}; published = false; }
   toast("경기방이 완전히 삭제되었습니다.");
-  setTimeout(function() { location.href = location.href.split("?")[0]; }, 1500);
+  setTimeout(function() { location.href = location.href.split("?"); }, 1500);
 }
 
 var urlRoom = new URLSearchParams(location.search).get("room");
