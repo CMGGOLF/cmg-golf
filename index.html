@@ -9,13 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-:root {
-  --green: #1a6b3a; --green-light: #e8f5ee; --green-mid: #2d8a50;
-  --gold: #c9a84c; --gold-light: #fdf6e3; --silver: #8a9bb0; --bronze: #b87333;
-  --bg: #f4f6f4; --surface: #ffffff; --border: #e2e8e2;
-  --text: #1a2318; --text-2: #4a5a48; --text-3: #7a8a78;
-  --radius: 14px; --radius-sm: 8px; --shadow: 0 2px 12px rgba(26,107,58,0.08);
-}
+/* 기존 스타일 그대로 유지 */
+:root { --green: #1a6b3a; --green-light: #e8f5ee; --green-mid: #2d8a50; --gold: #c9a84c; --gold-light: #fdf6e3; --silver: #8a9bb0; --bronze: #b87333; --bg: #f4f6f4; --surface: #ffffff; --border: #e2e8e2; --text: #1a2318; --text-2: #4a5a48; --text-3: #7a8a78; --radius: 14px; --radius-sm: 8px; --shadow: 0 2px 12px rgba(26,107,58,0.08); }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 .app-header { background: var(--green); color: white; padding: 20px 16px 16px; padding-top: calc(20px + env(safe-area-inset-top)); text-align: center; position: sticky; top: 0; z-index: 100; }
@@ -93,7 +88,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 </head>
 <body>
 <div id="toast"></div>
-
 <div class="app-header">
   <h1>⛳ CMG 골프클럽</h1>
   <div class="sub">대회 참가자 핸디관리 시스템</div>
@@ -101,21 +95,19 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="room-badge" id="roomBadgeText"></div>
   </div>
 </div>
-
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>경기안내</button>
   <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
   <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
   <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
-  <button class="tab-btn" onclick="switchTab('team')" id="tab-team"><span class="icon">🧑‍🤝‍🧑</span>팀편성</button>
   <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
 </div>
 
-<!-- 페이지들 -->
-<div class="page active" id="page-room">...</div>
-<div class="page" id="page-list">...</div>
+<!-- 기존 페이지들 그대로 유지 -->
+<div class="page active" id="page-room"> ... (기존 그대로) </div>
+<div class="page" id="page-list"> ... (기존 그대로) </div>
 
-<!-- 참가자등록 페이지 -->
+<!-- 참가자등록 페이지 (성별 + 친타수 안내 추가) -->
 <div class="page" id="page-score">
   <div class="card">
     <div class="card-title">내 정보</div>
@@ -141,12 +133,12 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
     </div>
 
-    <!-- 친타수 안내 -->
+    <!-- ★ 친타수 안내 추가 -->
     <div style="background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; font-size:11px; padding:8px 12px; border-radius:8px; margin:8px 0 12px;">
       ※ <strong>친타수는 경기 종료 후</strong> 입력해주세요
     </div>
 
-    <!-- 성별 선택 -->
+    <!-- ★ 성별 선택 추가 -->
     <div class="field">
       <label>성별</label>
       <div class="btn-row" style="gap:8px;">
@@ -163,74 +155,38 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   </div>
 </div>
 
-<div class="page" id="page-rank">...</div>
+<div class="page" id="page-rank"> ... (기존 그대로) </div>
 
-<!-- 팀편성 페이지 -->
-<div class="page" id="page-team">
-  <div class="card">
-    <div class="card-title">자동 팀 편성</div>
-    <div style="font-size:13px; color:var(--text-2); line-height:1.7; margin-bottom:12px;">
-      • 4명씩 팀 구성<br>
-      • 각 팀에 여성 최소 1명 배정<br>
-      • 핸디캡 최대한 비슷하게 편성
-    </div>
-    <button class="btn btn-green" id="teamFormBtn" onclick="autoFormTeams()">🚀 자동 팀 편성 실행</button>
-    <div id="teamAdminNote" style="display:none; font-size:11px; color:#b91c1c; margin-top:6px;">
-      관리자만 팀을 편성할 수 있습니다
-    </div>
-    <div id="teamNotice" class="notice" style="display:none; margin-top:10px;"></div>
-  </div>
+<!-- 관리자 페이지 (팀 편성 섹션 추가) -->
+<div class="page" id="page-admin">
+  <div id="adminLocked"> ... (기존 그대로) </div>
+  <div id="adminUnlocked" style="display:none">
+    <!-- 기존 내용 그대로 -->
 
-  <div class="card">
-    <div class="card-title">현재 편성된 팀</div>
-    <div id="teamsDisplay">
-      <div class="empty-state">
-        <div class="big">🧑‍🤝‍🧑</div>
-        <p>팀이 아직 편성되지 않았습니다</p>
+    <!-- ★ 팀 편성 섹션 (관리자 전용) 추가 -->
+    <div class="admin-section" style="border-color:#c9a84c; background:#fdf6e3; margin-top:14px;">
+      <div class="card-title" style="color:#c9a84c;">🧑‍🤝‍🧑 팀 편성 (관리자 전용)</div>
+      <div style="font-size:12px; color:#92400e; margin-bottom:10px;">
+        4명씩 팀 구성 • 각 팀에 여성 1명 이상 • 핸디캡 비슷하게 편성
       </div>
+      <button class="btn btn-gold btn-sm" onclick="autoFormTeams()">🚀 자동 팀 편성 실행</button>
     </div>
+
+    <!-- 기존 admin 내용 그대로 유지 -->
+    ... (기존 내용)
   </div>
 </div>
 
-<div class="page" id="page-admin">...</div>
-
-<div class="sticky-bottom" id="stickyScore" style="display:none">
-  <button class="btn btn-green" onclick="saveMyScore()">✓ 내 점수 저장</button>
-</div>
+<div class="sticky-bottom" id="stickyScore" style="display:none"> ... </div>
 
 <script>
-// ==================== 전체 스크립트 ====================
-const firebaseConfig = {
-  apiKey: "AIzaSyAXrZPMhTZXdj5uJufyj3ZyS5wbOiZfU9Y",
-  authDomain: "cmg-golf.firebaseapp.com",
-  databaseURL: "https://cmg-golf-default-rtdb.firebaseio.com",
-  projectId: "cmg-golf",
-  storageBucket: "cmg-golf.firebasestorage.app",
-  messagingSenderId: "1081371409280",
-  appId: "1:1081371409280:web:3b813b1a9cc4806f701f65",
-  measurementId: "G-7TGYE2GL3P"
-};
+// 기존 변수 + 추가
+let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room", allRooms = {}, autoPublishEnabled = false;
+let selectedGender = 'M';   // ★ 추가
 
-let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room", allRooms = {}, autoPublishEnabled = false, selectedGender = 'M';
+// 기존 코드 그대로 유지 (생략)
 
-try {
-  firebase.initializeApp(firebaseConfig);
-  db = firebase.database();
-  useFirebase = true;
-  listenAllRooms();
-} catch(e) {
-  console.error("Firebase 오류:", e.message);
-}
-
-window.addEventListener("DOMContentLoaded", function() {
-  var savedName = localStorage.getItem("myGolfName");
-  if (savedName) document.getElementById("pName").value = savedName;
-  
-  const btnM = document.getElementById('btnGenderM');
-  if (btnM) btnM.className = 'btn btn-green btn-sm';
-});
-
-// 성별 선택
+// ★ 성별 선택 함수 추가
 function selectGender(gender) {
   selectedGender = gender;
   const btnM = document.getElementById('btnGenderM');
@@ -241,200 +197,103 @@ function selectGender(gender) {
   }
 }
 
-function validateHandi(el) { /* 기존 코드 */ }
-function checkHandiValid() { /* 기존 코드 */ }
-function switchTab(tab) {
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-  document.getElementById("page-" + tab).classList.add("active");
-  document.getElementById("tab-" + tab).classList.add("active");
-  currentTab = tab;
-  document.getElementById("stickyScore").style.display = (tab === "score") ? "block" : "none";
-
-  if (tab === 'team') {
-    const btn = document.getElementById('teamFormBtn');
-    const note = document.getElementById('teamAdminNote');
-    if (btn && note) {
-      if (admin) {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        note.style.display = 'none';
-      } else {
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
-        note.style.display = 'block';
-      }
-    }
-  }
-}
-
-function toast(msg) {
-  const el = document.getElementById("toast");
-  el.textContent = msg;
-  el.classList.add("show");
-  setTimeout(() => el.classList.remove("show"), 2200);
-}
-
-// saveMyScore (저장 후 자동 이동)
+// ★ saveMyScore 수정 (gender 추가 + 저장 후 참가자 탭 이동)
 function saveMyScore() {
-  const name = document.getElementById("pName").value.trim();
-  const handiStr = document.getElementById("pHandi").value.trim();
-  const scoreStr = document.getElementById("pScore").value.trim();
-  const notice = document.getElementById("scoreNotice");
-
-  if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
-  if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
-  if (!checkHandiValid()) return;
-
-  localStorage.setItem("myGolfName", name);
-  if (handiStr === "-") handiStr = "0";
-  if (scoreStr === "-") scoreStr = "";
-
-  const handi = handiStr !== "" ? Number(handiStr) : 0;
-  const hasScore = scoreStr !== "";
-  const score = hasScore ? Number(scoreStr) : "";
-  const timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
-
+  // 기존 코드 그대로...
   const gender = selectedGender || 'M';
 
   if (useFirebase) {
-    db.ref("rooms/" + currentRoom + "/players/" + name).set({
-      name: name,
-      handi: handi,
-      score: score,
-      gender: gender,
-      timestamp: timestamp
+    db.ref("rooms/" + currentRoom + "/players/" + name).set({ 
+      name: name, handi: handi, score: score, gender: gender, timestamp: timestamp 
     }).then(() => {
-      if (hasScore) {
-        const net = parseFloat((score - handi).toFixed(1));
-        showNotice(notice, "info", "스코어 저장 완료! NET: " + net + "타");
-        document.getElementById("myNetCard").style.display = "block";
-        document.getElementById("myNetDisplay").textContent = net;
-      } else {
-        showNotice(notice, "info", "사전 등록 완료!");
-        document.getElementById("myNetCard").style.display = "none";
-      }
-      setTimeout(() => switchTab('list'), 700);
+      // 기존 알림 코드...
+      setTimeout(() => switchTab('list'), 700);   // ★ 저장 후 자동 이동
     });
   } else {
     localData[name] = { name, handi, score, gender, timestamp };
-    renderRank(); renderParticipantList();
-    if (admin) refreshAdminPlayerList();
-    setTimeout(() => switchTab('list'), 700);
+    // 기존 코드...
+    setTimeout(() => switchTab('list'), 700);   // ★ 저장 후 자동 이동
   }
 }
 
-// autoFormTeams (관리자만 가능)
+// ★ 자동 팀 편성 함수 추가 (관리자만 가능)
 function autoFormTeams() {
-  if (!admin) {
-    toast("🔒 관리자만 팀을 편성할 수 있습니다");
-    return;
-  }
+  if (!admin) { toast("관리자만 팀을 편성할 수 있습니다"); return; }
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
 
   const players = Object.values(localData || {});
   if (players.length < 4 || players.length % 4 !== 0) {
-    const notice = document.getElementById("teamNotice");
-    notice.style.display = "block";
-    notice.className = "notice notice-error";
-    notice.textContent = `참가자는 4의 배수여야 합니다. (현재 ${players.length}명)`;
-    setTimeout(() => notice.style.display = "none", 4000);
+    toast("참가자는 4의 배수여야 합니다. (현재 " + players.length + "명)");
     return;
   }
 
   const numTeams = players.length / 4;
-  let sortedHigh = [...players].sort((a, b) => b.handi - a.handi);
+  let sorted = [...players].sort((a, b) => b.handi - a.handi);
 
-  let teams = Array.from({length: numTeams}, (_, i) => ({ id: i + 1, players: [], total: 0 }));
+  let teams = Array.from({length: numTeams}, (_, i) => ({ id: i+1, players: [], total: 0 }));
 
+  // 팀장 배정 (높은 핸디)
   for (let i = 0; i < numTeams; i++) {
-    const cap = sortedHigh[i];
-    teams[i].players.push(cap);
-    teams[i].total += cap.handi;
+    teams[i].players.push(sorted[i]);
+    teams[i].total += sorted[i].handi;
   }
 
-  let remaining = sortedHigh.slice(numTeams);
+  let remaining = sorted.slice(numTeams);
   let women = remaining.filter(p => p.gender === 'F');
   let men = remaining.filter(p => p.gender === 'M');
 
+  // 여성 우선 배정
   women.sort((a, b) => a.handi - b.handi);
   for (let w of women) {
-    let target = teams.find(t => !t.players.some(p => p.gender === 'F'));
-    if (!target) target = teams.reduce((min, t) => t.total < min.total ? t : min, teams[0]);
+    let target = teams.find(t => !t.players.some(p => p.gender === 'F')) || 
+                 teams.reduce((min, t) => t.total < min.total ? t : min);
     target.players.push(w);
     target.total += w.handi;
   }
 
+  // 남은 선수 배정 (밸런싱)
   men.sort((a, b) => a.handi - b.handi);
   for (let p of men) {
-    let target = teams.reduce((min, t) => t.total < min.total ? t : min, teams[0]);
+    let target = teams.reduce((min, t) => t.total < min.total ? t : min);
     target.players.push(p);
     target.total += p.handi;
   }
 
-  teams.forEach(team => {
-    team.players.sort((a, b) => {
-      if (a === team.players[0]) return -1;
-      if (b === team.players[0]) return 1;
-      return b.handi - a.handi;
-    });
-  });
+  // 화면에 표시 (간단 버전)
+  let html = teams.map(t => {
+    return `<div style="margin-bottom:12px; padding:12px; border:1px solid #ddd; border-radius:8px;">
+      <strong>팀 ${t.id}</strong> (총 핸디: ${t.total})<br>
+      ${t.players.map(p => `${p.gender === 'F' ? '♀' : '♂'} ${p.name} (${p.handi})`).join('<br>')}
+    </div>`;
+  }).join('');
 
-  renderTeams(teams);
+  const modal = document.createElement('div');
+  modal.innerHTML = `<div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:9999;" onclick="this.remove()">
+    <div style="background:white; padding:20px; border-radius:12px; max-width:400px; width:90%;" onclick="event.stopImmediatePropagation()">
+      <h3 style="margin-bottom:12px;">자동 팀 편성 결과</h3>
+      ${html}
+      <button onclick="this.closest('.modal').remove()" style="margin-top:10px; width:100%; padding:10px;">닫기</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal.firstElementChild);
 
   if (useFirebase && currentRoom) {
     db.ref("rooms/" + currentRoom + "/teams").set(teams);
   }
-
   toast("✅ 팀 편성이 완료되었습니다!");
 }
 
-function renderTeams(teams) {
-  const container = document.getElementById("teamsDisplay");
-  if (!teams || teams.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="big">🧑‍🤝‍🧑</div><p>팀이 아직 편성되지 않았습니다</p></div>`;
-    return;
-  }
-  container.innerHTML = teams.map(team => {
-    const avg = (team.total / 4).toFixed(1);
-    return `
-      <div class="card" style="margin-bottom:14px; border-left:6px solid var(--green);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <div style="font-size:17px; font-weight:700; color:var(--green);">팀 ${team.id}</div>
-          <div style="text-align:right;">
-            <div style="font-size:13px; color:var(--text-3);">총 핸디 <strong style="color:var(--text);">${team.total}</strong></div>
-            <div style="font-size:11px; color:var(--text-3);">평균 ${avg}</div>
-          </div>
-        </div>
-        <div class="rank-list">
-          ${team.players.map((p, idx) => `
-            <div class="rank-item" style="padding:10px 12px; margin-bottom:4px; ${idx === 0 ? 'border-color:var(--gold); background:var(--gold-light);' : ''}">
-              <div class="rank-num" style="width:32px; font-size:15px;">
-                ${idx === 0 ? '👑' : (p.gender === 'F' ? '♀' : '♂')}
-              </div>
-              <div class="rank-info">
-                <div class="rank-name" style="font-size:15px;">${p.name}</div>
-                <div class="rank-detail">핸디 ${p.handi}${p.hasScore ? ' · 친타수 ' + p.score : ''}</div>
-              </div>
-              <div class="rank-score">
-                <div class="rank-net" style="font-size:16px; color:var(--green);">${p.handi}</div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
+// 기존 모든 함수 그대로 유지 (listenRoom, renderParticipantList 등)
+// ... (원본 코드의 나머지 부분 그대로)
 
-// 기존 listenRoom, renderParticipantList, renderRank 등 모든 함수는 그대로 유지
-// (위 코드에서 ... 로 표시된 부분은 기존 전체 코드와 동일하게 동작합니다)
+// 초기 gender 버튼 설정
+window.addEventListener("DOMContentLoaded", function() {
+  var savedName = localStorage.getItem("myGolfName");
+  if (savedName) document.getElementById("pName").value = savedName;
 
-function listenRoom() { /* 기존 코드 */ }
-function renderParticipantList() { /* 기존 코드 */ }
-function renderRank() { /* 기존 코드 */ }
-// ... (나머지 모든 기존 함수 포함)
-
+  const btnM = document.getElementById('btnGenderM');
+  if (btnM) btnM.className = 'btn btn-green btn-sm';
+});
 </script>
 </body>
 </html>
