@@ -89,6 +89,24 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
 #toast { position: fixed; top: 90px; left: 50%; transform: translateX(-50%) translateY(-10px); background: var(--text); color: white; padding: 10px 20px; border-radius: 100px; font-size: 14px; font-weight: 500; white-space: nowrap; z-index: 9999; opacity: 0; transition: all 0.3s; pointer-events: none; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* 성별 선택 토글 */
+.gender-toggle { display: flex; gap: 0; border-radius: var(--radius-sm); overflow: hidden; border: 1.5px solid var(--border); }
+.gender-btn { flex: 1; padding: 11px 0; font-size: 14px; font-weight: 700; border: none; background: #fafafa; color: var(--text-3); cursor: pointer; transition: 0.2s; }
+.gender-btn.active-male { background: #dbeafe; color: #1d4ed8; }
+.gender-btn.active-female { background: #fce7f3; color: #be185d; }
+/* 팀편성 */
+.team-card { background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.team-label { font-size: 15px; font-weight: 700; }
+.team-handi-sum { font-family: 'DM Mono', monospace; font-size: 13px; background: var(--green-light); color: var(--green); padding: 3px 10px; border-radius: 20px; }
+.team-member { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.team-member:last-child { border-bottom: none; }
+.member-gender { font-size: 15px; width: 22px; text-align: center; }
+.member-name { flex: 1; font-size: 14px; font-weight: 600; }
+.member-handi { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text-3); }
+.gender-badge { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+.badge-male { background: #dbeafe; color: #1d4ed8; }
+.badge-female { background: #fce7f3; color: #be185d; }
 </style>
 </head>
 <body>
@@ -105,6 +123,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
   <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
   <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
+  <button class="tab-btn" onclick="switchTab('team')" id="tab-team"><span class="icon">🔀</span>팀편성</button>
   <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
 </div>
 <div class="page active" id="page-room">
@@ -141,6 +160,13 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="field">
       <label>이름</label>
       <input id="pName" placeholder="이름을 입력하세요" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>성별</label>
+      <div class="gender-toggle">
+        <button type="button" class="gender-btn active-male" id="genderMale" onclick="setGender('male')">♂ 남성</button>
+        <button type="button" class="gender-btn" id="genderFemale" onclick="setGender('female')">♀ 여성</button>
+      </div>
     </div>
     <div class="field-row">
       <div class="field">
@@ -179,6 +205,26 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="empty-state">
       <div class="big">⛳</div>
       <p>운영 중인 방이 연결되면<br>순위가 표시됩니다</p>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-team">
+  <div class="card">
+    <div class="card-title">🔀 자동 팀편성</div>
+    <div style="font-size:13px; color:var(--text-2); line-height:1.8; margin-bottom:14px;">
+      • 팀당 <strong>4명</strong>, 여자 <strong>최소 1명</strong> 강제 배정<br>
+      • 핸디 높은 순 4명 + 역순(낮은 순) 4명 + 중간 2명씩으로 팀 핸디 평준화
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
+      <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
+    </div>
+    <div id="teamWarning" style="display:none" class="notice notice-warn" style="margin-top:10px;"></div>
+  </div>
+  <div id="teamResult">
+    <div class="empty-state">
+      <div class="big">🔀</div>
+      <p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p>
     </div>
   </div>
 </div>
@@ -269,6 +315,7 @@ const firebaseConfig = {
   measurementId: "G-7TGYE2GL3P"
 };
 let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room", allRooms = {}, autoPublishEnabled = false;
+let selectedGender = 'male'; // 성별 선택 상태
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.database();
@@ -282,7 +329,18 @@ try {
 window.addEventListener("DOMContentLoaded", function() {
   var savedName = localStorage.getItem("myGolfName");
   if (savedName) document.getElementById("pName").value = savedName;
+  var savedGender = localStorage.getItem("myGolfGender");
+  if (savedGender) setGender(savedGender);
 });
+// ── 성별 선택 ──
+function setGender(g) {
+  selectedGender = g;
+  var mBtn = document.getElementById("genderMale");
+  var fBtn = document.getElementById("genderFemale");
+  mBtn.className = 'gender-btn' + (g === 'male' ? ' active-male' : '');
+  fBtn.className = 'gender-btn' + (g === 'female' ? ' active-female' : '');
+  localStorage.setItem("myGolfGender", g);
+}
 // ── 핸디캡 유효성 검사 (최대 14) ──
 function validateHandi(el) {
   var val = el.value.trim();
@@ -458,6 +516,7 @@ function editMyScore(name) {
   if (!admin && name !== myName) { toast("🔒 본인의 점수만 수정할 수 있습니다."); return; }
   document.getElementById("pName").value = d.name;
   document.getElementById("pHandi").value = d.handi;
+  if (d.gender) setGender(d.gender); else setGender('male');
   var hasScore = (d.score !== "" && d.score !== undefined);
   document.getElementById("pScore").value = hasScore ? d.score : "";
   if (hasScore) {
@@ -480,6 +539,7 @@ function saveMyScore() {
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
   if (!checkHandiValid()) return;
   localStorage.setItem("myGolfName", name);
+  localStorage.setItem("myGolfGender", selectedGender);
   if (handiStr === "-") handiStr = "0";
   if (scoreStr === "-") scoreStr = "";
   var handi = handiStr !== "" ? Number(handiStr) : 0;
@@ -487,22 +547,22 @@ function saveMyScore() {
   var score = hasScore ? Number(scoreStr) : "";
   var timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
   if (useFirebase) {
-    db.ref("rooms/" + currentRoom + "/players/" + name).set({ name: name, handi: handi, score: score, timestamp: timestamp });
+    db.ref("rooms/" + currentRoom + "/players/" + name).set({ name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender });
   } else {
-    localData[name] = { name: name, handi: handi, score: score, timestamp: timestamp };
+    localData[name] = { name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender };
     renderRank(); renderParticipantList();
     if (admin) refreshAdminPlayerList();
   }
   if (hasScore) {
     var net = parseFloat((score - handi).toFixed(1));
-    showNotice(notice, "info", "스코어 저장 완료! NET: " + net + "타");
     document.getElementById("myNetCard").style.display = "block";
     document.getElementById("myNetDisplay").textContent = net;
   } else {
-    showNotice(notice, "info", "사전 등록(이름/핸디캡) 완료!");
     document.getElementById("myNetCard").style.display = "none";
   }
   if (navigator.vibrate) navigator.vibrate([30, 10, 30]);
+  toast(hasScore ? "✅ 스코어 저장 완료!" : "✅ 사전 등록 완료!");
+  setTimeout(function() { switchTab('list'); }, 400);
 }
 function loadMyData() {
   var name = document.getElementById("pName").value.trim();
@@ -515,6 +575,7 @@ function loadMyData() {
       var hasScore = (d.score !== "" && d.score !== undefined);
       document.getElementById("pHandi").value = d.handi;
       document.getElementById("pScore").value = hasScore ? d.score : "";
+      if (d.gender) setGender(d.gender);
       validateHandi(document.getElementById("pHandi"));
       toast("불러오기 완료");
     });
@@ -523,6 +584,7 @@ function loadMyData() {
     var hasScore = (d.score !== "" && d.score !== undefined);
     document.getElementById("pHandi").value = d.handi;
     document.getElementById("pScore").value = hasScore ? d.score : "";
+    if (d.gender) setGender(d.gender);
     validateHandi(document.getElementById("pHandi"));
     toast("불러오기 완료");
   }
@@ -609,9 +671,12 @@ function renderParticipantList() {
     var canEdit = isMe || admin;
     var hasScore = (p.score !== "" && p.score !== undefined);
     return '<div class="rank-item" style="' + (canEdit ? 'cursor:pointer; border:1px solid var(--green);' : 'opacity:0.8;') + '" onclick="' + (canEdit ? "editMyScore('" + p.name + "')" : "toast('🔒 본인의 점수만 수정할 수 있습니다.')") + '">' +
-      '<div class="rank-num" style="font-size:16px;">' + (isMe ? '⛳' : '👤') + '</div>' +
+      '<div class="rank-num" style="font-size:16px;">' + (isMe ? '⛳' : (p.gender === 'female' ? '👩' : '👤')) + '</div>' +
       '<div class="rank-info">' +
-        '<div class="rank-name" style="' + (isMe ? 'color:var(--green); font-weight:800;' : '') + '">' + p.name + (isMe ? ' <span style="font-size:10px; background:var(--green-light); color:var(--green); padding:2px 6px; border-radius:10px; margin-left:4px;">나</span>' : '') + '</div>' +
+        '<div class="rank-name" style="' + (isMe ? 'color:var(--green); font-weight:800;' : '') + '">' + p.name +
+          (isMe ? ' <span style="font-size:10px; background:var(--green-light); color:var(--green); padding:2px 6px; border-radius:10px; margin-left:4px;">나</span>' : '') +
+          '<span class="gender-badge ' + (p.gender === 'female' ? 'badge-female' : 'badge-male') + '">' + (p.gender === 'female' ? '♀여' : '♂남') + '</span>' +
+        '</div>' +
         '<div class="rank-detail">핸디캡 ' + p.handi + '</div>' +
       '</div>' +
       '<div class="rank-score">' +
@@ -667,8 +732,11 @@ function refreshAdminPlayerList() {
   var arr = getSorted(localData);
   if (!arr.length) { el.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>참가자가 없습니다</p></div>'; return; }
   el.innerHTML = arr.map(function(p) {
+    var gIcon = p.gender === 'female' ? '♀' : '♂';
+    var gColor = p.gender === 'female' ? '#be185d' : '#1d4ed8';
     return '<div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--border)">' +
       '<div style="width:28px; font-family:\'DM Mono\',monospace; font-size:14px; color:var(--text-3)">' + p.rank + '</div>' +
+      '<div style="width:20px; font-size:13px; color:' + gColor + '; font-weight:700;">' + gIcon + '</div>' +
       '<div style="flex:1; font-size:14px; font-weight:500">' + p.name + '</div>' +
       '<div style="font-size:13px; color:var(--text-3); margin-right:12px; font-family:\'DM Mono\',monospace">' +
         (p.hasScore ? p.score + ' - ' + p.handi + ' = <strong style="color:var(--green)">' + p.net + '</strong>' : '<span style="color:#b91c1c">점수입력 대기중</span>') +
@@ -682,6 +750,118 @@ function deletePlayer(name) {
   if (useFirebase) db.ref("rooms/" + currentRoom + "/players/" + name).remove();
   else { delete localData[name]; renderRank(); renderParticipantList(); refreshAdminPlayerList(); refreshAdminRoomStatus(); }
   toast(name + " 삭제됨");
+}
+
+// ── 자동 팀편성 ──
+function autoAssignTeams() {
+  var players = Object.values(localData || {});
+  if (!players.length) { toast("참가자가 없습니다"); return; }
+
+  var females = players.filter(function(p) { return p.gender === 'female'; });
+  var males = players.filter(function(p) { return p.gender !== 'female'; });
+  var total = players.length;
+  var teamCount = Math.ceil(total / 4);
+  var warnEl = document.getElementById("teamWarning");
+
+  // 여자가 팀 수보다 적으면 경고
+  if (females.length < teamCount) {
+    warnEl.style.display = "block";
+    warnEl.textContent = "⚠ 여자 참가자(" + females.length + "명)가 팀 수(" + teamCount + "팀)보다 적어 일부 팀에 여자가 없을 수 있습니다.";
+  } else {
+    warnEl.style.display = "none";
+  }
+
+  // 핸디 내림차순 정렬
+  var sortDesc = function(arr) {
+    return arr.slice().sort(function(a, b) { return b.handi - a.handi; });
+  };
+
+  // 팀 초기화
+  var teams = [];
+  for (var i = 0; i < teamCount; i++) teams.push([]);
+
+  // 1) 여자 먼저 핸디 내림차순으로 각 팀에 1명씩 배정 (스네이크 방식)
+  var femalesSorted = sortDesc(females);
+  var malesSorted = sortDesc(males);
+
+  // 팀별 1명씩 여자 배정 (스네이크 드래프트)
+  for (var ti = 0; ti < teamCount; ti++) {
+    if (femalesSorted[ti]) teams[ti].push(femalesSorted[ti]);
+  }
+  // 남은 여자들은 males pool에 합쳐서 핸디 기준 재배분 (여자 초과분)
+  var extraFemales = femalesSorted.slice(teamCount);
+  var remainPool = sortDesc(malesSorted.concat(extraFemales));
+
+  // 2) 남은 인원을 핸디 평준화 스네이크 드래프트로 배정
+  // 각 팀의 현재 인원 확인 후 4명이 될 때까지 채움
+  // 스네이크: 0,1,2..n-1, n-1..1,0, 0,1,2..
+  var poolIdx = 0;
+  var direction = 1;
+  var teamIdx = 0;
+
+  // 필요 인원 계산: 각 팀에 4명까지
+  var slots = [];
+  for (var si = 0; si < teamCount; si++) {
+    slots.push(4 - teams[si].length);
+  }
+  var totalSlots = slots.reduce(function(a,b){return a+b;}, 0);
+
+  // 스네이크 드래프트 순서 생성
+  var order = [];
+  var cur = 0, dir = 1;
+  while (order.length < totalSlots) {
+    order.push(cur);
+    if (cur === teamCount - 1) dir = -1;
+    if (cur === 0 && order.length > 1) dir = 1;
+    cur += dir;
+  }
+
+  // 배정
+  var pIdx = 0;
+  for (var oi = 0; oi < order.length && pIdx < remainPool.length; oi++) {
+    var tIdx = order[oi];
+    if (teams[tIdx].length < 4) {
+      teams[tIdx].push(remainPool[pIdx++]);
+    }
+  }
+
+  renderTeams(teams);
+}
+
+function renderTeams(teams) {
+  var el = document.getElementById("teamResult");
+  if (!teams || !teams.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>팀편성 결과가 없습니다</p></div>';
+    return;
+  }
+  var colors = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#be185d','#65a30d'];
+  el.innerHTML = teams.map(function(team, idx) {
+    var handiSum = team.reduce(function(s, p) { return s + Number(p.handi); }, 0);
+    var handiAvg = team.length ? (handiSum / team.length).toFixed(1) : 0;
+    var color = colors[idx % colors.length];
+    return '<div class="team-card" style="border-color:' + color + '20; border-left:4px solid ' + color + '">' +
+      '<div class="team-header">' +
+        '<div class="team-label" style="color:' + color + '">🏌️ ' + (idx + 1) + '조</div>' +
+        '<div class="team-handi-sum">핸디합 ' + handiSum.toFixed(1) + ' / 평균 ' + handiAvg + '</div>' +
+      '</div>' +
+      team.map(function(p) {
+        var isFemale = p.gender === 'female';
+        return '<div class="team-member">' +
+          '<div class="member-gender">' + (isFemale ? '👩' : '👨') + '</div>' +
+          '<div class="member-name">' + p.name +
+            '<span class="gender-badge ' + (isFemale ? 'badge-female' : 'badge-male') + '">' + (isFemale ? '♀' : '♂') + '</span>' +
+          '</div>' +
+          '<div class="member-handi">핸디 ' + p.handi + '</div>' +
+        '</div>';
+      }).join("") +
+    '</div>';
+  }).join("");
+}
+
+function clearTeams() {
+  document.getElementById("teamResult").innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p></div>';
+  document.getElementById("teamWarning").style.display = "none";
+  toast("팀편성이 초기화되었습니다");
 }
 function adminPreview() {
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
