@@ -214,12 +214,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div style="font-size:13px; color:var(--text-2); line-height:1.8; margin-bottom:14px;">
       • 팀당 <strong>4명</strong>, 여자 <strong>최소 1명</strong> 강제 배정<br>
       • 핸디 높은 순 4명 + 역순(낮은 순) 4명 + 중간 2명씩으로 팀 핸디 평준화
-    </div>
-    <div class="btn-row" id="teamAdminControls" style="display:none;">
-      <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
-      <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
-    </div>
-    <div id="teamViewerNotice" class="notice notice-info">
+    </div>    <div id="teamViewerNotice" class="notice notice-info">
       관리자만 팀편성 및 초기화가 가능합니다.<br>
       팀편성 결과는 자동으로 전체 공개됩니다.
     </div>
@@ -281,6 +276,18 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
         자동 공개를 켜면 한 명이라도 친타수를 입력하는 즉시 순위가 공개되고,<br>입력한 사람들 기준으로 실시간 순위가 갱신됩니다. 미입력자는 <strong>대기</strong>으로 표시됩니다.
       </div>
     </div>
+    <div class="admin-section">
+      <div class="card-title">🔀 팀편성 관리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.7;">
+        관리자만 팀편성 및 초기화가 가능합니다.<br>
+        실행 시 팀편성 페이지에 자동 공개됩니다.
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
+        <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">참가자 관리</div>
       <div id="adminPlayerList">
@@ -723,7 +730,6 @@ function unlockAdmin() {
     document.getElementById("adminLocked").style.display = "none";
     document.getElementById("adminUnlocked").style.display = "block";
     document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
-    document.getElementById("teamAdminControls").style.display = "flex";
     document.getElementById("teamViewerNotice").style.display = "none";
     toast("관리자 모드 활성화");
     updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
