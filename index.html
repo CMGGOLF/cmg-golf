@@ -295,6 +295,11 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
     </div>
     <div class="card">
+      <div class="card-title">🔐 관리자 설정</div>
+      <button class="btn btn-gray btn-sm" onclick="adminLogout()">로그아웃</button>
+    </div>
+
+    <div class="card">
       <div class="card-title" style="color:#b91c1c">⚠ 위험 구역</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">아래 작업은 되돌릴 수 없습니다. (방 폭파)</div>
       <button class="btn btn-danger btn-sm" onclick="resetRoom()">방 완전 삭제 (영구 삭제)</button>
@@ -340,8 +345,26 @@ try {
 window.addEventListener("DOMContentLoaded", function() {
   var savedName = localStorage.getItem("myGolfName");
   if (savedName) document.getElementById("pName").value = savedName;
+
   var savedGender = localStorage.getItem("myGolfGender");
   if (savedGender) setGender(savedGender);
+
+  // 관리자 자동 로그인 유지
+  var adminSaved = localStorage.getItem("cmgAdminLogin");
+  if (adminSaved === "true") {
+    setTimeout(function() {
+      admin = true;
+      document.getElementById("adminLocked").style.display = "none";
+      document.getElementById("adminUnlocked").style.display = "block";
+      document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
+      document.getElementById("teamViewerNotice").style.display = "none";
+      updateAutoPublishButton();
+      refreshAdminRoomStatus();
+      refreshAdminPlayerList();
+      renderRank();
+      renderParticipantList();
+    }, 300);
+  }
 });
 // ── 성별 선택 ──
 function setGender(g) {
@@ -723,10 +746,23 @@ function renderRank() {
   statusEl.innerHTML = '<div class="status-bar status-live">✓ 입력된 친타수 기준 실시간 순위가 공개 중입니다</div>';
   listEl.innerHTML = '<div class="rank-list">' + buildRankHTML(arr) + '</div>';
 }
+
+function adminLogout() {
+  localStorage.removeItem("cmgAdminLogin");
+  admin = false;
+
+  document.getElementById("adminLocked").style.display = "block";
+  document.getElementById("adminUnlocked").style.display = "none";
+  document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자';
+
+  toast("관리자 로그아웃 완료");
+}
+
 function unlockAdmin() {
   var pw = document.getElementById("adminPw").value;
   if (pw === "1217") {
     admin = true;
+    localStorage.setItem("cmgAdminLogin", "true");
     document.getElementById("adminLocked").style.display = "none";
     document.getElementById("adminUnlocked").style.display = "block";
     document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
