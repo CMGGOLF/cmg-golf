@@ -215,9 +215,13 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       • 팀당 <strong>4명</strong>, 여자 <strong>최소 1명</strong> 강제 배정<br>
       • 핸디 높은 순 4명 + 역순(낮은 순) 4명 + 중간 2명씩으로 팀 핸디 평준화
     </div>
-    <div class="btn-row">
+    <div class="btn-row" id="teamAdminControls" style="display:none;">
       <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
       <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
+    </div>
+    <div id="teamViewerNotice" class="notice notice-info">
+      관리자만 팀편성 및 초기화가 가능합니다.<br>
+      팀편성 결과는 자동으로 전체 공개됩니다.
     </div>
     <div id="teamWarning" style="display:none" class="notice notice-warn" style="margin-top:10px;"></div>
   </div>
@@ -606,6 +610,13 @@ function listenRoom() {
     updateAutoPublishButton();
     renderRank();
     renderParticipantList();
+
+    if (room.teams) {
+      renderTeams(room.teams);
+    } else {
+      document.getElementById("teamResult").innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>아직 공개된 팀편성 결과가 없습니다</p></div>';
+    }
+
     if (admin) {
       refreshAdminRoomStatus();
       refreshAdminPlayerList();
@@ -712,6 +723,8 @@ function unlockAdmin() {
     document.getElementById("adminLocked").style.display = "none";
     document.getElementById("adminUnlocked").style.display = "block";
     document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
+    document.getElementById("teamAdminControls").style.display = "flex";
+    document.getElementById("teamViewerNotice").style.display = "none";
     toast("관리자 모드 활성화");
     updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
   } else toast("비밀번호가 틀렸습니다");
@@ -754,6 +767,11 @@ function deletePlayer(name) {
 
 // ── 자동 팀편성 ──
 function autoAssignTeams() {
+  if (!admin) {
+    toast("관리자만 팀편성을 실행할 수 있습니다");
+    return;
+  }
+
   var players = Object.values(localData || {});
   if (!players.length) { toast("참가자가 없습니다"); return; }
 
@@ -830,6 +848,12 @@ function autoAssignTeams() {
 
 function renderTeams(teams) {
   var el = document.getElementById("teamResult");
+
+  // 결과 자동 공개 저장
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teams").set(teams);
+  }
+
   if (!teams || !teams.length) {
     el.innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>팀편성 결과가 없습니다</p></div>';
     return;
@@ -859,8 +883,18 @@ function renderTeams(teams) {
 }
 
 function clearTeams() {
+  if (!admin) {
+    toast("관리자만 초기화할 수 있습니다");
+    return;
+  }
+
   document.getElementById("teamResult").innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p></div>';
   document.getElementById("teamWarning").style.display = "none";
+
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teams").remove();
+  }
+
   toast("팀편성이 초기화되었습니다");
 }
 function adminPreview() {
