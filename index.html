@@ -124,6 +124,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
   <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
   <button class="tab-btn" onclick="switchTab('team')" id="tab-team"><span class="icon">🔀</span>팀편성</button>
+  <button class="tab-btn" onclick="switchTab('attendance')" id="tab-attendance"><span class="icon">📋</span>출석</button>
   <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
 </div>
 <div class="page active" id="page-room">
@@ -214,9 +215,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div style="font-size:13px; color:var(--text-2); line-height:1.8; margin-bottom:14px;">
       • 팀당 <strong>4명</strong>, 여자 <strong>최소 1명</strong> 강제 배정<br>
       • 핸디 높은 순 4명 + 역순(낮은 순) 4명 + 중간 2명씩으로 팀 핸디 평준화
-    </div>    <div id="teamViewerNotice" class="notice notice-info">
-      관리자만 팀편성 및 초기화가 가능합니다.<br>
-      팀편성 결과는 자동으로 전체 공개됩니다.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
+      <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
     </div>
     <div id="teamWarning" style="display:none" class="notice notice-warn" style="margin-top:10px;"></div>
   </div>
@@ -224,6 +226,34 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="empty-state">
       <div class="big">🔀</div>
       <p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="page" id="page-attendance">
+  <div class="card">
+    <div class="card-title">📋 출석 시스템 안내</div>
+
+    <div style="background:#f8faf8; border:1px solid #d8e5d8; border-radius:10px; padding:14px; line-height:1.9; font-size:14px; color:var(--text-2);">
+      • 참가자 등록 시 자동으로 출석 기록이 저장됩니다.<br>
+      • 출석 수를 누르면 날짜별 참석 기록을 확인할 수 있습니다.<br><br>
+
+      <span style="font-size:13px; color:#b91c1c; font-weight:700;">
+      ※ 원활한 출석 누적을 위해 항상 동일한 이름으로 등록해주세요.
+      </span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 출석 현황</div>
+
+    <div class="empty-state">
+      <div class="big">📋</div>
+      <p>
+        아직 출석 데이터가 없습니다.<br>
+        참가자 등록 시 자동 누적됩니다.
+      </p>
     </div>
   </div>
 </div>
@@ -276,29 +306,12 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
         자동 공개를 켜면 한 명이라도 친타수를 입력하는 즉시 순위가 공개되고,<br>입력한 사람들 기준으로 실시간 순위가 갱신됩니다. 미입력자는 <strong>대기</strong>으로 표시됩니다.
       </div>
     </div>
-    <div class="admin-section">
-      <div class="card-title">🔀 팀편성 관리</div>
-      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.7;">
-        관리자만 팀편성 및 초기화가 가능합니다.<br>
-        실행 시 팀편성 페이지에 자동 공개됩니다.
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
-        <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
-      </div>
-    </div>
-
     <div class="card">
       <div class="card-title">참가자 관리</div>
       <div id="adminPlayerList">
         <div class="empty-state" style="padding:16px 0"><p>참가자가 없습니다</p></div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-title">🔐 관리자 설정</div>
-      <button class="btn btn-gray btn-sm" onclick="adminLogout()">로그아웃</button>
-    </div>
-
     <div class="card">
       <div class="card-title" style="color:#b91c1c">⚠ 위험 구역</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">아래 작업은 되돌릴 수 없습니다. (방 폭파)</div>
@@ -345,26 +358,8 @@ try {
 window.addEventListener("DOMContentLoaded", function() {
   var savedName = localStorage.getItem("myGolfName");
   if (savedName) document.getElementById("pName").value = savedName;
-
   var savedGender = localStorage.getItem("myGolfGender");
   if (savedGender) setGender(savedGender);
-
-  // 관리자 자동 로그인 유지
-  var adminSaved = localStorage.getItem("cmgAdminLogin");
-  if (adminSaved === "true") {
-    setTimeout(function() {
-      admin = true;
-      document.getElementById("adminLocked").style.display = "none";
-      document.getElementById("adminUnlocked").style.display = "block";
-      document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
-      document.getElementById("teamViewerNotice").style.display = "none";
-      updateAutoPublishButton();
-      refreshAdminRoomStatus();
-      refreshAdminPlayerList();
-      renderRank();
-      renderParticipantList();
-    }, 300);
-  }
 });
 // ── 성별 선택 ──
 function setGender(g) {
@@ -640,13 +635,6 @@ function listenRoom() {
     updateAutoPublishButton();
     renderRank();
     renderParticipantList();
-
-    if (room.teams) {
-      renderTeams(room.teams);
-    } else {
-      document.getElementById("teamResult").innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>아직 공개된 팀편성 결과가 없습니다</p></div>';
-    }
-
     if (admin) {
       refreshAdminRoomStatus();
       refreshAdminPlayerList();
@@ -746,27 +734,13 @@ function renderRank() {
   statusEl.innerHTML = '<div class="status-bar status-live">✓ 입력된 친타수 기준 실시간 순위가 공개 중입니다</div>';
   listEl.innerHTML = '<div class="rank-list">' + buildRankHTML(arr) + '</div>';
 }
-
-function adminLogout() {
-  localStorage.removeItem("cmgAdminLogin");
-  admin = false;
-
-  document.getElementById("adminLocked").style.display = "block";
-  document.getElementById("adminUnlocked").style.display = "none";
-  document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자';
-
-  toast("관리자 로그아웃 완료");
-}
-
 function unlockAdmin() {
   var pw = document.getElementById("adminPw").value;
   if (pw === "1217") {
     admin = true;
-    localStorage.setItem("cmgAdminLogin", "true");
     document.getElementById("adminLocked").style.display = "none";
     document.getElementById("adminUnlocked").style.display = "block";
     document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
-    document.getElementById("teamViewerNotice").style.display = "none";
     toast("관리자 모드 활성화");
     updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
   } else toast("비밀번호가 틀렸습니다");
@@ -809,11 +783,6 @@ function deletePlayer(name) {
 
 // ── 자동 팀편성 ──
 function autoAssignTeams() {
-  if (!admin) {
-    toast("관리자만 팀편성을 실행할 수 있습니다");
-    return;
-  }
-
   var players = Object.values(localData || {});
   if (!players.length) { toast("참가자가 없습니다"); return; }
 
@@ -890,12 +859,6 @@ function autoAssignTeams() {
 
 function renderTeams(teams) {
   var el = document.getElementById("teamResult");
-
-  // 결과 자동 공개 저장
-  if (useFirebase && currentRoom) {
-    db.ref("rooms/" + currentRoom + "/teams").set(teams);
-  }
-
   if (!teams || !teams.length) {
     el.innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>팀편성 결과가 없습니다</p></div>';
     return;
@@ -925,18 +888,8 @@ function renderTeams(teams) {
 }
 
 function clearTeams() {
-  if (!admin) {
-    toast("관리자만 초기화할 수 있습니다");
-    return;
-  }
-
   document.getElementById("teamResult").innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p></div>';
   document.getElementById("teamWarning").style.display = "none";
-
-  if (useFirebase && currentRoom) {
-    db.ref("rooms/" + currentRoom + "/teams").remove();
-  }
-
   toast("팀편성이 초기화되었습니다");
 }
 function adminPreview() {
