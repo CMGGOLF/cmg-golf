@@ -238,6 +238,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div style="background:#f8faf8; border:1px solid #d8e5d8; border-radius:10px; padding:14px; line-height:1.9; font-size:14px; color:var(--text-2);">
       • 참가자 등록 시 자동으로 출석 기록이 저장됩니다.<br>
       • 출석 수를 누르면 날짜별 참석 기록을 확인할 수 있습니다.<br><br>
+
       <span style="font-size:13px; color:#b91c1c; font-weight:700;">
       ※ 원활한 출석 누적을 위해 항상 동일한 이름으로 등록해주세요.
       </span>
@@ -247,12 +248,11 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   <div class="card">
     <div class="card-title">📊 출석 현황</div>
 
-    <div class="empty-state">
-      <div class="big">📋</div>
-      <p>
-        아직 출석 데이터가 없습니다.<br>
-        참가자 등록 시 자동 누적됩니다.
-      </p>
+    <div id="attendanceList">
+      <div class="empty-state">
+        <div class="big">📋</div>
+        <p>출석 데이터를 불러오는 중...</p>
+      </div>
     </div>
   </div>
 </div>
@@ -403,6 +403,7 @@ function switchTab(tab) {
   document.getElementById("tab-" + tab).classList.add("active");
   currentTab = tab;
   document.getElementById("stickyScore").style.display = (tab === "score") ? "block" : "none";
+  if (tab === "attendance") renderAttendance();
 }
 function toast(msg) {
   var el = document.getElementById("toast");
@@ -576,6 +577,8 @@ function saveMyScore() {
   var timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
   if (useFirebase) {
     db.ref("rooms/" + currentRoom + "/players/" + name).set({ name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender });
+    var today = new Date().toISOString().slice(0,10);
+    db.ref("attendance/" + name + "/" + today + "/" + currentRoom).set({room: currentRoom, timestamp: Date.now()});
   } else {
     localData[name] = { name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender };
     renderRank(); renderParticipantList();
@@ -592,6 +595,34 @@ function saveMyScore() {
   toast(hasScore ? "✅ 스코어 저장 완료!" : "✅ 사전 등록 완료!");
   setTimeout(function() { switchTab('list'); }, 400);
 }
+
+function renderAttendance() {
+  if (!useFirebase) return;
+  db.ref("attendance").once("value").then(function(snapshot) {
+    var data = snapshot.val() || {};
+    var html = "";
+    Object.keys(data).sort().forEach(function(name) {
+      var count = 0;
+      var history = [];
+      Object.keys(data[name] || {}).forEach(function(date){
+        Object.keys(data[name][date] || {}).forEach(function(room){
+          count++;
+          history.push(date + " [" + room + "]");
+        });
+      });
+      history.sort().reverse();
+      html += `<div class="card" style="margin-bottom:10px">
+        <div style="font-weight:700;font-size:16px">${name}</div>
+        <div style="color:var(--green);margin-top:6px;font-weight:700">출석 ${count}회</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.8">${history.join("<br>")}</div>
+      </div>`;
+    });
+    if (!html) html = '<div class="empty-state"><div class="big">📋</div><p>출석 데이터가 없습니다.</p></div>';
+    var el=document.getElementById("attendanceList");
+    if(el) el.innerHTML = html;
+  });
+}
+
 function loadMyData() {
   var name = document.getElementById("pName").value.trim();
   if (!name) { toast("이름을 먼저 입력하세요"); return; }
