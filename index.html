@@ -107,6 +107,42 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .gender-badge { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
 .badge-male { background: #dbeafe; color: #1d4ed8; }
 .badge-female { background: #fce7f3; color: #be185d; }
+
+/* ── 팀편성 관리 모드 ── */
+.team-edit-bar { display: flex; align-items: center; justify-content: space-between; background: var(--green); color: white; border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px; font-size: 13px; font-weight: 700; }
+.team-edit-bar button { background: rgba(255,255,255,0.22); border: 1px solid rgba(255,255,255,0.35); color: white; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.member-move-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-3); transition: 0.15s; white-space: nowrap; margin-left: 4px; }
+.member-move-btn:hover { background: var(--green-light); border-color: var(--green-mid); color: var(--green); }
+.member-del-btn { background: none; border: 1px solid #fecaca; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer; color: #b91c1c; transition: 0.15s; white-space: nowrap; margin-left: 4px; }
+.member-del-btn:hover { background: #fee2e2; }
+.move-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.52); z-index: 1200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.22s; }
+.move-modal-overlay.open { opacity: 1; pointer-events: all; }
+.move-modal { background: white; border-radius: 18px; padding: 22px 20px; width: 88%; max-width: 340px; transform: scale(0.94); transition: 0.22s; box-shadow: 0 12px 40px rgba(0,0,0,0.22); }
+.move-modal-overlay.open .move-modal { transform: scale(1); }
+.move-modal-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.move-modal-sub { font-size: 12px; color: var(--text-3); margin-bottom: 16px; }
+.team-pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.team-pick-btn { padding: 12px 4px; border: 1.5px solid var(--border); border-radius: 10px; background: #fafafa; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.15s; text-align: center; }
+.team-pick-btn:hover { border-color: var(--green-mid); background: var(--green-light); color: var(--green); }
+.team-pick-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.team-pick-btn.new-team { border-style: dashed; color: var(--text-3); }
+.move-modal-cancel { width: 100%; padding: 11px; background: #f0f2f0; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; color: var(--text-2); }
+
+/* ── 출석 관리 ── */
+.attend-row { display: flex; align-items: flex-start; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+.attend-row:last-child { border-bottom: none; }
+.attend-info { flex: 1; min-width: 0; }
+.attend-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.attend-name { font-weight: 700; font-size: 15px; }
+.attend-count-badge { background: var(--green-light); color: var(--green); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.attend-history-wrap { margin-top: 7px; display: flex; flex-direction: column; gap: 3px; }
+.attend-entry { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
+.attend-entry-del { background: none; border: 1px solid #fecaca; border-radius: 5px; padding: 1px 7px; font-size: 10px; color: #b91c1c; cursor: pointer; flex-shrink: 0; }
+.attend-entry-del:hover { background: #fee2e2; }
+.attend-person-del { background: none; border: 1px solid #fecaca; border-radius: 7px; padding: 5px 10px; font-size: 11px; font-weight: 700; color: #b91c1c; cursor: pointer; flex-shrink: 0; align-self: flex-start; }
+.attend-person-del:hover { background: #fee2e2; }
+.attend-add-modal { background: white; border-radius: 18px; padding: 22px 20px; width: 92%; max-width: 360px; transform: scale(0.94); transition: 0.22s; box-shadow: 0 12px 40px rgba(0,0,0,0.22); }
+.move-modal-overlay.open .attend-add-modal { transform: scale(1); }
 </style>
 </head>
 <body>
@@ -222,32 +258,75 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     </div>
     <div id="teamWarning" style="display:none" class="notice notice-warn" style="margin-top:10px;"></div>
   </div>
+  <!-- 편집 모드 바 (팀편성 결과 있을 때만 표시) -->
+  <div id="teamEditBar" style="display:none">
+    <div class="team-edit-bar">
+      <span id="teamEditBarLabel">✏️ 편집 모드 OFF</span>
+      <button onclick="toggleTeamEditMode()">편집 모드 켜기</button>
+    </div>
+  </div>
   <div id="teamResult">
     <div class="empty-state">
       <div class="big">🔀</div>
       <p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p>
     </div>
   </div>
+</div>
 
+<!-- 멤버 이동 모달 -->
+<div class="move-modal-overlay" id="moveModal">
+  <div class="move-modal">
+    <div class="move-modal-title">🔀 멤버 이동</div>
+    <div class="move-modal-sub" id="moveModalSub"></div>
+    <div class="team-pick-grid" id="teamPickGrid"></div>
+    <button class="move-modal-cancel" onclick="closeMoveModal()">취소</button>
+  </div>
+</div>
+
+<!-- 출석 추가 모달 -->
+<div class="move-modal-overlay" id="attendAddModal">
+  <div class="attend-add-modal">
+    <div class="move-modal-title">📋 출석 수동 추가</div>
+    <div class="move-modal-sub">이름과 경기방을 입력하여 출석을 기록합니다</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>이름</label>
+      <input id="attendAddName" placeholder="참가자 이름" autocomplete="off" style="width:100%; padding:11px 13px; font-size:15px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fafafa;">
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>경기방 (비우면 현재 방)</label>
+      <input id="attendAddRoom" placeholder="예: 2026-04-09-봄대회" autocomplete="off" style="width:100%; padding:11px 13px; font-size:15px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fafafa;">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-gray btn-sm" onclick="closeAttendAddModal()">취소</button>
+      <button class="btn btn-green btn-sm" onclick="confirmAttendAdd()">추가하기</button>
+    </div>
+  </div>
 </div>
 
 <div class="page" id="page-attendance">
   <div class="card">
     <div class="card-title">📋 출석 시스템 안내</div>
-
     <div style="background:#f8faf8; border:1px solid #d8e5d8; border-radius:10px; padding:14px; line-height:1.9; font-size:14px; color:var(--text-2);">
       • 참가자 등록 시 자동으로 출석 기록이 저장됩니다.<br>
       • 출석 수를 누르면 날짜별 참석 기록을 확인할 수 있습니다.<br><br>
-
       <span style="font-size:13px; color:#b91c1c; font-weight:700;">
       ※ 원활한 출석 누적을 위해 항상 동일한 이름으로 등록해주세요.
       </span>
     </div>
   </div>
 
+  <!-- 관리자 출석 관리 영역 -->
+  <div id="attendAdminSection" style="display:none" class="admin-section">
+    <div class="card-title">⚙️ 출석 관리 (관리자)</div>
+    <div class="btn-row">
+      <button class="btn btn-green-outline btn-sm" onclick="openAttendAddModal()">➕ 출석 수동 추가</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteAllAttendance()">🗑 전체 초기화</button>
+    </div>
+    <div class="notice notice-warn" style="margin-top:10px; font-size:12px;">관리자 모드: 각 항목 옆 🗑 버튼으로 개별 삭제 가능합니다</div>
+  </div>
+
   <div class="card">
     <div class="card-title">📊 출석 현황</div>
-
     <div id="attendanceList">
       <div class="empty-state">
         <div class="big">📋</div>
@@ -626,32 +705,132 @@ function buildAttendanceHTML(data) {
   var html = "";
   Object.keys(data).sort().forEach(function(name) {
     var count = 0;
-    var history = [];
-    // 날짜 계층 없이 attendance/{name}/{room} 구조로 단순화
+    var entries = []; // { room, key }
     Object.keys(data[name] || {}).forEach(function(room) {
       var entry = data[name][room];
-      // 구형 데이터(날짜 계층 있는 경우) 호환 처리
       if (entry && typeof entry === 'object' && !entry.timestamp) {
         Object.keys(entry).forEach(function(subRoom) {
           count++;
-          history.push(room + " [" + subRoom + "]");
+          entries.push({ label: room + " [" + subRoom + "]", key: room, subKey: subRoom });
         });
       } else {
         count++;
-        history.push(room);
+        entries.push({ label: room, key: room, subKey: null });
       }
     });
-    history.sort().reverse();
-    html += `<div class="card" style="margin-bottom:10px">
-      <div style="font-weight:700;font-size:16px">${name}</div>
-      <div style="color:var(--green);margin-top:6px;font-weight:700">출석 ${count}회</div>
-      <div style="font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.8">${history.join("<br>")}</div>
-    </div>`;
+    entries.sort(function(a,b){ return b.label.localeCompare(a.label); });
+
+    var historyHtml = entries.map(function(e) {
+      var delBtn = admin
+        ? '<button class="attend-entry-del" onclick="deleteAttendEntry(\'' + escStr(name) + '\',\'' + escStr(e.key) + '\'' + (e.subKey ? ',\'' + escStr(e.subKey) + '\'' : ',null') + ')">🗑</button>'
+        : '';
+      return '<div class="attend-entry">• ' + e.label + delBtn + '</div>';
+    }).join("");
+
+    var delPersonBtn = admin
+      ? '<button class="attend-person-del" onclick="deleteAttendPerson(\'' + escStr(name) + '\')">전체삭제</button>'
+      : '';
+
+    html += '<div class="attend-row">' +
+      '<div class="attend-info">' +
+        '<div class="attend-name-row">' +
+          '<span class="attend-name">' + name + '</span>' +
+          '<span class="attend-count-badge">출석 ' + count + '회</span>' +
+        '</div>' +
+        '<div class="attend-history-wrap">' + historyHtml + '</div>' +
+      '</div>' +
+      delPersonBtn +
+    '</div>';
   });
   if (!html) html = '<div class="empty-state"><div class="big">📋</div><p>출석 데이터가 없습니다.</p></div>';
   return html;
 }
 
+// ── 출석 관리자 기능 ──
+function deleteAttendEntry(name, key, subKey) {
+  if (!admin) return;
+  var label = subKey ? key + " [" + subKey + "]" : key;
+  if (!confirm("[" + name + "] 의 '" + label + "' 출석 기록을 삭제할까요?")) return;
+  var path = subKey
+    ? "attendance/" + name + "/" + key + "/" + subKey
+    : "attendance/" + name + "/" + key;
+  if (useFirebase) {
+    db.ref(path).remove().then(function() {
+      toast("출석 기록 삭제됨");
+      renderAttendance();
+    });
+  } else {
+    if (subKey) { delete localAttendance[name][key][subKey]; }
+    else { delete localAttendance[name][key]; }
+    renderAttendance();
+    toast("출석 기록 삭제됨");
+  }
+}
+
+function deleteAttendPerson(name) {
+  if (!admin) return;
+  if (!confirm("[" + name + "] 의 모든 출석 기록을 삭제할까요?")) return;
+  if (useFirebase) {
+    db.ref("attendance/" + name).remove().then(function() {
+      toast(name + " 출석 기록 전체 삭제됨");
+      renderAttendance();
+    });
+  } else {
+    delete localAttendance[name];
+    renderAttendance();
+    toast(name + " 출석 기록 전체 삭제됨");
+  }
+}
+
+function deleteAllAttendance() {
+  if (!admin) return;
+  if (!confirm("⚠ 모든 출석 기록을 완전히 초기화할까요?\n이 작업은 되돌릴 수 없습니다!")) return;
+  if (useFirebase) {
+    db.ref("attendance").remove().then(function() {
+      toast("출석 기록 전체 초기화 완료");
+      renderAttendance();
+    });
+  } else {
+    localAttendance = {};
+    renderAttendance();
+    toast("출석 기록 전체 초기화 완료");
+  }
+}
+
+function openAttendAddModal() {
+  document.getElementById("attendAddName").value = "";
+  document.getElementById("attendAddRoom").value = currentRoom || "";
+  document.getElementById("attendAddModal").classList.add("open");
+  setTimeout(function(){ document.getElementById("attendAddName").focus(); }, 300);
+}
+
+function closeAttendAddModal() {
+  document.getElementById("attendAddModal").classList.remove("open");
+}
+
+function confirmAttendAdd() {
+  var name = document.getElementById("attendAddName").value.trim();
+  var room = document.getElementById("attendAddRoom").value.trim() || currentRoom;
+  if (!name) { toast("이름을 입력하세요"); return; }
+  if (!room) { toast("경기방 이름을 입력하세요"); return; }
+  closeAttendAddModal();
+  if (useFirebase) {
+    var ref = db.ref("attendance/" + name + "/" + room);
+    ref.once("value", function(snap) {
+      if (snap.exists()) { toast(name + " 는 이미 해당 방에 출석 기록이 있습니다"); return; }
+      ref.set({ room: room, timestamp: Date.now() }).then(function() {
+        toast("✅ " + name + " 출석 추가됨 (" + room + ")");
+        renderAttendance();
+      });
+    });
+  } else {
+    if (!localAttendance[name]) localAttendance[name] = {};
+    if (localAttendance[name][room]) { toast(name + " 는 이미 해당 방에 출석 기록이 있습니다"); return; }
+    localAttendance[name][room] = { room: room, timestamp: Date.now() };
+    renderAttendance();
+    toast("✅ " + name + " 출석 추가됨 (" + room + ")");
+  }
+}
 function loadMyData() {
   var name = document.getElementById("pName").value.trim();
   if (!name) { toast("이름을 먼저 입력하세요"); return; }
@@ -800,6 +979,9 @@ function unlockAdmin() {
     document.getElementById("adminLocked").style.display = "none";
     document.getElementById("adminUnlocked").style.display = "block";
     document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
+    // 출석 관리자 섹션 표시
+    var attendAdmin = document.getElementById("attendAdminSection");
+    if (attendAdmin) attendAdmin.style.display = "block";
     toast("관리자 모드 활성화");
     updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
   } else toast("비밀번호가 틀렸습니다");
@@ -916,22 +1098,26 @@ function autoAssignTeams() {
   }
 
   renderTeams(teams);
+  currentTeams = teams;
 }
 
 function renderTeams(teams) {
   var el = document.getElementById("teamResult");
+  var editBar = document.getElementById("teamEditBar");
   if (!teams || !teams.length) {
     el.innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>팀편성 결과가 없습니다</p></div>';
+    if (editBar) editBar.style.display = "none";
     return;
   }
+  if (editBar) editBar.style.display = "block";
   // 버그수정 4: 팀 수가 8개를 넘어도 색상이 겹치지 않도록 HSL로 동적 생성
   function teamColor(idx) {
     var presets = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#be185d','#65a30d'];
     if (idx < presets.length) return presets[idx];
-    // 9팀 이상은 골고루 퍼진 HSL 색상 생성
-    var hue = Math.round((idx * 137.508) % 360); // 황금각 분포
+    var hue = Math.round((idx * 137.508) % 360);
     return 'hsl(' + hue + ',55%,42%)';
   }
+  var isEdit = teamEditMode && admin;
   el.innerHTML = teams.map(function(team, idx) {
     var handiSum = team.reduce(function(s, p) { return s + Number(p.handi); }, 0);
     var handiAvg = team.length ? (handiSum / team.length).toFixed(1) : 0;
@@ -939,26 +1125,116 @@ function renderTeams(teams) {
     return '<div class="team-card" style="border-color:' + color + '20; border-left:4px solid ' + color + '">' +
       '<div class="team-header">' +
         '<div class="team-label" style="color:' + color + '">🏌️ ' + (idx + 1) + '조</div>' +
-        '<div class="team-handi-sum">핸디합 ' + handiSum.toFixed(1) + ' / 평균 ' + handiAvg + '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<div class="team-handi-sum">핸디합 ' + handiSum.toFixed(1) + ' / 평균 ' + handiAvg + '</div>' +
+        '</div>' +
       '</div>' +
       team.map(function(p) {
         var isFemale = p.gender === 'female';
-        return '<div class="team-member">' +
+        var memberHtml = '<div class="team-member">' +
           '<div class="member-gender">' + (isFemale ? '👩' : '👨') + '</div>' +
           '<div class="member-name">' + p.name +
             '<span class="gender-badge ' + (isFemale ? 'badge-female' : 'badge-male') + '">' + (isFemale ? '♀' : '♂') + '</span>' +
           '</div>' +
-          '<div class="member-handi">핸디 ' + p.handi + '</div>' +
-        '</div>';
+          '<div class="member-handi">핸디 ' + p.handi + '</div>';
+        if (isEdit) {
+          memberHtml += '<button class="member-move-btn" onclick="openMoveModal(\'' + escStr(p.name) + '\',' + idx + ')">🔀 이동</button>' +
+            '<button class="member-del-btn" onclick="removeFromTeam(\'' + escStr(p.name) + '\',' + idx + ')">✕</button>';
+        }
+        memberHtml += '</div>';
+        return memberHtml;
       }).join("") +
     '</div>';
   }).join("");
 }
 
 function clearTeams() {
+  currentTeams = [];
+  teamEditMode = false;
   document.getElementById("teamResult").innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p></div>';
   document.getElementById("teamWarning").style.display = "none";
+  document.getElementById("teamEditBar").style.display = "none";
   toast("팀편성이 초기화되었습니다");
+}
+
+// ── 팀편성 편집 모드 ──
+var teamEditMode = false;
+var currentTeams = [];
+var moveTarget = null; // { name, fromTeam }
+
+function escStr(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function toggleTeamEditMode() {
+  if (!admin) { toast("관리자만 편집할 수 있습니다"); return; }
+  teamEditMode = !teamEditMode;
+  var bar = document.getElementById("teamEditBar");
+  var btn = bar.querySelector("button");
+  var label = document.getElementById("teamEditBarLabel");
+  if (teamEditMode) {
+    label.textContent = "✏️ 편집 모드 ON — 이동/삭제 가능";
+    btn.textContent = "편집 완료";
+    bar.style.background = "#d97706";
+  } else {
+    label.textContent = "✏️ 편집 모드 OFF";
+    btn.textContent = "편집 모드 켜기";
+    bar.style.background = "var(--green)";
+  }
+  renderTeams(currentTeams);
+}
+
+function openMoveModal(name, fromTeamIdx) {
+  moveTarget = { name: name, fromTeam: fromTeamIdx };
+  document.getElementById("moveModalSub").textContent = '"' + name + '" 을(를) 이동할 조를 선택하세요';
+  var grid = document.getElementById("teamPickGrid");
+  grid.innerHTML = currentTeams.map(function(team, idx) {
+    var isCurrent = idx === fromTeamIdx;
+    return '<button class="team-pick-btn' + (isCurrent ? ' disabled' : '') + '" onclick="confirmMove(' + idx + ')" ' + (isCurrent ? 'disabled' : '') + '>' +
+      (idx + 1) + '조' +
+      (isCurrent ? '<br><span style="font-size:10px;font-weight:400;">현재</span>' : '<br><span style="font-size:10px;font-weight:400;">' + team.length + '명</span>') +
+    '</button>';
+  }).join("") +
+  '<button class="team-pick-btn new-team" onclick="confirmMove(-1)">➕<br><span style="font-size:10px;">새 조</span></button>';
+  document.getElementById("moveModal").classList.add("open");
+}
+
+function closeMoveModal() {
+  document.getElementById("moveModal").classList.remove("open");
+  moveTarget = null;
+}
+
+function confirmMove(toTeamIdx) {
+  if (!moveTarget) return;
+  var name = moveTarget.name;
+  var from = moveTarget.fromTeam;
+  closeMoveModal();
+
+  // 원래 조에서 해당 멤버 찾기
+  var player = null;
+  currentTeams[from] = currentTeams[from].filter(function(p) {
+    if (p.name === name) { player = p; return false; }
+    return true;
+  });
+  if (!player) { toast("멤버를 찾을 수 없습니다"); renderTeams(currentTeams); return; }
+
+  if (toTeamIdx === -1) {
+    // 새 조 생성
+    currentTeams.push([player]);
+    toast(name + " → 새 " + currentTeams.length + "조 이동");
+  } else {
+    currentTeams[toTeamIdx].push(player);
+    toast(name + " → " + (toTeamIdx + 1) + "조 이동");
+  }
+  // 빈 조 제거
+  currentTeams = currentTeams.filter(function(t) { return t.length > 0; });
+  renderTeams(currentTeams);
+}
+
+function removeFromTeam(name, fromTeamIdx) {
+  if (!confirm("[" + name + "] 을(를) 이 조에서 제거할까요?\n(참가자 명단에는 남아있습니다)")) return;
+  currentTeams[fromTeamIdx] = currentTeams[fromTeamIdx].filter(function(p) { return p.name !== name; });
+  currentTeams = currentTeams.filter(function(t) { return t.length > 0; });
+  renderTeams(currentTeams);
+  toast(name + " 제거됨");
 }
 function adminPreview() {
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
