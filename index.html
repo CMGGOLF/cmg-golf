@@ -4,154 +4,649 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>CMG 골프클럽 순위 시스템</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
+/* ═══════════════════════════════════════════════
+   CMG GOLF CLUB — LUXURY DARK DESIGN
+═══════════════════════════════════════════════ */
 :root {
-  --green: #1a6b3a; --green-light: #e8f5ee; --green-mid: #2d8a50;
-  --gold: #c9a84c; --gold-light: #fdf6e3; --silver: #8a9bb0; --bronze: #b87333;
-  --bg: #f4f6f4; --surface: #ffffff; --border: #e2e8e2;
-  --text: #1a2318; --text-2: #4a5a48; --text-3: #7a8a78;
-  --radius: 14px; --radius-sm: 8px; --shadow: 0 2px 12px rgba(26,107,58,0.08);
+  /* Core palette — deep forest night */
+  --ink:        #0d1410;
+  --ink-2:      #1a2318;
+  --surface-0:  #111814;
+  --surface-1:  #182118;
+  --surface-2:  #1e2b1e;
+  --surface-3:  #243124;
+  --border-1:   rgba(255,255,255,0.07);
+  --border-2:   rgba(255,255,255,0.12);
+  --border-3:   rgba(255,255,255,0.20);
+
+  /* Accent — championship gold */
+  --gold:       #c9a84c;
+  --gold-dim:   #9a7a32;
+  --gold-light: rgba(201,168,76,0.12);
+  --gold-glow:  rgba(201,168,76,0.25);
+
+  /* Green accent */
+  --green:      #2ecc71;
+  --green-dim:  #1e8a4a;
+  --green-dark: #0f4a22;
+  --green-light:rgba(46,204,113,0.10);
+  --green-mid:  #27ae60;
+
+  /* Medal */
+  --silver:     #b0bec5;
+  --bronze:     #d4874e;
+
+  /* Text */
+  --text:       #f0f5f0;
+  --text-2:     #9ab09a;
+  --text-3:     #5a7a5a;
+
+  /* Misc */
+  --radius:     16px;
+  --radius-sm:  10px;
+  --shadow:     0 4px 24px rgba(0,0,0,0.4);
+  --shadow-lg:  0 12px 48px rgba(0,0,0,0.6);
 }
+
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-.app-header { background: var(--green); color: white; padding: 20px 16px 16px; padding-top: calc(20px + env(safe-area-inset-top)); text-align: center; position: sticky; top: 0; z-index: 100; }
-.app-header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
-.app-header .sub { font-size: 12px; opacity: 0.7; margin-top: 2px; font-family: 'DM Mono', monospace; }
-.room-badge { display: inline-block; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); border-radius: 20px; padding: 3px 12px; font-size: 12px; font-family: 'DM Mono', monospace; margin-top: 6px; }
-.tab-nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 76px; z-index: 99; }
-.tab-btn { flex: 1; padding: 13px 4px; font-size: 12px; font-weight: 500; color: var(--text-3); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
-.tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
-.tab-btn .icon { display: block; font-size: 18px; margin-bottom: 2px; }
-.page { display: none; padding: 16px; padding-bottom: 100px; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--surface-0);
+  color: var(--text);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 40% at 50% -10%, rgba(46,204,113,0.06) 0%, transparent 70%),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 40px);
+}
+
+/* ── Header ── */
+.app-header {
+  background: linear-gradient(160deg, #0d1e0f 0%, #121e12 60%, #0e1a0e 100%);
+  color: var(--text);
+  padding: 22px 20px 18px;
+  padding-top: calc(22px + env(safe-area-inset-top));
+  text-align: center;
+  position: sticky; top: 0; z-index: 100;
+  border-bottom: 1px solid var(--border-1);
+  box-shadow: 0 1px 0 rgba(201,168,76,0.15), 0 4px 24px rgba(0,0,0,0.5);
+}
+.app-header::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 20%; right: 20%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.app-header h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  text-shadow: 0 0 30px rgba(201,168,76,0.3);
+}
+.app-header .sub {
+  font-size: 11px;
+  opacity: 0.45;
+  margin-top: 3px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.room-badge {
+  display: inline-block;
+  background: rgba(201,168,76,0.1);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  margin-top: 8px;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+}
+
+/* ── Tab Nav ── */
+.tab-nav {
+  display: flex;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-1);
+  position: sticky;
+  top: 84px; z-index: 99;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-nav::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex: 1 1 0;
+  min-width: 44px;
+  padding: 12px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.25s;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.tab-btn:hover { color: var(--text-2); }
+.tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+.tab-btn .icon { display: block; font-size: 16px; margin-bottom: 3px; }
+
+/* ── Pages ── */
+.page { display: none; padding: 18px 16px; padding-bottom: 110px; }
 .page.active { display: block; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
-.card-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 14px; }
+
+/* ── Card ── */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+}
+.card-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 16px;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── Fields ── */
 .field { margin-bottom: 14px; }
 .field:last-child { margin-bottom: 0; }
-.field label { display: block; font-size: 12px; color: var(--text-3); margin-bottom: 5px; font-weight: 500; }
-.field input { width: 100%; padding: 12px 14px; font-size: 16px; font-family: 'Noto Sans KR', sans-serif; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fafafa; color: var(--text); transition: 0.2s; }
-.field input:focus { outline: none; border-color: var(--green-mid); box-shadow: 0 0 0 3px rgba(45,138,80,0.1); background: white; }
-.field input.input-error { border-color: #b91c1c; box-shadow: 0 0 0 3px rgba(185,28,28,0.1); }
+.field label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 7px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+}
+.field input {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: 15px;
+  font-family: 'Noto Sans KR', sans-serif;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  transition: 0.2s;
+}
+.field input::placeholder { color: var(--text-3); }
+.field input:focus {
+  outline: none;
+  border-color: rgba(201,168,76,0.4);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
+  background: var(--surface-3);
+}
+.field input.input-error { border-color: #dc4444; box-shadow: 0 0 0 3px rgba(220,68,68,0.15); }
 .field-row { display: flex; gap: 10px; }
 .field-row .field { flex: 1; min-width: 0; }
-.btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 700; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: transform 0.1s; }
-.btn:active { transform: scale(0.97); }
-.btn-green { background: var(--green); color: white; }
-.btn-green-outline { background: white; color: var(--green); border: 1.5px solid var(--green); }
-.btn-gray { background: #f0f2f0; color: var(--text-2); }
-.btn-dark { background: var(--text); color: white; }
-.btn-gold { background: var(--gold); color: white; }
-.btn-danger { background: #fee2e2; color: #b91c1c; }
-.btn-sm { padding: 10px 14px; font-size: 14px; }
-.btn-row { display: flex; gap: 10px; }
+
+/* ── Buttons ── */
+.btn {
+  width: 100%; padding: 14px;
+  font-size: 14px; font-weight: 600;
+  border: none; border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.03em;
+  position: relative; overflow: hidden;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0);
+  transition: 0.15s;
+}
+.btn:active::after { background: rgba(255,255,255,0.07); }
+.btn:active { transform: scale(0.98); }
+
+.btn-green {
+  background: linear-gradient(135deg, #1a8a46 0%, #12662f 100%);
+  color: #ffffff;
+  border: 1px solid rgba(46,204,113,0.2);
+  box-shadow: 0 2px 12px rgba(18,102,47,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.btn-green:hover { box-shadow: 0 4px 20px rgba(18,102,47,0.6); }
+
+.btn-green-outline {
+  background: transparent;
+  color: var(--green);
+  border: 1.5px solid rgba(46,204,113,0.3);
+}
+.btn-green-outline:hover { background: var(--green-light); }
+
+.btn-gray {
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border-2);
+}
+.btn-gray:hover { border-color: var(--border-3); background: var(--surface-3); }
+
+.btn-dark {
+  background: var(--surface-3);
+  color: var(--text);
+  border: 1px solid var(--border-3);
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, #c9a84c 0%, #a07830 100%);
+  color: #0d1410;
+  font-weight: 700;
+  border: 1px solid rgba(201,168,76,0.4);
+  box-shadow: 0 2px 12px rgba(160,120,48,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.btn-gold:hover { box-shadow: 0 4px 24px rgba(201,168,76,0.5); }
+
+.btn-danger { background: rgba(220,68,68,0.12); color: #f87171; border: 1px solid rgba(220,68,68,0.25); }
+.btn-danger:hover { background: rgba(220,68,68,0.2); }
+
+.btn-sm { padding: 10px 14px; font-size: 13px; }
+.btn-row { display: flex; gap: 8px; }
 .btn-row .btn { flex: 1; }
-.notice { font-size: 12px; padding: 8px 12px; border-radius: var(--radius-sm); margin-top: 10px; }
-.notice-warn { background: #fff8e6; color: #92400e; border: 1px solid #fde68a; }
-.notice-info { background: var(--green-light); color: var(--green); border: 1px solid #a7d7b8; }
-.notice-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-.qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 0 4px; }
+
+/* ── Notice ── */
+.notice { font-size: 12px; padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 10px; line-height: 1.6; }
+.notice-warn { background: rgba(201,168,76,0.08); color: #d4b060; border: 1px solid rgba(201,168,76,0.2); }
+.notice-info { background: var(--green-light); color: var(--green); border: 1px solid rgba(46,204,113,0.2); }
+.notice-error { background: rgba(220,68,68,0.1); color: #f87171; border: 1px solid rgba(220,68,68,0.25); }
+
+/* ── QR ── */
+.qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 6px; }
+.qr-wrap > div { background: white; padding: 10px; border-radius: 8px; }
 .qr-label { font-size: 12px; color: var(--text-3); }
-.status-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; margin-bottom: 14px; }
-.status-pending { background: #fff8e6; color: #92400e; border: 1px solid #fde68a; }
-.status-preview { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.status-live { background: var(--green-light); color: var(--green); border: 1px solid #a7d7b8; }
-.rank-list { display: flex; flex-direction: column; gap: 8px; }
-.rank-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); animation: slideIn 0.3s ease both; }
-@keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.rank-item.rank-1 { border-color: var(--gold); background: var(--gold-light); }
-.rank-item.rank-2 { border-color: var(--silver); background: #f8f9fa; }
-.rank-item.rank-3 { border-color: var(--bronze); background: #fdf5ef; }
-.rank-num { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; width: 36px; text-align: center; color: var(--text-3); }
-.rank-num.n1 { color: var(--gold); } .rank-num.n2 { color: var(--silver); } .rank-num.n3 { color: var(--bronze); }
+
+/* ── Status Bar ── */
+.status-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px; font-weight: 600;
+  margin-bottom: 14px;
+  letter-spacing: 0.03em;
+}
+.status-pending { background: rgba(201,168,76,0.08); color: #d4b060; border: 1px solid rgba(201,168,76,0.18); }
+.status-preview { background: rgba(99,160,255,0.08); color: #7eb4ff; border: 1px solid rgba(99,160,255,0.2); }
+.status-live {
+  background: var(--green-light);
+  color: var(--green);
+  border: 1px solid rgba(46,204,113,0.2);
+}
+
+/* ── Rank List ── */
+.rank-list { display: flex; flex-direction: column; gap: 10px; }
+.rank-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  animation: slideIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.rank-item::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rank-item.rank-1 {
+  border-color: rgba(201,168,76,0.35);
+  background: linear-gradient(135deg, rgba(201,168,76,0.07) 0%, var(--surface-1) 100%);
+  box-shadow: 0 0 0 1px rgba(201,168,76,0.15), 0 4px 20px rgba(0,0,0,0.3);
+}
+.rank-item.rank-1::before {
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent);
+}
+.rank-item.rank-2 {
+  border-color: rgba(176,190,197,0.3);
+  background: linear-gradient(135deg, rgba(176,190,197,0.05) 0%, var(--surface-1) 100%);
+}
+.rank-item.rank-3 {
+  border-color: rgba(212,135,78,0.3);
+  background: linear-gradient(135deg, rgba(212,135,78,0.05) 0%, var(--surface-1) 100%);
+}
+
+.rank-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px; font-weight: 600;
+  width: 38px; text-align: center;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.rank-num.n1 { color: var(--gold); }
+.rank-num.n2 { color: var(--silver); }
+.rank-num.n3 { color: var(--bronze); }
+
 .rank-info { flex: 1; min-width: 0; }
-.rank-name { font-size: 16px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rank-detail { font-size: 12px; color: var(--text-3); margin-top: 2px; font-family: 'DM Mono', monospace; }
-.rank-score { text-align: right; }
-.rank-net { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: var(--text); }
-.rank-net-label { font-size: 11px; color: var(--text-3); }
-.medal { font-size: 22px; }
-.preview-tag { display: inline-block; font-size: 10px; font-weight: 700; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; padding: 2px 6px; margin-left: 6px; vertical-align: middle; }
-.empty-state { text-align: center; padding: 40px 20px; color: var(--text-3); }
-.empty-state .big { font-size: 40px; margin-bottom: 12px; }
-.empty-state p { font-size: 14px; line-height: 1.7; }
-.admin-section { border: 1.5px dashed var(--green-mid); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; background: var(--green-light); }
-.admin-section .card-title { color: var(--green); }
-.sticky-bottom { position: fixed; bottom: 0; left: 0; right: 0; padding: 10px 16px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -4px 16px rgba(0,0,0,0.06); z-index: 200; }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: flex; align-items: flex-end; opacity: 0; transition: 0.25s; pointer-events: none; }
+.rank-name {
+  font-size: 16px; font-weight: 600;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+.rank-detail {
+  font-size: 11px; color: var(--text-3);
+  margin-top: 3px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.03em;
+}
+.rank-score { text-align: right; flex-shrink: 0; }
+.rank-net {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.rank-net-label { font-size: 10px; color: var(--text-3); letter-spacing: 0.08em; font-family: 'DM Mono', monospace; }
+.medal { font-size: 20px; flex-shrink: 0; }
+
+.preview-tag {
+  display: inline-block; font-size: 9px; font-weight: 600;
+  background: rgba(99,160,255,0.1); color: #7eb4ff;
+  border: 1px solid rgba(99,160,255,0.2);
+  border-radius: 4px; padding: 2px 7px; margin-left: 8px;
+  vertical-align: middle; letter-spacing: 0.05em; font-family: 'DM Mono', monospace;
+}
+
+/* ── Empty State ── */
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text-3); }
+.empty-state .big { font-size: 44px; margin-bottom: 14px; filter: grayscale(0.4); }
+.empty-state p { font-size: 13px; line-height: 1.8; color: var(--text-3); }
+
+/* ── Admin Section ── */
+.admin-section {
+  border: 1px solid rgba(46,204,113,0.15);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+  background: rgba(46,204,113,0.04);
+}
+.admin-section .card-title { color: var(--green-dim); }
+
+/* ── Sticky Bottom ── */
+.sticky-bottom {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: rgba(17,24,17,0.92);
+  border-top: 1px solid var(--border-1);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.4);
+  z-index: 200;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 999;
+  display: flex; align-items: flex-end;
+  opacity: 0; transition: 0.3s; pointer-events: none;
+  backdrop-filter: blur(4px);
+}
 .modal-overlay.open { opacity: 1; pointer-events: all; }
-.modal-sheet { width: 100%; max-width: 480px; margin: 0 auto; background: white; border-radius: 20px 20px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+.modal-sheet {
+  width: 100%; max-width: 480px; margin: 0 auto;
+  background: var(--surface-1);
+  border-radius: 22px 22px 0 0;
+  border-top: 1px solid var(--border-2);
+  padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
 .modal-overlay.open .modal-sheet { transform: translateY(0); }
-.modal-handle { width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 18px; }
-.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
-#toast { position: fixed; top: 90px; left: 50%; transform: translateX(-50%) translateY(-10px); background: var(--text); color: white; padding: 10px 20px; border-radius: 100px; font-size: 14px; font-weight: 500; white-space: nowrap; z-index: 9999; opacity: 0; transition: all 0.3s; pointer-events: none; }
+.modal-handle { width: 36px; height: 3px; background: var(--border-3); border-radius: 2px; margin: 0 auto 20px; }
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; color: var(--text); }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; top: 96px; left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  color: var(--text);
+  padding: 10px 22px; border-radius: 100px;
+  font-size: 13px; font-weight: 500;
+  white-space: nowrap; z-index: 9999;
+  opacity: 0; transition: all 0.3s;
+  pointer-events: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  backdrop-filter: blur(10px);
+}
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-/* 성별 선택 토글 */
-.gender-toggle { display: flex; gap: 0; border-radius: var(--radius-sm); overflow: hidden; border: 1.5px solid var(--border); }
-.gender-btn { flex: 1; padding: 11px 0; font-size: 14px; font-weight: 700; border: none; background: #fafafa; color: var(--text-3); cursor: pointer; transition: 0.2s; }
-.gender-btn.active-male { background: #dbeafe; color: #1d4ed8; }
-.gender-btn.active-female { background: #fce7f3; color: #be185d; }
-/* 팀편성 */
-.team-card { background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
-.team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+
+/* ── Gender Toggle ── */
+.gender-toggle {
+  display: flex; gap: 0;
+  border-radius: var(--radius-sm); overflow: hidden;
+  border: 1px solid var(--border-2);
+}
+.gender-btn {
+  flex: 1; padding: 12px 0;
+  font-size: 14px; font-weight: 600;
+  border: none; background: var(--surface-2);
+  color: var(--text-3); cursor: pointer; transition: 0.2s;
+}
+.gender-btn.active-male { background: rgba(99,160,255,0.12); color: #7eb4ff; }
+.gender-btn.active-female { background: rgba(236,72,153,0.12); color: #f472b6; }
+
+/* ── Team Cards ── */
+.team-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 12px;
+  position: relative; overflow: hidden;
+}
+.team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .team-label { font-size: 15px; font-weight: 700; }
-.team-handi-sum { font-family: 'DM Mono', monospace; font-size: 13px; background: var(--green-light); color: var(--green); padding: 3px 10px; border-radius: 20px; }
-.team-member { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.team-handi-sum {
+  font-family: 'DM Mono', monospace; font-size: 12px;
+  background: var(--green-light); color: var(--green);
+  padding: 3px 12px; border-radius: 20px;
+  border: 1px solid rgba(46,204,113,0.15);
+}
+.team-member {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-1);
+}
 .team-member:last-child { border-bottom: none; }
 .member-gender { font-size: 15px; width: 22px; text-align: center; }
-.member-name { flex: 1; font-size: 14px; font-weight: 600; }
-.member-handi { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text-3); }
-.gender-badge { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
-.badge-male { background: #dbeafe; color: #1d4ed8; }
-.badge-female { background: #fce7f3; color: #be185d; }
+.member-name { flex: 1; font-size: 14px; font-weight: 500; color: var(--text); }
+.member-handi { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-3); }
+.gender-badge {
+  display: inline-block; font-size: 10px;
+  padding: 1px 6px; border-radius: 4px;
+  margin-left: 5px; vertical-align: middle;
+}
+.badge-male { background: rgba(99,160,255,0.12); color: #7eb4ff; }
+.badge-female { background: rgba(236,72,153,0.12); color: #f472b6; }
 
-/* ── 팀편성 관리 모드 ── */
-.team-edit-bar { display: flex; align-items: center; justify-content: space-between; background: var(--green); color: white; border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px; font-size: 13px; font-weight: 700; }
-.team-edit-bar button { background: rgba(255,255,255,0.22); border: 1px solid rgba(255,255,255,0.35); color: white; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
-.member-move-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-3); transition: 0.15s; white-space: nowrap; margin-left: 4px; }
-.member-move-btn:hover { background: var(--green-light); border-color: var(--green-mid); color: var(--green); }
-.member-del-btn { background: none; border: 1px solid #fecaca; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer; color: #b91c1c; transition: 0.15s; white-space: nowrap; margin-left: 4px; }
-.member-del-btn:hover { background: #fee2e2; }
-.move-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.52); z-index: 1200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.22s; }
+/* ── Team Edit Bar ── */
+.team-edit-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #1a8a46, #12662f);
+  color: white;
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid rgba(46,204,113,0.2);
+}
+.team-edit-bar button {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: white;
+  border-radius: 6px; padding: 5px 12px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: 0.2s;
+}
+.team-edit-bar button:hover { background: rgba(255,255,255,0.25); }
+
+.member-move-btn {
+  background: none; border: 1px solid var(--border-2);
+  border-radius: 6px; padding: 3px 8px;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  color: var(--text-3); transition: 0.15s;
+  white-space: nowrap; margin-left: 4px;
+}
+.member-move-btn:hover { background: var(--green-light); border-color: rgba(46,204,113,0.3); color: var(--green); }
+
+.member-del-btn {
+  background: none; border: 1px solid rgba(220,68,68,0.25);
+  border-radius: 6px; padding: 3px 8px;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  color: #f87171; transition: 0.15s;
+  white-space: nowrap; margin-left: 4px;
+}
+.member-del-btn:hover { background: rgba(220,68,68,0.1); }
+
+/* ── Move Modal ── */
+.move-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1200;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: 0.22s;
+  backdrop-filter: blur(6px);
+}
 .move-modal-overlay.open { opacity: 1; pointer-events: all; }
-.move-modal { background: white; border-radius: 18px; padding: 22px 20px; width: 88%; max-width: 340px; transform: scale(0.94); transition: 0.22s; box-shadow: 0 12px 40px rgba(0,0,0,0.22); }
+.move-modal {
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: 20px; padding: 24px 22px;
+  width: 88%; max-width: 340px;
+  transform: scale(0.94); transition: 0.22s;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
 .move-modal-overlay.open .move-modal { transform: scale(1); }
-.move-modal-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-.move-modal-sub { font-size: 12px; color: var(--text-3); margin-bottom: 16px; }
+.move-modal-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.move-modal-sub { font-size: 12px; color: var(--text-3); margin-bottom: 18px; }
 .team-pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
-.team-pick-btn { padding: 12px 4px; border: 1.5px solid var(--border); border-radius: 10px; background: #fafafa; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.15s; text-align: center; }
-.team-pick-btn:hover { border-color: var(--green-mid); background: var(--green-light); color: var(--green); }
-.team-pick-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.team-pick-btn {
+  padding: 13px 4px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--surface-3);
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: 0.15s; text-align: center;
+  color: var(--text-2);
+}
+.team-pick-btn:hover { border-color: rgba(46,204,113,0.4); background: var(--green-light); color: var(--green); }
+.team-pick-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
 .team-pick-btn.new-team { border-style: dashed; color: var(--text-3); }
-.move-modal-cancel { width: 100%; padding: 11px; background: #f0f2f0; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; color: var(--text-2); }
+.move-modal-cancel {
+  width: 100%; padding: 12px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; color: var(--text-2);
+  transition: 0.15s;
+}
+.move-modal-cancel:hover { background: var(--surface-1); }
 
-/* ── 출석 관리 ── */
-.attend-row { display: flex; align-items: flex-start; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+/* ── Attendance ── */
+.attend-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-1);
+}
 .attend-row:last-child { border-bottom: none; }
 .attend-info { flex: 1; min-width: 0; }
 .attend-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.attend-name { font-weight: 700; font-size: 15px; }
-.attend-count-badge { background: var(--green-light); color: var(--green); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
-.attend-history-wrap { margin-top: 7px; display: flex; flex-direction: column; gap: 3px; }
-.attend-entry { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
-.attend-entry-del { background: none; border: 1px solid #fecaca; border-radius: 5px; padding: 1px 7px; font-size: 10px; color: #b91c1c; cursor: pointer; flex-shrink: 0; }
-.attend-entry-del:hover { background: #fee2e2; }
-.attend-person-del { background: none; border: 1px solid #fecaca; border-radius: 7px; padding: 5px 10px; font-size: 11px; font-weight: 700; color: #b91c1c; cursor: pointer; flex-shrink: 0; align-self: flex-start; }
-.attend-person-del:hover { background: #fee2e2; }
-.attend-more-btn { background: none; border: none; color: var(--green); font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 0; margin-top: 2px; }
+.attend-name { font-weight: 600; font-size: 15px; color: var(--text); }
+.attend-count-badge {
+  background: var(--green-light); color: var(--green);
+  font-size: 11px; font-weight: 700;
+  padding: 2px 10px; border-radius: 20px;
+  border: 1px solid rgba(46,204,113,0.2);
+  font-family: 'DM Mono', monospace;
+}
+.attend-history-wrap { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.attend-entry { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); font-family: 'DM Mono', monospace; }
+.attend-entry-del {
+  background: none; border: 1px solid rgba(220,68,68,0.25);
+  border-radius: 5px; padding: 1px 7px; font-size: 10px;
+  color: #f87171; cursor: pointer; flex-shrink: 0;
+}
+.attend-entry-del:hover { background: rgba(220,68,68,0.1); }
+.attend-person-del {
+  background: none; border: 1px solid rgba(220,68,68,0.25);
+  border-radius: 8px; padding: 5px 10px;
+  font-size: 11px; font-weight: 600; color: #f87171;
+  cursor: pointer; flex-shrink: 0; align-self: flex-start;
+}
+.attend-person-del:hover { background: rgba(220,68,68,0.1); }
+.attend-more-btn {
+  background: none; border: none;
+  color: var(--green); font-size: 11px; font-weight: 600;
+  cursor: pointer; padding: 4px 0; margin-top: 2px;
+  font-family: 'DM Mono', monospace;
+}
 .attend-more-btn:hover { text-decoration: underline; }
-.attend-add-modal { background: white; border-radius: 18px; padding: 22px 20px; width: 92%; max-width: 360px; transform: scale(0.94); transition: 0.22s; box-shadow: 0 12px 40px rgba(0,0,0,0.22); }
+.attend-add-modal {
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: 20px; padding: 24px 22px;
+  width: 92%; max-width: 360px;
+  transform: scale(0.94); transition: 0.22s;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
 .move-modal-overlay.open .attend-add-modal { transform: scale(1); }
+
+/* ── Attend Add modal inputs ── */
+.attend-add-modal .field input {
+  background: var(--surface-3);
+  border-color: var(--border-2);
+  color: var(--text);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
 </style>
 </head>
 <body>
 <div id="toast"></div>
 <div class="app-header">
-  <h1>⛳ CMG 골프클럽</h1>
-  <div class="sub">대회 참가자 핸디관리 시스템</div>
+  <h1>CMG GOLF CLUB</h1>
+  <div class="sub">HANDICAP MANAGEMENT SYSTEM</div>
   <div id="roomBadge" style="display:none">
     <div class="room-badge" id="roomBadgeText"></div>
   </div>
@@ -179,8 +674,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       1. 현재 운영 중인 방이 자동으로 연결됩니다.<br>
       2. 경기 전 이름과 핸디캡만 입력하여 사전 등록하세요.<br>
       3. 라운드가 끝나면 친타수를 추가로 입력해 주세요.<br>
-      <span style="color:#b91c1c; font-weight:bold;">4. 핸디캡은 최대 14까지만 입력 가능합니다.</span><br>
-      <span style="color:#b91c1c; font-weight:bold;">5. 본인 G핸디, 친타수 다를 게 기재 시 무조건 시상에서 제외 됩니다.</span>
+      <span style="color:#fca5a5; font-weight:600;">4. 핸디캡은 최대 14까지만 입력 가능합니다.</span><br>
+      <span style="color:#fca5a5; font-weight:600;">5. 본인 G핸디, 친타수 다를 게 기재 시 무조건 시상에서 제외 됩니다.</span>
     </div>
   </div>
 </div>
@@ -214,7 +709,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
           <button type="button" class="btn btn-gray" style="flex:0 0 35px; padding:0; font-size:24px; font-weight:bold; border-radius:var(--radius-sm);" onclick="toggleMinus('pHandi')">-</button>
           <input id="pHandi" type="text" inputmode="decimal" placeholder="예: 7.6" style="flex:1;" oninput="validateHandi(this)">
         </div>
-        <div id="handiError" style="display:none; font-size:11px; color:#b91c1c; margin-top:4px;">⚠ 핸디캡은 최대 14까지만 입력 가능합니다</div>
+        <div id="handiError" style="display:none; font-size:11px; color:#fca5a5; margin-top:4px;">⚠ 핸디캡은 최대 14까지만 입력 가능합니다</div>
       </div>
       <div class="field">
         <label>친타수</label>
@@ -233,8 +728,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   <div class="card" id="myNetCard" style="display:none">
     <div class="card-title">내 NET 스코어</div>
     <div style="text-align:center; padding:10px 0;">
-      <div style="font-family:'DM Mono',monospace; font-size:48px; font-weight:500; color:var(--green);" id="myNetDisplay">-</div>
-      <div style="font-size:13px; color:var(--text-3); margin-top:4px">친타수 - 핸디캡 = NET</div>
+      <div style="font-family:'Cormorant Garamond',serif; font-size:56px; font-weight:600; color:var(--gold);" id="myNetDisplay">-</div>
+      <div style="font-size:12px; color:var(--text-3); margin-top:6px; font-family:'DM Mono',monospace; letter-spacing:0.08em;">친타수 - 핸디캡 = NET</div>
     </div>
   </div>
 </div>
@@ -286,11 +781,11 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="move-modal-sub">이름과 경기방을 입력하여 출석을 기록합니다</div>
     <div class="field" style="margin-bottom:12px">
       <label>이름</label>
-      <input id="attendAddName" placeholder="참가자 이름" autocomplete="off" style="width:100%; padding:11px 13px; font-size:15px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fafafa;">
+      <input id="attendAddName" placeholder="참가자 이름" autocomplete="off" style="width:100%; padding:12px 14px; font-size:15px; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:var(--surface-3); color:var(--text);">
     </div>
     <div class="field" style="margin-bottom:16px">
       <label>경기방 (비우면 현재 방)</label>
-      <input id="attendAddRoom" placeholder="예: 2026-04-09-봄대회" autocomplete="off" style="width:100%; padding:11px 13px; font-size:15px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fafafa;">
+      <input id="attendAddRoom" placeholder="예: 2026-04-09-봄대회" autocomplete="off" style="width:100%; padding:12px 14px; font-size:15px; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:var(--surface-3); color:var(--text);">
     </div>
     <div class="btn-row">
       <button class="btn btn-gray btn-sm" onclick="closeAttendAddModal()">취소</button>
@@ -306,11 +801,11 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="move-modal-sub">이름과 경기방을 입력하여 해당 출석 기록을 삭제합니다</div>
     <div class="field" style="margin-bottom:12px">
       <label>이름</label>
-      <input id="attendDelName" placeholder="참가자 이름" autocomplete="off" style="width:100%; padding:11px 13px; font-size:15px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fafafa;">
+      <input id="attendDelName" placeholder="참가자 이름" autocomplete="off" style="width:100%; padding:12px 14px; font-size:15px; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:var(--surface-3); color:var(--text);">
     </div>
     <div class="field" style="margin-bottom:8px">
       <label>경기방 (비우면 해당 이름 전체 삭제)</label>
-      <input id="attendDelRoom" placeholder="예: 2026-04-09-봄대회 (선택)" autocomplete="off" style="width:100%; padding:11px 13px; font-size:15px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fafafa;">
+      <input id="attendDelRoom" placeholder="예: 2026-04-09-봄대회 (선택)" autocomplete="off" style="width:100%; padding:12px 14px; font-size:15px; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:var(--surface-3); color:var(--text);">
     </div>
     <div class="notice notice-warn" style="margin-bottom:14px; font-size:12px;">경기방을 비우면 해당 참가자의 <strong>모든 출석</strong>이 삭제됩니다</div>
     <div class="btn-row">
@@ -323,10 +818,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 <div class="page" id="page-attendance">
   <div class="card">
     <div class="card-title">📋 출석 시스템 안내</div>
-    <div style="background:#f8faf8; border:1px solid #d8e5d8; border-radius:10px; padding:14px; line-height:1.9; font-size:14px; color:var(--text-2);">
+    <div style="background:var(--surface-2); border:1px solid var(--border-1); border-radius:10px; padding:14px; line-height:1.9; font-size:13px; color:var(--text-2);">
       • 참가자 등록 시 자동으로 출석 기록이 저장됩니다.<br>
       • 출석 수를 누르면 날짜별 참석 기록을 확인할 수 있습니다.<br>
-      <span style="font-size:13px; color:#b91c1c; font-weight:700;">※ 원활한 출석 누적을 위해 항상 동일한 이름으로 등록해주세요.</span>
+      <span style="font-size:12px; color:#fca5a5; font-weight:600;">※ 원활한 출석 누적을 위해 항상 동일한 이름으로 등록해주세요.</span>
     </div>
   </div>
   <div class="card">
@@ -351,7 +846,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     </div>
   </div>
   <div id="adminUnlocked" style="display:none">
-    <div class="admin-section" style="border-color:var(--gold); background:var(--gold-light);">
+    <div class="admin-section" style="border-color:rgba(201,168,76,0.3); background:rgba(201,168,76,0.06);">
       <div class="card-title" style="color:var(--gold);">⭐ 새 경기방 생성</div>
       <div class="field">
         <input id="newRoomInput" placeholder="예: 2026-04-09-봄대회" autocomplete="off">
@@ -416,7 +911,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
     </div>
     <div class="card">
-      <div class="card-title" style="color:#b91c1c">⚠ 위험 구역</div>
+      <div class="card-title" style="color:#f87171">⚠ 위험 구역</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">아래 작업은 되돌릴 수 없습니다. (방 폭파)</div>
       <button class="btn btn-danger btn-sm" onclick="resetRoom()">방 완전 삭제 (영구 삭제)</button>
     </div>
@@ -539,9 +1034,9 @@ function listenAllRooms() {
       };
     }).sort(function(a, b) { return b.created - a.created; });
     listEl.innerHTML = roomsArray.map(function(r, idx) {
-      return '<button class="btn btn-gray" style="margin-bottom:10px; text-align:left; padding:18px; display:flex; justify-content:space-between; align-items:center; background:' + (currentRoom === r.id ? 'var(--green-light)' : '#fff') + '; border:1px solid ' + (currentRoom === r.id ? 'var(--green)' : 'var(--border)') + '; box-shadow:0 1px 3px rgba(0,0,0,0.05);" onclick="joinRoom(\'' + r.id + '\')">' +
-        '<span style="font-size:16px; font-weight:700; color:var(--text);">📍 ' + r.id + (idx === 0 ? ' <span style="font-size:11px; color:var(--green); font-weight:700;">(현재 운영 방)</span>' : '') + '</span>' +
-        '<span style="font-size:13px; color:var(--green); font-weight:700;">바로 보기 ❯</span>' +
+      return '<button class="btn btn-gray" style="margin-bottom:10px; text-align:left; padding:18px; display:flex; justify-content:space-between; align-items:center; background:' + (currentRoom === r.id ? 'rgba(46,204,113,0.08)' : 'var(--surface-2)') + '; border:1px solid ' + (currentRoom === r.id ? 'rgba(46,204,113,0.3)' : 'var(--border-2)') + ';" onclick="joinRoom(\'' + r.id + '\')">' +
+        '<span style="font-size:15px; font-weight:600; color:var(--text);">📍 ' + r.id + (idx === 0 ? ' <span style="font-size:11px; color:var(--green); font-weight:700;">(현재 운영 방)</span>' : '') + '</span>' +
+        '<span style="font-size:13px; color:var(--gold); font-weight:600;">바로 보기 ›</span>' +
         '</button>';
     }).join("");
     if ((!currentRoom || !data[currentRoom]) && roomsArray.length) {
@@ -1040,7 +1535,7 @@ function renderParticipantList() {
       '</div>' +
       '<div class="rank-score">' +
         '<div style="font-size:12px; font-weight:700; color:' + (hasScore ? 'var(--green)' : 'var(--text-3)') + '">' + (hasScore ? '경기종료' : '대기중') + '</div>' +
-        (canEdit ? '<div style="font-size:10px; color:var(--green); margin-top:4px;">터치하여 점수입력 ❯</div>' : '<div style="font-size:10px; color:#ccc; margin-top:4px;">🔒 수정불가</div>') +
+        (canEdit ? '<div style="font-size:10px; color:var(--gold); margin-top:4px;">터치하여 점수입력 ›</div>' : '<div style="font-size:10px; color:var(--text-3); margin-top:4px;">🔒 수정불가</div>') +
       '</div>' +
     '</div>';
   }).join("");
@@ -1095,15 +1590,15 @@ function refreshAdminPlayerList() {
   if (!arr.length) { el.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>참가자가 없습니다</p></div>'; return; }
   el.innerHTML = arr.map(function(p) {
     var gIcon = p.gender === 'female' ? '♀' : '♂';
-    var gColor = p.gender === 'female' ? '#be185d' : '#1d4ed8';
-    return '<div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--border)">' +
+    var gColor = p.gender === 'female' ? '#f472b6' : '#7eb4ff';
+    return '<div style="display:flex; align-items:center; padding:11px 0; border-bottom:1px solid var(--border-1);">' +
       '<div style="width:28px; font-family:\'DM Mono\',monospace; font-size:14px; color:var(--text-3)">' + p.rank + '</div>' +
       '<div style="width:20px; font-size:13px; color:' + gColor + '; font-weight:700;">' + gIcon + '</div>' +
-      '<div style="flex:1; font-size:14px; font-weight:500">' + p.name + '</div>' +
-      '<div style="font-size:13px; color:var(--text-3); margin-right:12px; font-family:\'DM Mono\',monospace">' +
-        (p.hasScore ? p.score + ' - ' + p.handi + ' = <strong style="color:var(--green)">' + p.net + '</strong>' : '<span style="color:#b91c1c">점수입력 대기중</span>') +
+      '<div style="flex:1; font-size:14px; font-weight:500; color:var(--text);">' + p.name + '</div>' +
+      '<div style="font-size:12px; color:var(--text-3); margin-right:12px; font-family:\'DM Mono\',monospace">' +
+        (p.hasScore ? p.score + ' - ' + p.handi + ' = <strong style="color:var(--gold)">' + p.net + '</strong>' : '<span style="color:#fca5a5">점수입력 대기중</span>') +
       '</div>' +
-      '<button onclick="deletePlayer(\'' + p.name + '\')" style="background:none; border:none; font-size:16px; cursor:pointer; padding:4px">🗑</button>' +
+      '<button onclick="deletePlayer(\'' + p.name + '\')" style="background:none; border:none; font-size:16px; cursor:pointer; padding:4px; color:var(--text-3);">🗑</button>' +
     '</div>';
   }).join("");
 }
