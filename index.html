@@ -141,6 +141,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .attend-entry-del:hover { background: #fee2e2; }
 .attend-person-del { background: none; border: 1px solid #fecaca; border-radius: 7px; padding: 5px 10px; font-size: 11px; font-weight: 700; color: #b91c1c; cursor: pointer; flex-shrink: 0; align-self: flex-start; }
 .attend-person-del:hover { background: #fee2e2; }
+.attend-more-btn { background: none; border: none; color: var(--green); font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 0; margin-top: 2px; }
+.attend-more-btn:hover { text-decoration: underline; }
 .attend-add-modal { background: white; border-radius: 18px; padding: 22px 20px; width: 92%; max-width: 360px; transform: scale(0.94); transition: 0.22s; box-shadow: 0 12px 40px rgba(0,0,0,0.22); }
 .move-modal-overlay.open .attend-add-modal { transform: scale(1); }
 </style>
@@ -308,10 +310,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="card-title">📋 출석 시스템 안내</div>
     <div style="background:#f8faf8; border:1px solid #d8e5d8; border-radius:10px; padding:14px; line-height:1.9; font-size:14px; color:var(--text-2);">
       • 참가자 등록 시 자동으로 출석 기록이 저장됩니다.<br>
-      • 출석 수를 누르면 날짜별 참석 기록을 확인할 수 있습니다.<br><br>
-      <span style="font-size:13px; color:#b91c1c; font-weight:700;">
-      ※ 원활한 출석 누적을 위해 항상 동일한 이름으로 등록해주세요.
-      </span>
+      • 출석 수를 누르면 날짜별 참석 기록을 확인할 수 있습니다.<br>
+      <span style="font-size:13px; color:#b91c1c; font-weight:700;">※ 원활한 출석 누적을 위해 항상 동일한 이름으로 등록해주세요.</span>
     </div>
   </div>
 
@@ -705,7 +705,7 @@ function buildAttendanceHTML(data) {
   var html = "";
   Object.keys(data).sort().forEach(function(name) {
     var count = 0;
-    var entries = []; // { room, key }
+    var entries = [];
     Object.keys(data[name] || {}).forEach(function(room) {
       var entry = data[name][room];
       if (entry && typeof entry === 'object' && !entry.timestamp) {
@@ -720,30 +720,60 @@ function buildAttendanceHTML(data) {
     });
     entries.sort(function(a,b){ return b.label.localeCompare(a.label); });
 
-    var historyHtml = entries.map(function(e) {
+    var safeId = 'att_' + name.replace(/[^a-zA-Z0-9가-힣]/g, '_');
+    var SHOW = 5;
+    var visibleEntries = entries.slice(0, SHOW);
+    var hiddenEntries  = entries.slice(SHOW);
+    var hasMore = hiddenEntries.length > 0;
+
+    function entryHtml(e) {
       var delBtn = admin
         ? '<button class="attend-entry-del" onclick="deleteAttendEntry(\'' + escStr(name) + '\',\'' + escStr(e.key) + '\'' + (e.subKey ? ',\'' + escStr(e.subKey) + '\'' : ',null') + ')">🗑</button>'
         : '';
       return '<div class="attend-entry">• ' + e.label + delBtn + '</div>';
-    }).join("");
+    }
+
+    var visibleHtml = visibleEntries.map(entryHtml).join("");
+    var hiddenHtml  = hiddenEntries.map(entryHtml).join("");
+
+    var moreBlock = hasMore
+      ? '<div id="' + safeId + '_more" style="display:none">' + hiddenHtml + '</div>' +
+        '<button class="attend-more-btn" id="' + safeId + '_btn" onclick="toggleAttendMore(\'' + safeId + '\',' + hiddenEntries.length + ')">▼ ' + hiddenEntries.length + '개 더 보기</button>'
+      : '';
 
     var delPersonBtn = admin
       ? '<button class="attend-person-del" onclick="deleteAttendPerson(\'' + escStr(name) + '\')">전체삭제</button>'
       : '';
 
+    // 출석 뱃지 클릭 시 토글
+    var badgeOnclick = hasMore ? 'onclick="toggleAttendMore(\'' + safeId + '\',' + hiddenEntries.length + ')"' : '';
+    var badgeStyle = hasMore ? 'cursor:pointer;' : '';
+
     html += '<div class="attend-row">' +
       '<div class="attend-info">' +
         '<div class="attend-name-row">' +
           '<span class="attend-name">' + name + '</span>' +
-          '<span class="attend-count-badge">출석 ' + count + '회</span>' +
+          '<span class="attend-count-badge" style="' + badgeStyle + '" ' + badgeOnclick + '>출석 ' + count + '회</span>' +
         '</div>' +
-        '<div class="attend-history-wrap">' + historyHtml + '</div>' +
+        '<div class="attend-history-wrap">' +
+          visibleHtml +
+          moreBlock +
+        '</div>' +
       '</div>' +
       delPersonBtn +
     '</div>';
   });
   if (!html) html = '<div class="empty-state"><div class="big">📋</div><p>출석 데이터가 없습니다.</p></div>';
   return html;
+}
+
+function toggleAttendMore(safeId, hiddenCount) {
+  var more = document.getElementById(safeId + '_more');
+  var btn  = document.getElementById(safeId + '_btn');
+  if (!more) return;
+  var open = more.style.display !== 'none';
+  more.style.display = open ? 'none' : 'block';
+  if (btn) btn.textContent = open ? ('▼ ' + hiddenCount + '개 더 보기') : '▲ 접기';
 }
 
 // ── 출석 관리자 기능 ──
