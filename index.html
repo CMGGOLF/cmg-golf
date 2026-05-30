@@ -582,11 +582,18 @@ body {
 
 /* ── Attendance ── */
 .attend-row {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 14px 0;
   border-bottom: 1px solid var(--border-1);
+  overflow: hidden;
 }
 .attend-row:last-child { border-bottom: none; }
+.attend-row-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 0;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.attend-row-header:active { opacity: 0.75; }
 .attend-info { flex: 1; min-width: 0; }
 .attend-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .attend-name { font-weight: 600; font-size: 15px; color: var(--text); }
@@ -597,7 +604,19 @@ body {
   border: 1px solid rgba(46,204,113,0.2);
   font-family: 'DM Mono', monospace;
 }
-.attend-history-wrap { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.attend-chevron {
+  font-size: 11px; color: var(--text-3);
+  transition: transform 0.22s ease;
+  flex-shrink: 0;
+  padding-right: 2px;
+}
+.attend-row.open .attend-chevron { transform: rotate(180deg); }
+.attend-body {
+  display: none;
+  padding: 0 0 14px 0;
+}
+.attend-row.open .attend-body { display: block; }
+.attend-history-wrap { display: flex; flex-direction: column; gap: 4px; }
 .attend-entry { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); font-family: 'DM Mono', monospace; }
 .attend-entry-del {
   background: none; border: 1px solid rgba(220,68,68,0.25);
@@ -610,6 +629,7 @@ body {
   border-radius: 8px; padding: 5px 10px;
   font-size: 11px; font-weight: 600; color: #f87171;
   cursor: pointer; flex-shrink: 0; align-self: flex-start;
+  margin-top: 8px;
 }
 .attend-person-del:hover { background: rgba(220,68,68,0.1); }
 .attend-more-btn {
@@ -1258,33 +1278,40 @@ function buildAttendanceHTML(data) {
 
     var moreBlock = hasMore
       ? '<div id="' + safeId + '_more" style="display:none">' + hiddenHtml + '</div>' +
-        '<button class="attend-more-btn" id="' + safeId + '_btn" onclick="toggleAttendMore(\'' + safeId + '\',' + hiddenEntries.length + ')">▼ ' + hiddenEntries.length + '개 더 보기</button>'
+        '<button class="attend-more-btn" id="' + safeId + '_btn" onclick="event.stopPropagation();toggleAttendMore(\'' + safeId + '\',' + hiddenEntries.length + ')">▼ ' + hiddenEntries.length + '개 더 보기</button>'
       : '';
 
     var delPersonBtn = admin
-      ? '<button class="attend-person-del" onclick="deleteAttendPerson(\'' + escStr(name) + '\')">전체삭제</button>'
+      ? '<button class="attend-person-del" onclick="event.stopPropagation();deleteAttendPerson(\'' + escStr(name) + '\')">전체삭제</button>'
       : '';
 
-    // 출석 뱃지 클릭 시 토글
-    var badgeOnclick = hasMore ? 'onclick="toggleAttendMore(\'' + safeId + '\',' + hiddenEntries.length + ')"' : '';
-    var badgeStyle = hasMore ? 'cursor:pointer;' : '';
-
-    html += '<div class="attend-row">' +
-      '<div class="attend-info">' +
-        '<div class="attend-name-row">' +
-          '<span class="attend-name">' + name + '</span>' +
-          '<span class="attend-count-badge" style="' + badgeStyle + '" ' + badgeOnclick + '>출석 ' + count + '회</span>' +
+    html += '<div class="attend-row" id="' + safeId + '_row">' +
+      '<div class="attend-row-header" onclick="toggleAttendRow(\'' + safeId + '\')">' +
+        '<div class="attend-info">' +
+          '<div class="attend-name-row">' +
+            '<span class="attend-name">' + name + '</span>' +
+            '<span class="attend-count-badge">출석 ' + count + '회</span>' +
+          '</div>' +
         '</div>' +
+        '<span class="attend-chevron">▼</span>' +
+      '</div>' +
+      '<div class="attend-body" id="' + safeId + '_body">' +
         '<div class="attend-history-wrap">' +
           visibleHtml +
           moreBlock +
         '</div>' +
+        delPersonBtn +
       '</div>' +
-      delPersonBtn +
     '</div>';
   });
   if (!html) html = '<div class="empty-state"><div class="big">📋</div><p>출석 데이터가 없습니다.</p></div>';
   return html;
+}
+
+function toggleAttendRow(safeId) {
+  var row = document.getElementById(safeId + '_row');
+  if (!row) return;
+  row.classList.toggle('open');
 }
 
 function toggleAttendMore(safeId, hiddenCount) {
@@ -1675,12 +1702,20 @@ function autoAssignTeams() {
     }
   }
 
-  // 배정
+  // 배정 — order에서 해당 팀이 이미 꽉 찬 경우 빈 슬롯 있는 다른 팀에 배정
   var pIdx = 0;
-  for (var oi = 0; oi < order.length; oi++) {
+  for (var oi = 0; oi < order.length && pIdx < remainPool.length; oi++) {
     var tIdx = order[oi];
-    if (teams[tIdx].length < 4 && pIdx < remainPool.length) {
+    if (teams[tIdx].length < 4) {
       teams[tIdx].push(remainPool[pIdx++]);
+    } else {
+      // 해당 팀이 꽉 찼으면 슬롯 남은 팀 중 첫 번째에 배정
+      for (var fi = 0; fi < teamCount; fi++) {
+        if (teams[fi].length < 4) {
+          teams[fi].push(remainPool[pIdx++]);
+          break;
+        }
+      }
     }
   }
 
