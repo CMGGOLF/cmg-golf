@@ -260,13 +260,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     </div>
     <div id="teamWarning" style="display:none" class="notice notice-warn" style="margin-top:10px;"></div>
   </div>
-  <!-- 편집 모드 바 (팀편성 결과 있을 때만 표시) -->
-  <div id="teamEditBar" style="display:none">
-    <div class="team-edit-bar">
-      <span id="teamEditBarLabel">✏️ 편집 모드 OFF</span>
-      <button onclick="toggleTeamEditMode()">편집 모드 켜기</button>
-    </div>
-  </div>
+  <!-- 편집 모드 바: 관리자 페이지에서 제어 -->
   <div id="teamResult">
     <div class="empty-state">
       <div class="big">🔀</div>
@@ -314,17 +308,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <span style="font-size:13px; color:#b91c1c; font-weight:700;">※ 원활한 출석 누적을 위해 항상 동일한 이름으로 등록해주세요.</span>
     </div>
   </div>
-
-  <!-- 관리자 출석 관리 영역 -->
-  <div id="attendAdminSection" style="display:none" class="admin-section">
-    <div class="card-title">⚙️ 출석 관리 (관리자)</div>
-    <div class="btn-row">
-      <button class="btn btn-green-outline btn-sm" onclick="openAttendAddModal()">➕ 출석 수동 추가</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteAllAttendance()">🗑 전체 초기화</button>
-    </div>
-    <div class="notice notice-warn" style="margin-top:10px; font-size:12px;">관리자 모드: 각 항목 옆 🗑 버튼으로 개별 삭제 가능합니다</div>
-  </div>
-
   <div class="card">
     <div class="card-title">📊 출석 현황</div>
     <div id="attendanceList">
@@ -388,6 +371,26 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <div class="card-title">참가자 관리</div>
       <div id="adminPlayerList">
         <div class="empty-state" style="padding:16px 0"><p>참가자가 없습니다</p></div>
+      </div>
+    </div>
+    <!-- 출석 관리 -->
+    <div class="admin-section">
+      <div class="card-title">📋 출석 관리</div>
+      <div class="btn-row" style="margin-bottom:10px;">
+        <button class="btn btn-green-outline btn-sm" onclick="openAttendAddModal()">➕ 출석 수동 추가</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAllAttendance()">🗑 전체 초기화</button>
+      </div>
+      <div class="notice notice-warn" style="margin-top:0; font-size:12px;">출석 탭에서 각 항목 옆 🗑 버튼으로 개별 삭제도 가능합니다</div>
+    </div>
+    <!-- 팀편성 관리 -->
+    <div class="admin-section" id="teamAdminSection" style="display:none;">
+      <div class="card-title">🔀 팀편성 관리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:10px;">편집 모드를 켜면 팀편성 탭에서 멤버 이동·삭제가 가능합니다.</div>
+      <div id="teamEditBar">
+        <div class="team-edit-bar" id="teamEditBarInner">
+          <span id="teamEditBarLabel">✏️ 편집 모드 OFF</span>
+          <button onclick="toggleTeamEditMode()">편집 모드 켜기</button>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -1009,9 +1012,9 @@ function unlockAdmin() {
     document.getElementById("adminLocked").style.display = "none";
     document.getElementById("adminUnlocked").style.display = "block";
     document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
-    // 출석 관리자 섹션 표시
-    var attendAdmin = document.getElementById("attendAdminSection");
-    if (attendAdmin) attendAdmin.style.display = "block";
+    // 팀편성 관리 섹션 표시
+    var teamAdmin = document.getElementById("teamAdminSection");
+    if (teamAdmin) teamAdmin.style.display = "block";
     toast("관리자 모드 활성화");
     updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
   } else toast("비밀번호가 틀렸습니다");
@@ -1133,13 +1136,10 @@ function autoAssignTeams() {
 
 function renderTeams(teams) {
   var el = document.getElementById("teamResult");
-  var editBar = document.getElementById("teamEditBar");
   if (!teams || !teams.length) {
     el.innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>팀편성 결과가 없습니다</p></div>';
-    if (editBar) editBar.style.display = "none";
     return;
   }
-  if (editBar) editBar.style.display = "block";
   // 버그수정 4: 팀 수가 8개를 넘어도 색상이 겹치지 않도록 HSL로 동적 생성
   function teamColor(idx) {
     var presets = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#be185d','#65a30d'];
@@ -1183,7 +1183,10 @@ function clearTeams() {
   teamEditMode = false;
   document.getElementById("teamResult").innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p></div>';
   document.getElementById("teamWarning").style.display = "none";
-  document.getElementById("teamEditBar").style.display = "none";
+  var label = document.getElementById("teamEditBarLabel");
+  if (label) label.textContent = "✏️ 편집 모드 OFF";
+  var barInner = document.getElementById("teamEditBarInner");
+  if (barInner) { barInner.style.background = "var(--green)"; var btn = barInner.querySelector("button"); if (btn) btn.textContent = "편집 모드 켜기"; }
   toast("팀편성이 초기화되었습니다");
 }
 
@@ -1197,17 +1200,19 @@ function escStr(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 function toggleTeamEditMode() {
   if (!admin) { toast("관리자만 편집할 수 있습니다"); return; }
   teamEditMode = !teamEditMode;
-  var bar = document.getElementById("teamEditBar");
-  var btn = bar.querySelector("button");
+  var bar = document.getElementById("teamEditBarInner");
+  var btn = bar ? bar.querySelector("button") : null;
   var label = document.getElementById("teamEditBarLabel");
   if (teamEditMode) {
     label.textContent = "✏️ 편집 모드 ON — 이동/삭제 가능";
-    btn.textContent = "편집 완료";
-    bar.style.background = "#d97706";
+    if (btn) btn.textContent = "편집 완료";
+    if (bar) bar.style.background = "#d97706";
+    toast("✏️ 편집 모드 ON — 팀편성 탭에서 멤버를 이동하세요");
   } else {
     label.textContent = "✏️ 편집 모드 OFF";
-    btn.textContent = "편집 모드 켜기";
-    bar.style.background = "var(--green)";
+    if (btn) btn.textContent = "편집 모드 켜기";
+    if (bar) bar.style.background = "var(--green)";
+    toast("편집 완료");
   }
   renderTeams(currentTeams);
 }
