@@ -299,6 +299,27 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   </div>
 </div>
 
+<!-- 출석 수동 삭제 모달 -->
+<div class="move-modal-overlay" id="attendDeleteModal">
+  <div class="attend-add-modal">
+    <div class="move-modal-title">🗑 출석 수동 삭제</div>
+    <div class="move-modal-sub">이름과 경기방을 입력하여 해당 출석 기록을 삭제합니다</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>이름</label>
+      <input id="attendDelName" placeholder="참가자 이름" autocomplete="off" style="width:100%; padding:11px 13px; font-size:15px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fafafa;">
+    </div>
+    <div class="field" style="margin-bottom:8px">
+      <label>경기방 (비우면 해당 이름 전체 삭제)</label>
+      <input id="attendDelRoom" placeholder="예: 2026-04-09-봄대회 (선택)" autocomplete="off" style="width:100%; padding:11px 13px; font-size:15px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fafafa;">
+    </div>
+    <div class="notice notice-warn" style="margin-bottom:14px; font-size:12px;">경기방을 비우면 해당 참가자의 <strong>모든 출석</strong>이 삭제됩니다</div>
+    <div class="btn-row">
+      <button class="btn btn-gray btn-sm" onclick="closeAttendDeleteModal()">취소</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmAttendDelete()">삭제하기</button>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page-attendance">
   <div class="card">
     <div class="card-title">📋 출석 시스템 안내</div>
@@ -376,9 +397,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <!-- 출석 관리 -->
     <div class="admin-section">
       <div class="card-title">📋 출석 관리</div>
-      <div class="btn-row" style="margin-bottom:10px;">
-        <button class="btn btn-green-outline btn-sm" onclick="openAttendAddModal()">➕ 출석 수동 추가</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteAllAttendance()">🗑 전체 초기화</button>
+      <div class="btn-row" style="margin-bottom:8px;">
+        <button class="btn btn-green-outline btn-sm" onclick="openAttendAddModal()">➕ 수동 추가</button>
+        <button class="btn btn-gray btn-sm" onclick="openAttendDeleteModal()">🗑 수동 삭제</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAllAttendance()">⚠ 전체 초기화</button>
       </div>
       <div class="notice notice-warn" style="margin-top:0; font-size:12px;">출석 탭에서 각 항목 옆 🗑 버튼으로 개별 삭제도 가능합니다</div>
     </div>
@@ -839,6 +861,43 @@ function openAttendAddModal() {
 
 function closeAttendAddModal() {
   document.getElementById("attendAddModal").classList.remove("open");
+}
+
+function openAttendDeleteModal() {
+  document.getElementById("attendDelName").value = "";
+  document.getElementById("attendDelRoom").value = "";
+  document.getElementById("attendDeleteModal").classList.add("open");
+  setTimeout(function(){ document.getElementById("attendDelName").focus(); }, 300);
+}
+
+function closeAttendDeleteModal() {
+  document.getElementById("attendDeleteModal").classList.remove("open");
+}
+
+function confirmAttendDelete() {
+  var name = document.getElementById("attendDelName").value.trim();
+  var room = document.getElementById("attendDelRoom").value.trim();
+  if (!name) { toast("이름을 입력하세요"); return; }
+  var msg = room
+    ? "[" + name + "] 의 '" + room + "' 출석 기록을 삭제할까요?"
+    : "[" + name + "] 의 모든 출석 기록을 삭제할까요?";
+  if (!confirm(msg)) return;
+  closeAttendDeleteModal();
+  var path = room ? "attendance/" + name + "/" + room : "attendance/" + name;
+  if (useFirebase) {
+    db.ref(path).remove().then(function() {
+      toast("🗑 출석 기록이 삭제되었습니다");
+      renderAttendance();
+    }).catch(function() { toast("삭제 실패 — 이름/방 이름을 확인하세요"); });
+  } else {
+    if (room) {
+      if (localAttendance[name]) delete localAttendance[name][room];
+    } else {
+      delete localAttendance[name];
+    }
+    renderAttendance();
+    toast("🗑 출석 기록이 삭제되었습니다");
+  }
 }
 
 function confirmAttendAdd() {
