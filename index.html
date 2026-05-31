@@ -85,14 +85,14 @@ body {
 }
 .app-header h1 {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--text);
   text-shadow: 0 0 30px rgba(201,168,76,0.3);
 }
 .app-header .sub {
-  font-size: 11px;
+  font-size: 19px;
   opacity: 0.45;
   margin-top: 3px;
   font-family: 'DM Mono', monospace;
@@ -105,7 +105,7 @@ body {
   border: 1px solid rgba(201,168,76,0.3);
   border-radius: 20px;
   padding: 4px 14px;
-  font-size: 11px;
+  font-size: 19px;
   font-family: 'DM Mono', monospace;
   margin-top: 8px;
   color: var(--gold);
@@ -127,7 +127,7 @@ body {
   flex: 1 1 0;
   min-width: 44px;
   padding: 12px 6px;
-  font-size: 10px;
+  font-size: 18px;
   font-weight: 500;
   color: var(--text-3);
   background: none; border: none;
@@ -140,7 +140,7 @@ body {
 }
 .tab-btn:hover { color: var(--text-2); }
 .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
-.tab-btn .icon { display: block; font-size: 16px; margin-bottom: 3px; }
+.tab-btn .icon { display: block; font-size: 18px; margin-bottom: 3px; }
 
 /* ── Pages ── */
 .page { display: none; padding: 18px 16px; padding-bottom: 110px; }
@@ -164,7 +164,7 @@ body {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
 }
 .card-title {
-  font-size: 10px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -178,7 +178,7 @@ body {
 .field:last-child { margin-bottom: 0; }
 .field label {
   display: block;
-  font-size: 11px;
+  font-size: 19px;
   color: var(--text-3);
   margin-bottom: 7px;
   font-weight: 600;
@@ -189,7 +189,7 @@ body {
 .field input {
   width: 100%;
   padding: 13px 16px;
-  font-size: 15px;
+  font-size: 19px;
   font-family: 'Noto Sans KR', sans-serif;
   border: 1px solid var(--border-2);
   border-radius: var(--radius-sm);
@@ -211,7 +211,7 @@ body {
 /* ── Buttons ── */
 .btn {
   width: 100%; padding: 14px;
-  font-size: 14px; font-weight: 600;
+  font-size: 18px; font-weight: 600;
   border: none; border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;
@@ -268,12 +268,12 @@ body {
 .btn-danger { background: rgba(220,68,68,0.12); color: #f87171; border: 1px solid rgba(220,68,68,0.25); }
 .btn-danger:hover { background: rgba(220,68,68,0.2); }
 
-.btn-sm { padding: 10px 14px; font-size: 13px; }
+.btn-sm { padding: 10px 14px; font-size: 19px; }
 .btn-row { display: flex; gap: 8px; }
 .btn-row .btn { flex: 1; }
 
 /* ── Notice ── */
-.notice { font-size: 12px; padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 10px; line-height: 1.6; }
+.notice { font-size: 18px; padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 10px; line-height: 1.6; }
 .notice-warn { background: rgba(201,168,76,0.08); color: #d4b060; border: 1px solid rgba(201,168,76,0.2); }
 .notice-info { background: var(--green-light); color: var(--green); border: 1px solid rgba(46,204,113,0.2); }
 .notice-error { background: rgba(220,68,68,0.1); color: #f87171; border: 1px solid rgba(220,68,68,0.25); }
@@ -281,14 +281,14 @@ body {
 /* ── QR ── */
 .qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 6px; }
 .qr-wrap > div { background: white; padding: 10px; border-radius: 8px; }
-.qr-label { font-size: 12px; color: var(--text-3); }
+.qr-label { font-size: 18px; color: var(--text-3); }
 
 /* ── Status Bar ── */
 .status-bar {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 16px;
   border-radius: var(--radius-sm);
-  font-size: 12px; font-weight: 600;
+  font-size: 18px; font-weight: 600;
   margin-bottom: 14px;
   letter-spacing: 0.03em;
 }
@@ -340,7 +340,7 @@ body {
 
 .rank-num {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 24px; font-weight: 600;
+  font-size: 28px; font-weight: 600;
   width: 38px; text-align: center;
   color: var(--text-3);
   flex-shrink: 0;
@@ -351,13 +351,13 @@ body {
 
 .rank-info { flex: 1; min-width: 0; }
 .rank-name {
-  font-size: 16px; font-weight: 600;
+  font-size: 18px; font-weight: 600;
   color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   letter-spacing: -0.01em;
 }
 .rank-detail {
-  font-size: 11px; color: var(--text-3);
+  font-size: 19px; color: var(--text-3);
   margin-top: 3px;
   font-family: 'DM Mono', monospace;
   letter-spacing: 0.03em;
@@ -365,15 +365,15 @@ body {
 .rank-score { text-align: right; flex-shrink: 0; }
 .rank-net {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 26px; font-weight: 600;
+  font-size: 28px; font-weight: 600;
   color: var(--text);
   line-height: 1;
 }
-.rank-net-label { font-size: 10px; color: var(--text-3); letter-spacing: 0.08em; font-family: 'DM Mono', monospace; }
+.rank-net-label { font-size: 18px; color: var(--text-3); letter-spacing: 0.08em; font-family: 'DM Mono', monospace; }
 .medal { font-size: 20px; flex-shrink: 0; }
 
 .preview-tag {
-  display: inline-block; font-size: 9px; font-weight: 600;
+  display: inline-block; font-size: 19px; font-weight: 600;
   background: rgba(99,160,255,0.1); color: #7eb4ff;
   border: 1px solid rgba(99,160,255,0.2);
   border-radius: 4px; padding: 2px 7px; margin-left: 8px;
@@ -382,8 +382,8 @@ body {
 
 /* ── Empty State ── */
 .empty-state { text-align: center; padding: 48px 20px; color: var(--text-3); }
-.empty-state .big { font-size: 44px; margin-bottom: 14px; filter: grayscale(0.4); }
-.empty-state p { font-size: 13px; line-height: 1.8; color: var(--text-3); }
+.empty-state .big { font-size: 46px; margin-bottom: 14px; filter: grayscale(0.4); }
+.empty-state p { font-size: 19px; line-height: 1.8; color: var(--text-3); }
 
 /* ── Admin Section ── */
 .admin-section {
@@ -428,7 +428,7 @@ body {
 }
 .modal-overlay.open .modal-sheet { transform: translateY(0); }
 .modal-handle { width: 36px; height: 3px; background: var(--border-3); border-radius: 2px; margin: 0 auto 20px; }
-.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; color: var(--text); }
+.modal-title { font-size: 19px; font-weight: 700; margin-bottom: 18px; color: var(--text); }
 
 /* ── Toast ── */
 #toast {
@@ -438,7 +438,7 @@ body {
   border: 1px solid var(--border-2);
   color: var(--text);
   padding: 10px 22px; border-radius: 100px;
-  font-size: 13px; font-weight: 500;
+  font-size: 19px; font-weight: 500;
   white-space: nowrap; z-index: 9999;
   opacity: 0; transition: all 0.3s;
   pointer-events: none;
@@ -455,7 +455,7 @@ body {
 }
 .gender-btn {
   flex: 1; padding: 12px 0;
-  font-size: 14px; font-weight: 600;
+  font-size: 18px; font-weight: 600;
   border: none; background: var(--surface-2);
   color: var(--text-3); cursor: pointer; transition: 0.2s;
 }
@@ -472,9 +472,9 @@ body {
   position: relative; overflow: hidden;
 }
 .team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.team-label { font-size: 15px; font-weight: 700; }
+.team-label { font-size: 19px; font-weight: 700; }
 .team-handi-sum {
-  font-family: 'DM Mono', monospace; font-size: 12px;
+  font-family: 'DM Mono', monospace; font-size: 18px;
   background: var(--green-light); color: var(--green);
   padding: 3px 12px; border-radius: 20px;
   border: 1px solid rgba(46,204,113,0.15);
@@ -485,11 +485,11 @@ body {
   border-bottom: 1px solid var(--border-1);
 }
 .team-member:last-child { border-bottom: none; }
-.member-gender { font-size: 15px; width: 22px; text-align: center; }
-.member-name { flex: 1; font-size: 14px; font-weight: 500; color: var(--text); }
-.member-handi { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-3); }
+.member-gender { font-size: 19px; width: 22px; text-align: center; }
+.member-name { flex: 1; font-size: 18px; font-weight: 500; color: var(--text); }
+.member-handi { font-family: 'DM Mono', monospace; font-size: 18px; color: var(--text-3); }
 .gender-badge {
-  display: inline-block; font-size: 10px;
+  display: inline-block; font-size: 18px;
   padding: 1px 6px; border-radius: 4px;
   margin-left: 5px; vertical-align: middle;
 }
@@ -504,7 +504,7 @@ body {
   border-radius: var(--radius-sm);
   padding: 10px 16px;
   margin-bottom: 14px;
-  font-size: 13px; font-weight: 600;
+  font-size: 19px; font-weight: 600;
   border: 1px solid rgba(46,204,113,0.2);
 }
 .team-edit-bar button {
@@ -512,7 +512,7 @@ body {
   border: 1px solid rgba(255,255,255,0.25);
   color: white;
   border-radius: 6px; padding: 5px 12px;
-  font-size: 12px; font-weight: 700; cursor: pointer;
+  font-size: 18px; font-weight: 700; cursor: pointer;
   transition: 0.2s;
 }
 .team-edit-bar button:hover { background: rgba(255,255,255,0.25); }
@@ -520,7 +520,7 @@ body {
 .member-move-btn {
   background: none; border: 1px solid var(--border-2);
   border-radius: 6px; padding: 3px 8px;
-  font-size: 11px; font-weight: 600; cursor: pointer;
+  font-size: 19px; font-weight: 600; cursor: pointer;
   color: var(--text-3); transition: 0.15s;
   white-space: nowrap; margin-left: 4px;
 }
@@ -529,7 +529,7 @@ body {
 .member-del-btn {
   background: none; border: 1px solid rgba(220,68,68,0.25);
   border-radius: 6px; padding: 3px 8px;
-  font-size: 11px; font-weight: 600; cursor: pointer;
+  font-size: 19px; font-weight: 600; cursor: pointer;
   color: #f87171; transition: 0.15s;
   white-space: nowrap; margin-left: 4px;
 }
@@ -554,15 +554,15 @@ body {
   box-shadow: 0 20px 60px rgba(0,0,0,0.6);
 }
 .move-modal-overlay.open .move-modal { transform: scale(1); }
-.move-modal-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
-.move-modal-sub { font-size: 12px; color: var(--text-3); margin-bottom: 18px; }
+.move-modal-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.move-modal-sub { font-size: 18px; color: var(--text-3); margin-bottom: 18px; }
 .team-pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
 .team-pick-btn {
   padding: 13px 4px;
   border: 1px solid var(--border-2);
   border-radius: 10px;
   background: var(--surface-3);
-  font-size: 13px; font-weight: 700;
+  font-size: 19px; font-weight: 700;
   cursor: pointer; transition: 0.15s; text-align: center;
   color: var(--text-2);
 }
@@ -574,7 +574,7 @@ body {
   background: var(--surface-3);
   border: 1px solid var(--border-2);
   border-radius: var(--radius-sm);
-  font-size: 14px; font-weight: 600;
+  font-size: 18px; font-weight: 600;
   cursor: pointer; color: var(--text-2);
   transition: 0.15s;
 }
@@ -596,16 +596,16 @@ body {
 .attend-row-header:active { opacity: 0.75; }
 .attend-info { flex: 1; min-width: 0; }
 .attend-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.attend-name { font-weight: 600; font-size: 15px; color: var(--text); }
+.attend-name { font-weight: 600; font-size: 19px; color: var(--text); }
 .attend-count-badge {
   background: var(--green-light); color: var(--green);
-  font-size: 11px; font-weight: 700;
+  font-size: 19px; font-weight: 700;
   padding: 2px 10px; border-radius: 20px;
   border: 1px solid rgba(46,204,113,0.2);
   font-family: 'DM Mono', monospace;
 }
 .attend-chevron {
-  font-size: 11px; color: var(--text-3);
+  font-size: 19px; color: var(--text-3);
   transition: transform 0.22s ease;
   flex-shrink: 0;
   padding-right: 2px;
@@ -617,24 +617,24 @@ body {
 }
 .attend-row.open .attend-body { display: block; }
 .attend-history-wrap { display: flex; flex-direction: column; gap: 4px; }
-.attend-entry { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); font-family: 'DM Mono', monospace; }
+.attend-entry { display: flex; align-items: center; gap: 6px; font-size: 18px; color: var(--text-3); font-family: 'DM Mono', monospace; }
 .attend-entry-del {
   background: none; border: 1px solid rgba(220,68,68,0.25);
-  border-radius: 5px; padding: 1px 7px; font-size: 10px;
+  border-radius: 5px; padding: 1px 7px; font-size: 18px;
   color: #f87171; cursor: pointer; flex-shrink: 0;
 }
 .attend-entry-del:hover { background: rgba(220,68,68,0.1); }
 .attend-person-del {
   background: none; border: 1px solid rgba(220,68,68,0.25);
   border-radius: 8px; padding: 5px 10px;
-  font-size: 11px; font-weight: 600; color: #f87171;
+  font-size: 19px; font-weight: 600; color: #f87171;
   cursor: pointer; flex-shrink: 0; align-self: flex-start;
   margin-top: 8px;
 }
 .attend-person-del:hover { background: rgba(220,68,68,0.1); }
 .attend-more-btn {
   background: none; border: none;
-  color: var(--green); font-size: 11px; font-weight: 600;
+  color: var(--green); font-size: 19px; font-weight: 600;
   cursor: pointer; padding: 4px 0; margin-top: 2px;
   font-family: 'DM Mono', monospace;
 }
@@ -1243,7 +1243,22 @@ function renderAttendance() {
 
 function buildAttendanceHTML(data) {
   var html = "";
-  Object.keys(data).sort().forEach(function(name) {
+  // 출석 많은순 정렬
+  var sortedNames = Object.keys(data).sort(function(a, b) {
+    var countA = 0, countB = 0;
+    Object.keys(data[a] || {}).forEach(function(r) {
+      var e = data[a][r];
+      if (e && typeof e === 'object' && !e.timestamp) countA += Object.keys(e).length;
+      else countA++;
+    });
+    Object.keys(data[b] || {}).forEach(function(r) {
+      var e = data[b][r];
+      if (e && typeof e === 'object' && !e.timestamp) countB += Object.keys(e).length;
+      else countB++;
+    });
+    return countB - countA;
+  });
+  sortedNames.forEach(function(name) {
     var count = 0;
     var entries = [];
     Object.keys(data[name] || {}).forEach(function(room) {
@@ -1642,13 +1657,11 @@ function autoAssignTeams() {
   if (!players.length) { toast("참가자가 없습니다"); return; }
 
   var females = players.filter(function(p) { return p.gender === 'female'; });
-  var males = players.filter(function(p) { return p.gender !== 'female'; });
-  var total = players.length;
-  // 버그수정 1: 팀이 최소 1팀은 돼야 하므로 Math.max로 보호
+  var males   = players.filter(function(p) { return p.gender !== 'female'; });
+  var total   = players.length;
   var teamCount = Math.max(1, Math.ceil(total / 4));
-  var warnEl = document.getElementById("teamWarning");
+  var warnEl  = document.getElementById("teamWarning");
 
-  // 여자가 팀 수보다 적으면 경고
   if (females.length < teamCount) {
     warnEl.style.display = "block";
     warnEl.textContent = "⚠ 여자 참가자(" + females.length + "명)가 팀 수(" + teamCount + "팀)보다 적어 일부 팀에 여자가 없을 수 있습니다.";
@@ -1656,67 +1669,44 @@ function autoAssignTeams() {
     warnEl.style.display = "none";
   }
 
-  // 핸디 내림차순 정렬
   var sortDesc = function(arr) {
-    return arr.slice().sort(function(a, b) { return b.handi - a.handi; });
+    return arr.slice().sort(function(a, b) { return Number(b.handi) - Number(a.handi); });
   };
 
-  // 팀 초기화
+  // ── 핸디합 평준화 배분 알고리즘 ──
+  // 전략: 매 라운드마다 현재 핸디합이 가장 낮은 팀에 다음 선수를 배정 (그리디 최소힙 방식)
+  // 여자 최소 1명 보장: 여자를 먼저 팀당 1명씩 배정 후, 나머지는 핸디합 기준으로 균등 배분
+
   var teams = [];
-  for (var i = 0; i < teamCount; i++) teams.push([]);
+  var teamHandiSum = [];
+  for (var i = 0; i < teamCount; i++) { teams.push([]); teamHandiSum.push(0); }
 
-  // 1) 여자 먼저 핸디 내림차순으로 각 팀에 1명씩 배정
+  // 1) 여자 핸디 내림차순으로 팀당 1명씩 배정 (핸디합 낮은 팀 우선)
   var femalesSorted = sortDesc(females);
-  var malesSorted = sortDesc(males);
-
-  for (var ti = 0; ti < teamCount; ti++) {
-    if (femalesSorted[ti]) teams[ti].push(femalesSorted[ti]);
-  }
-  // 남은 여자들은 남자 pool에 합쳐서 핸디 기준 재배분
-  var extraFemales = femalesSorted.slice(teamCount);
-  var remainPool = sortDesc(malesSorted.concat(extraFemales));
-
-  // 2) 남은 인원을 핸디 평준화 스네이크 드래프트로 배정
-  // 버그수정 1: teamCount===1일 때 무한루프 방지 — while 대신 필요한 순서를 직접 생성
-  // 버그수정 2: totalSlots가 remainPool보다 클 수 있으므로 실제 배정 가능 수 기준으로 순서 생성
-  var slots = [];
-  for (var si = 0; si < teamCount; si++) {
-    slots.push(4 - teams[si].length);
-  }
-  var totalSlots = slots.reduce(function(a, b) { return a + b; }, 0);
-  // 실제 배정할 인원 수 (pool과 슬롯 중 작은 쪽)
-  var assignCount = Math.min(totalSlots, remainPool.length);
-
-  // 스네이크 드래프트 순서 생성 — while 무한루프 없이 for 루프로 처리
-  var order = [];
-  if (teamCount === 1) {
-    // 팀이 1개면 모두 같은 팀으로
-    for (var k = 0; k < assignCount; k++) order.push(0);
-  } else {
-    var cur = 0, dir = 1;
-    while (order.length < assignCount) {
-      order.push(cur);
-      if (cur === teamCount - 1) { dir = -1; }
-      else if (cur === 0 && order.length > 1) { dir = 1; }
-      cur += dir;
-    }
-  }
-
-  // 배정 — order에서 해당 팀이 이미 꽉 찬 경우 빈 슬롯 있는 다른 팀에 배정
-  var pIdx = 0;
-  for (var oi = 0; oi < order.length && pIdx < remainPool.length; oi++) {
-    var tIdx = order[oi];
-    if (teams[tIdx].length < 4) {
-      teams[tIdx].push(remainPool[pIdx++]);
+  for (var fi = 0; fi < femalesSorted.length; fi++) {
+    if (fi < teamCount) {
+      // 첫 teamCount명: 순서대로 각 팀에 1명씩
+      teams[fi].push(femalesSorted[fi]);
+      teamHandiSum[fi] += Number(femalesSorted[fi].handi);
     } else {
-      // 해당 팀이 꽉 찼으면 슬롯 남은 팀 중 첫 번째에 배정
-      for (var fi = 0; fi < teamCount; fi++) {
-        if (teams[fi].length < 4) {
-          teams[fi].push(remainPool[pIdx++]);
-          break;
-        }
+      // 초과 여자: 핸디합 가장 낮고 슬롯 남은 팀에 배정
+      var minIdx = -1;
+      for (var mi = 0; mi < teamCount; mi++) {
+        if (teams[mi].length < 4 && (minIdx === -1 || teamHandiSum[mi] < teamHandiSum[minIdx])) minIdx = mi;
       }
+      if (minIdx !== -1) { teams[minIdx].push(femalesSorted[fi]); teamHandiSum[minIdx] += Number(femalesSorted[fi].handi); }
     }
+  }
+
+  // 2) 남자 핸디 내림차순으로 핸디합 가장 낮은 팀에 순서대로 배정
+  var malesSorted = sortDesc(males);
+  for (var mi2 = 0; mi2 < malesSorted.length; mi2++) {
+    // 슬롯 남은 팀 중 핸디합 최소인 팀 선택
+    var minIdx2 = -1;
+    for (var ti = 0; ti < teamCount; ti++) {
+      if (teams[ti].length < 4 && (minIdx2 === -1 || teamHandiSum[ti] < teamHandiSum[minIdx2])) minIdx2 = ti;
+    }
+    if (minIdx2 !== -1) { teams[minIdx2].push(malesSorted[mi2]); teamHandiSum[minIdx2] += Number(malesSorted[mi2].handi); }
   }
 
   renderTeams(teams);
