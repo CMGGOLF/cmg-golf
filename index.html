@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>CMG 골프클럽 순위 시스템</title>
+<title>CMG 골프참가자등록 시스템</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="CMG 골프참가자등록 시스템">
+<meta property="og:description" content="게임 30분 전까지 참가자 등록을 하셔야 자동 출석 및 팀편성 됩니다.">
+<meta property="og:url" content="https://cmggolf.github.io">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CMG 골프참가자등록 시스템">
+<meta name="twitter:description" content="게임 30분 전까지 참가자 등록을 하셔야 자동 출석 및 팀편성 됩니다.">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
@@ -688,6 +695,13 @@ body {
     <div class="card-title">진행 중인 경기방</div>
     <div id="availableRoomsList">
       <div class="empty-state"><p>목록을 불러오는 중...</p></div>
+    </div>
+  </div>
+  <div style="background:linear-gradient(135deg,rgba(201,168,76,0.13),rgba(201,168,76,0.06)); border:1px solid rgba(201,168,76,0.35); border-radius:12px; padding:16px 18px; margin-bottom:12px; display:flex; align-items:flex-start; gap:12px;">
+    <div style="font-size:22px; flex-shrink:0; margin-top:1px;">⏰</div>
+    <div>
+      <div style="font-family:'DM Mono',monospace; font-size:9.5px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:6px;">중요 안내</div>
+      <div style="font-size:14px; font-weight:700; color:var(--gold); line-height:1.6;">게임 30분 전까지 참가자 등록을 하셔야<br>자동 출석 및 팀편성 됩니다.</div>
     </div>
   </div>
   <div class="card">
