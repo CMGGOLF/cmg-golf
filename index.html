@@ -7,7 +7,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="CMG 골프참가자등록 시스템">
 <meta property="og:description" content="게임 30분 전까지 참가자 등록을 하셔야 자동 출석 및 팀편성 됩니다.">
-<meta property="og:url" content="https://cmggolf.github.io">
+<meta property="og:url" content="https://cmggolf.github.io/cmg-golf/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="CMG 골프참가자등록 시스템">
 <meta name="twitter:description" content="게임 30분 전까지 참가자 등록을 하셔야 자동 출석 및 팀편성 됩니다.">
@@ -779,23 +779,11 @@ body {
   </div>
 </div>
 <div class="page" id="page-team">
-  <div class="card">
-    <div class="card-title">🔀 자동 팀편성</div>
-    <div style="font-size:13px; color:var(--text-2); line-height:1.8; margin-bottom:14px;">
-      • 팀당 <strong>4명</strong>, 여자 <strong>최소 1명</strong> 강제 배정<br>
-      • 핸디 높은 순 4명 + 역순(낮은 순) 4명 + 중간 2명씩으로 팀 핸디 평준화
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
-      <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
-    </div>
-    <div id="teamWarning" style="display:none" class="notice notice-warn" style="margin-top:10px;"></div>
-  </div>
-  <!-- 편집 모드 바: 관리자 페이지에서 제어 -->
+  <div id="teamWarning" style="display:none" class="notice notice-warn" style="margin-bottom:10px;"></div>
   <div id="teamResult">
     <div class="empty-state">
       <div class="big">🔀</div>
-      <p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p>
+      <p>관리자가 팀편성을 실행하면<br>여기에 결과가 표시됩니다</p>
     </div>
   </div>
 </div>
@@ -938,7 +926,14 @@ body {
     <!-- 팀편성 관리 -->
     <div class="admin-section" id="teamAdminSection" style="display:none;">
       <div class="card-title">🔀 팀편성 관리</div>
-      <div style="font-size:13px; color:var(--text-2); margin-bottom:10px;">편집 모드를 켜면 팀편성 탭에서 멤버 이동·삭제가 가능합니다.</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.7;">
+        팀당 <strong>4명</strong>, 여자 <strong>최소 1명</strong> 강제 배정<br>
+        핸디 스네이크 드래프트 방식으로 팀 평준화
+      </div>
+      <div class="btn-row" style="margin-bottom:10px;">
+        <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
+        <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
+      </div>
       <div id="teamEditBar">
         <div class="team-edit-bar" id="teamEditBarInner">
           <span id="teamEditBarLabel">✏️ 편집 모드 OFF</span>
