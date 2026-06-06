@@ -1517,6 +1517,17 @@ function listenRoom() {
       refreshAdminRoomStatus();
       refreshAdminPlayerList();
     }
+    // 팀편성 결과 — 관리자/일반 사용자 모두 팀편성 탭에 표시
+    var savedTeams = room.teams || null;
+    if (savedTeams && Array.isArray(savedTeams) && savedTeams.length) {
+      currentTeams = savedTeams;
+      renderTeams(savedTeams);
+      document.getElementById("teamWarning").style.display = "none";
+    } else if (!admin) {
+      // 관리자가 아닌 경우, 팀편성이 없을 때 기본 메시지 표시
+      document.getElementById("teamResult").innerHTML =
+        '<div class="empty-state"><div class="big">🔀</div><p>관리자가 팀편성을 실행하면<br>여기에 결과가 표시됩니다</p></div>';
+    }
     // ✅ 관리자 여부와 관계없이 자동 공개 조건 체크
     runAutoPublishIfNeeded();
   });
@@ -1722,6 +1733,15 @@ function autoAssignTeams() {
 
   renderTeams(teams);
   currentTeams = teams;
+
+  // Firebase에 팀편성 결과 저장 → 일반 사용자 팀편성 탭에도 공개
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teams").set(teams).then(function() {
+      toast("⚡ 팀편성 완료! 팀편성 탭에 공개되었습니다.");
+    }).catch(function() {
+      toast("⚡ 팀편성 완료! (Firebase 저장 실패)");
+    });
+  }
 }
 
 function renderTeams(teams) {
@@ -1777,6 +1797,10 @@ function clearTeams() {
   if (label) label.textContent = "✏️ 편집 모드 OFF";
   var barInner = document.getElementById("teamEditBarInner");
   if (barInner) { barInner.style.background = "var(--green)"; var btn = barInner.querySelector("button"); if (btn) btn.textContent = "편집 모드 켜기"; }
+  // Firebase에서도 팀편성 데이터 삭제
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teams").remove();
+  }
   toast("팀편성이 초기화되었습니다");
 }
 
@@ -1852,6 +1876,10 @@ function confirmMove(toTeamIdx) {
   // 빈 조 제거
   currentTeams = currentTeams.filter(function(t) { return t.length > 0; });
   renderTeams(currentTeams);
+  // 편집 결과 Firebase에 반영
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teams").set(currentTeams);
+  }
 }
 
 function removeFromTeam(name, fromTeamIdx) {
@@ -1859,6 +1887,10 @@ function removeFromTeam(name, fromTeamIdx) {
   currentTeams[fromTeamIdx] = currentTeams[fromTeamIdx].filter(function(p) { return p.name !== name; });
   currentTeams = currentTeams.filter(function(t) { return t.length > 0; });
   renderTeams(currentTeams);
+  // 편집 결과 Firebase에 반영
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teams").set(currentTeams);
+  }
   toast(name + " 제거됨");
 }
 function adminPreview() {
