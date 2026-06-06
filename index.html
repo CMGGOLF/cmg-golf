@@ -926,9 +926,18 @@ body {
     <!-- 팀편성 관리 -->
     <div class="admin-section" id="teamAdminSection" style="display:none;">
       <div class="card-title">🔀 팀편성 관리</div>
-      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.7;">
-        팀당 <strong>4명</strong>, 여자 <strong>최소 1명</strong> 강제 배정<br>
-        핸디 스네이크 드래프트 방식으로 팀 평준화
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
+        여자 <strong>최소 1명</strong> 강제 배정 · 핸디 평준화 자동 배분
+      </div>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">팀당 인원 선택</div>
+        <div class="btn-row">
+          <button id="teamSizeBtn3" class="btn btn-gray btn-sm" onclick="setTeamSize(3)" style="flex:1;">3명씩</button>
+          <button id="teamSizeBtn4" class="btn btn-gold btn-sm" onclick="setTeamSize(4)" style="flex:1;">4명씩 ✓</button>
+        </div>
+      </div>
+      <div style="font-size:12px; color:var(--text-3); margin-bottom:10px;" id="teamSizeInfo">
+        총 <span id="teamSizeTotal">0</span>명 → <span id="teamSizeCount">0</span>팀 예상
       </div>
       <div class="btn-row" style="margin-bottom:10px;">
         <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
@@ -1149,15 +1158,24 @@ function toggleAutoPublish() {
       published = true;
       renderRank();
       refreshAdminRoomStatus();
-      toast("🤖 첫 점수 입력 기준 자동 공개가 적용되었습니다.");
+      toast("🤖 자동 공개 ON — 순위가 즉시 공개되었습니다.");
     } else {
-      toast("자동 공개 설정이 변경되었습니다.");
+      toast(autoPublishEnabled ? "🤖 자동 공개 ON" : "자동 공개 OFF");
     }
     return;
   }
   var next = !autoPublishEnabled;
+  // autoPublish 플래그 저장
   db.ref("rooms/" + currentRoom + "/meta/autoPublish").set(next).then(function() {
-    toast(next ? "🤖 자동 공개가 켜졌습니다." : "자동 공개가 꺼졌습니다.");
+    if (!next) { toast("자동 공개가 꺼졌습니다."); return; }
+    // 자동공개 ON 전환 직후 — 이미 점수가 있으면 즉시 published=true 저장
+    if (canAutoPublish() && !published) {
+      db.ref("rooms/" + currentRoom + "/meta/published").set(true).then(function() {
+        toast("🤖 자동 공개 ON — 입력된 점수가 있어 순위가 즉시 공개되었습니다.");
+      });
+    } else {
+      toast("🤖 자동 공개 ON — 첫 친타수 입력 시 순위가 자동 공개됩니다.");
+    }
   }).catch(function() {
     toast("자동 공개 설정 저장에 실패했습니다.");
   });
@@ -1206,6 +1224,8 @@ function saveMyScore() {
   var score = hasScore ? Number(scoreStr) : "";
   var timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
   if (useFirebase) {
+    // localData 즉시 반영 → 저장 직후 canAutoPublish()가 정확한 값 반환
+    localData[name] = { name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender };
     db.ref("rooms/" + currentRoom + "/players/" + name).set({ name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender });
     // 방 이름에 날짜가 포함되므로 날짜 중간 경로 제거 — attendance/{name}/{room} 구조로 단순화
     var attendRef = db.ref("attendance/" + name + "/" + currentRoom);
@@ -1214,6 +1234,8 @@ function saveMyScore() {
         attendRef.set({ room: currentRoom, timestamp: Date.now() });
       }
     });
+    // 자동 공개 ON 상태이고 점수가 입력됐으면 즉시 공개 트리거
+    if (hasScore) runAutoPublishIfNeeded();
   } else {
     // 오프라인(로컬) 모드
     localData[name] = { name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender };
@@ -1516,6 +1538,7 @@ function listenRoom() {
     if (admin) {
       refreshAdminRoomStatus();
       refreshAdminPlayerList();
+      updateTeamSizeInfo();
     }
     // 팀편성 결과 — 관리자/일반 사용자 모두 팀편성 탭에 표시
     var savedTeams = room.teams || null;
@@ -1635,6 +1658,7 @@ function unlockAdmin() {
     if (teamAdmin) teamAdmin.style.display = "block";
     toast("관리자 모드 활성화");
     updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
+    updateTeamSizeInfo();
   } else toast("비밀번호가 틀렸습니다");
 }
 function refreshAdminRoomStatus() {
@@ -1673,6 +1697,31 @@ function deletePlayer(name) {
   toast(name + " 삭제됨");
 }
 
+// ── 팀편성 인원 설정 ──
+var selectedTeamSize = 4;
+
+function setTeamSize(n) {
+  selectedTeamSize = n;
+  var btn3 = document.getElementById("teamSizeBtn3");
+  var btn4 = document.getElementById("teamSizeBtn4");
+  if (btn3 && btn4) {
+    btn3.className = 'btn btn-sm' + (n === 3 ? ' btn-gold' : ' btn-gray');
+    btn3.textContent = n === 3 ? '3명씩 ✓' : '3명씩';
+    btn4.className = 'btn btn-sm' + (n === 4 ? ' btn-gold' : ' btn-gray');
+    btn4.textContent = n === 4 ? '4명씩 ✓' : '4명씩';
+  }
+  updateTeamSizeInfo();
+}
+
+function updateTeamSizeInfo() {
+  var total = Object.keys(localData || {}).length;
+  var teamCount = Math.max(1, Math.ceil(total / selectedTeamSize));
+  var totalEl = document.getElementById("teamSizeTotal");
+  var countEl = document.getElementById("teamSizeCount");
+  if (totalEl) totalEl.textContent = total;
+  if (countEl) countEl.textContent = teamCount;
+}
+
 // ── 자동 팀편성 ──
 function autoAssignTeams() {
   var players = Object.values(localData || {});
@@ -1681,7 +1730,7 @@ function autoAssignTeams() {
   var females = players.filter(function(p) { return p.gender === 'female'; });
   var males   = players.filter(function(p) { return p.gender !== 'female'; });
   var total   = players.length;
-  var teamCount = Math.max(1, Math.ceil(total / 4));
+  var teamCount = Math.max(1, Math.ceil(total / selectedTeamSize));
   var warnEl  = document.getElementById("teamWarning");
 
   if (females.length < teamCount) {
@@ -1695,10 +1744,6 @@ function autoAssignTeams() {
     return arr.slice().sort(function(a, b) { return Number(b.handi) - Number(a.handi); });
   };
 
-  // ── 핸디합 평준화 배분 알고리즘 ──
-  // 전략: 매 라운드마다 현재 핸디합이 가장 낮은 팀에 다음 선수를 배정 (그리디 최소힙 방식)
-  // 여자 최소 1명 보장: 여자를 먼저 팀당 1명씩 배정 후, 나머지는 핸디합 기준으로 균등 배분
-
   var teams = [];
   var teamHandiSum = [];
   for (var i = 0; i < teamCount; i++) { teams.push([]); teamHandiSum.push(0); }
@@ -1707,14 +1752,12 @@ function autoAssignTeams() {
   var femalesSorted = sortDesc(females);
   for (var fi = 0; fi < femalesSorted.length; fi++) {
     if (fi < teamCount) {
-      // 첫 teamCount명: 순서대로 각 팀에 1명씩
       teams[fi].push(femalesSorted[fi]);
       teamHandiSum[fi] += Number(femalesSorted[fi].handi);
     } else {
-      // 초과 여자: 핸디합 가장 낮고 슬롯 남은 팀에 배정
       var minIdx = -1;
       for (var mi = 0; mi < teamCount; mi++) {
-        if (teams[mi].length < 4 && (minIdx === -1 || teamHandiSum[mi] < teamHandiSum[minIdx])) minIdx = mi;
+        if (teams[mi].length < selectedTeamSize && (minIdx === -1 || teamHandiSum[mi] < teamHandiSum[minIdx])) minIdx = mi;
       }
       if (minIdx !== -1) { teams[minIdx].push(femalesSorted[fi]); teamHandiSum[minIdx] += Number(femalesSorted[fi].handi); }
     }
@@ -1723,10 +1766,9 @@ function autoAssignTeams() {
   // 2) 남자 핸디 내림차순으로 핸디합 가장 낮은 팀에 순서대로 배정
   var malesSorted = sortDesc(males);
   for (var mi2 = 0; mi2 < malesSorted.length; mi2++) {
-    // 슬롯 남은 팀 중 핸디합 최소인 팀 선택
     var minIdx2 = -1;
     for (var ti = 0; ti < teamCount; ti++) {
-      if (teams[ti].length < 4 && (minIdx2 === -1 || teamHandiSum[ti] < teamHandiSum[minIdx2])) minIdx2 = ti;
+      if (teams[ti].length < selectedTeamSize && (minIdx2 === -1 || teamHandiSum[ti] < teamHandiSum[minIdx2])) minIdx2 = ti;
     }
     if (minIdx2 !== -1) { teams[minIdx2].push(malesSorted[mi2]); teamHandiSum[minIdx2] += Number(malesSorted[mi2].handi); }
   }
