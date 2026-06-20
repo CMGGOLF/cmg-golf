@@ -874,6 +874,10 @@ body {
     </div>
   </div>
   <div id="adminUnlocked" style="display:none">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding:10px 14px; background:rgba(26,138,70,0.08); border:1px solid rgba(26,138,70,0.25); border-radius:var(--radius-sm);">
+      <span style="font-size:13px; font-weight:600; color:var(--green);">🔓 관리자 로그인 됨 (자동 로그인 유지)</span>
+      <button class="btn btn-gray btn-sm" style="width:auto; padding:7px 14px; font-size:12px;" onclick="logoutAdmin()">로그아웃</button>
+    </div>
     <div class="admin-section" style="border-color:rgba(201,168,76,0.3); background:rgba(201,168,76,0.06);">
       <div class="card-title" style="color:var(--gold);">⭐ 새 경기방 생성</div>
       <div class="field">
@@ -943,6 +947,21 @@ body {
       <div style="font-size:12px; color:var(--text-3); margin-bottom:10px;" id="teamSizeInfo">
         총 <span id="teamSizeTotal">0</span>명 → <span id="teamSizeCount">0</span>팀 예상
       </div>
+      <!-- 자동 팀공개 예약 -->
+      <div style="border-top:1px dashed var(--border-2); margin:12px 0 10px; padding-top:12px;">
+        <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">자동 팀공개 — 목표 인원 (3~40명)</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <button class="btn btn-gray btn-sm" style="width:46px; flex:0 0 auto;" onclick="adjustAutoTeamTarget(-1)">−</button>
+          <input id="autoTeamTargetInput" type="number" min="3" max="40" value="20" inputmode="numeric"
+            style="flex:1; min-width:0; text-align:center; padding:11px; font-size:19px; font-weight:700; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:#f8fbf8; color:var(--text);"
+            onchange="setAutoTeamTarget(this.value)">
+          <button class="btn btn-gray btn-sm" style="width:46px; flex:0 0 auto;" onclick="adjustAutoTeamTarget(1)">＋</button>
+        </div>
+        <button id="autoTeamBtn" class="btn btn-gray btn-sm" style="width:100%;" onclick="toggleAutoTeamPublish()">⚫ 자동 팀공개 OFF</button>
+        <div id="autoTeamInfo" style="font-size:12px; color:var(--text-3); margin-top:8px; line-height:1.6;">
+          목표 인원 도달 시 위에서 선택한 인원수로 자동 편성·공개됩니다.
+        </div>
+      </div>
       <div class="btn-row" style="margin-bottom:10px;">
         <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
         <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
@@ -986,6 +1005,7 @@ const firebaseConfig = {
   measurementId: "G-7TGYE2GL3P"
 };
 let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room", allRooms = {}, autoPublishEnabled = false, localAttendance = {};
+let autoTeamEnabled = false, autoTeamTarget = 20; // 자동 팀공개: 목표 인원 도달 시 자동 편성·공개
 let selectedGender = 'male'; // 성별 선택 상태
 try {
   firebase.initializeApp(firebaseConfig);
@@ -1002,6 +1022,8 @@ window.addEventListener("DOMContentLoaded", function() {
   if (savedName) document.getElementById("pName").value = savedName;
   var savedGender = localStorage.getItem("myGolfGender");
   if (savedGender) setGender(savedGender);
+  // 저장된 관리자 세션 자동 복원 (모바일에서 매번 재로그인 방지)
+  try { if (localStorage.getItem("cmgAdmin") === "1") enterAdminMode(); } catch(e) {}
 });
 // ── 성별 선택 ──
 function setGender(g) {
@@ -1093,7 +1115,7 @@ function createRoom() {
   var name = document.getElementById("newRoomInput").value.trim();
   if (!name) { toast("새로운 방 이름을 입력하세요"); return; }
   currentRoom = name; updateRoomBadge(); generateQR();
-  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta").set({ published: false, autoPublish: false, created: Date.now() });
+  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta").set({ published: false, autoPublish: false, autoTeam: false, autoTeamTarget: 20, teamSize: 4, autoTeamDone: false, created: Date.now() });
   toast("방 [" + name + "] 생성 완료!");
   document.getElementById("qrCard").style.display = "block";
   document.getElementById("newRoomInput").value = "";
@@ -1248,7 +1270,8 @@ function saveMyScore() {
       localAttendance[name][currentRoom] = { room: currentRoom, timestamp: Date.now() };
     }
     renderRank(); renderParticipantList();
-    if (admin) refreshAdminPlayerList();
+    if (admin) { refreshAdminPlayerList(); updateTeamSizeInfo(); updateAutoTeamInfo(); }
+    runAutoTeamIfNeeded();
   }
   if (hasScore) {
     var net = parseFloat((score - handi).toFixed(1));
@@ -1535,6 +1558,9 @@ function listenRoom() {
     if (!room) return;
     published = room.meta ? !!room.meta.published : false;
     autoPublishEnabled = room.meta ? !!room.meta.autoPublish : false;
+    autoTeamEnabled = room.meta ? !!room.meta.autoTeam : false;
+    if (room.meta && room.meta.autoTeamTarget) autoTeamTarget = clampTeamTarget(room.meta.autoTeamTarget);
+    if (room.meta && room.meta.teamSize) selectedTeamSize = Number(room.meta.teamSize);
     localData = room.players || {};
     updateAutoPublishButton();
     renderRank();
@@ -1542,21 +1568,29 @@ function listenRoom() {
     if (admin) {
       refreshAdminRoomStatus();
       refreshAdminPlayerList();
+      updateTeamSizeButtons();
       updateTeamSizeInfo();
+      var tIn = document.getElementById("autoTeamTargetInput");
+      if (tIn) tIn.value = autoTeamTarget;
+      updateAutoTeamButton();
+      updateAutoTeamInfo();
     }
     // 팀편성 결과 — 관리자/일반 사용자 모두 팀편성 탭에 표시
-    var savedTeams = room.teams || null;
-    if (savedTeams && Array.isArray(savedTeams) && savedTeams.length) {
+    var savedTeams = (room.teams && Array.isArray(room.teams) && room.teams.length) ? room.teams : null;
+    if (savedTeams) {
       currentTeams = savedTeams;
       renderTeams(savedTeams);
       document.getElementById("teamWarning").style.display = "none";
-    } else if (!admin) {
-      // 관리자가 아닌 경우, 팀편성이 없을 때 기본 메시지 표시
-      document.getElementById("teamResult").innerHTML =
-        '<div class="empty-state"><div class="big">🔀</div><p>관리자가 팀편성을 실행하면<br>여기에 결과가 표시됩니다</p></div>';
+    } else {
+      currentTeams = [];
+      if (!admin) {
+        document.getElementById("teamResult").innerHTML =
+          '<div class="empty-state"><div class="big">🔀</div><p>관리자가 팀편성을 실행하면<br>여기에 결과가 표시됩니다</p></div>';
+      }
     }
     // ✅ 관리자 여부와 관계없이 자동 공개 조건 체크
     runAutoPublishIfNeeded();
+    runAutoTeamIfNeeded();
   });
 }
 function getSorted(data) {
@@ -1653,17 +1687,36 @@ function renderRank() {
 function unlockAdmin() {
   var pw = document.getElementById("adminPw").value;
   if (pw === "1217") {
-    admin = true;
-    document.getElementById("adminLocked").style.display = "none";
-    document.getElementById("adminUnlocked").style.display = "block";
-    document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
-    // 팀편성 관리 섹션 표시
-    var teamAdmin = document.getElementById("teamAdminSection");
-    if (teamAdmin) teamAdmin.style.display = "block";
-    toast("관리자 모드 활성화");
-    updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
-    updateTeamSizeInfo();
+    try { localStorage.setItem("cmgAdmin", "1"); } catch(e) {}
+    enterAdminMode();
+    toast("관리자 모드 활성화 — 다음부터 자동 로그인됩니다");
   } else toast("비밀번호가 틀렸습니다");
+}
+function enterAdminMode() {
+  admin = true;
+  document.getElementById("adminLocked").style.display = "none";
+  document.getElementById("adminUnlocked").style.display = "block";
+  document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자✓';
+  var pwIn = document.getElementById("adminPw"); if (pwIn) pwIn.value = "";
+  // 팀편성 관리 섹션 표시
+  var teamAdmin = document.getElementById("teamAdminSection");
+  if (teamAdmin) teamAdmin.style.display = "block";
+  updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
+  updateTeamSizeButtons(); updateTeamSizeInfo();
+  var tIn0 = document.getElementById("autoTeamTargetInput"); if (tIn0) tIn0.value = autoTeamTarget;
+  updateAutoTeamButton(); updateAutoTeamInfo();
+}
+function logoutAdmin() {
+  if (!confirm("관리자 로그아웃하시겠습니까?\n(이 기기에서 자동 로그인이 해제됩니다)")) return;
+  try { localStorage.removeItem("cmgAdmin"); } catch(e) {}
+  admin = false;
+  document.getElementById("adminUnlocked").style.display = "none";
+  document.getElementById("adminLocked").style.display = "block";
+  document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자';
+  var teamAdmin = document.getElementById("teamAdminSection");
+  if (teamAdmin) teamAdmin.style.display = "none";
+  renderRank(); renderParticipantList();
+  toast("관리자 로그아웃되었습니다");
 }
 function refreshAdminRoomStatus() {
   var el = document.getElementById("adminRoomStatus");
@@ -1706,15 +1759,22 @@ var selectedTeamSize = 4;
 
 function setTeamSize(n) {
   selectedTeamSize = n;
+  updateTeamSizeButtons();
+  updateTeamSizeInfo();
+  updateAutoTeamInfo();
+  // 팀당 인원을 Firebase에 저장 → 자동 팀공개가 다른 기기에서 실행돼도 동일 인원 적용
+  if (useFirebase && currentRoom && admin) db.ref("rooms/" + currentRoom + "/meta/teamSize").set(n);
+}
+
+function updateTeamSizeButtons() {
   var btn3 = document.getElementById("teamSizeBtn3");
   var btn4 = document.getElementById("teamSizeBtn4");
   if (btn3 && btn4) {
-    btn3.className = 'btn btn-sm' + (n === 3 ? ' btn-gold' : ' btn-gray');
-    btn3.textContent = n === 3 ? '3명씩 ✓' : '3명씩';
-    btn4.className = 'btn btn-sm' + (n === 4 ? ' btn-gold' : ' btn-gray');
-    btn4.textContent = n === 4 ? '4명씩 ✓' : '4명씩';
+    btn3.className = 'btn btn-sm' + (selectedTeamSize === 3 ? ' btn-gold' : ' btn-gray');
+    btn3.textContent = selectedTeamSize === 3 ? '3명씩 ✓' : '3명씩';
+    btn4.className = 'btn btn-sm' + (selectedTeamSize === 4 ? ' btn-gold' : ' btn-gray');
+    btn4.textContent = selectedTeamSize === 4 ? '4명씩 ✓' : '4명씩';
   }
-  updateTeamSizeInfo();
 }
 
 function updateTeamSizeInfo() {
@@ -1726,8 +1786,89 @@ function updateTeamSizeInfo() {
   if (countEl) countEl.textContent = teamCount;
 }
 
+// ── 자동 팀공개 (목표 인원 도달 시 자동 팀편성·공개) ──
+function clampTeamTarget(n) {
+  n = parseInt(n, 10);
+  if (isNaN(n)) n = 20;
+  if (n < 3) n = 3;
+  if (n > 40) n = 40;
+  return n;
+}
+function adjustAutoTeamTarget(delta) {
+  if (autoTeamEnabled) { toast("자동 팀공개를 끈 뒤 변경하세요"); return; }
+  var input = document.getElementById("autoTeamTargetInput");
+  var base = input ? Number(input.value) : autoTeamTarget;
+  setAutoTeamTarget(base + delta);
+}
+function setAutoTeamTarget(n) {
+  if (autoTeamEnabled) return; // ON 상태에서는 변경 잠금
+  autoTeamTarget = clampTeamTarget(n);
+  var input = document.getElementById("autoTeamTargetInput");
+  if (input) input.value = autoTeamTarget;
+  updateAutoTeamInfo();
+  if (useFirebase && currentRoom && admin) db.ref("rooms/" + currentRoom + "/meta/autoTeamTarget").set(autoTeamTarget);
+}
+function updateAutoTeamButton() {
+  var btn = document.getElementById("autoTeamBtn");
+  if (btn) {
+    btn.textContent = autoTeamEnabled ? "🟢 자동 팀공개 ON" : "⚫ 자동 팀공개 OFF";
+    btn.className = autoTeamEnabled ? "btn btn-gold btn-sm" : "btn btn-gray btn-sm";
+  }
+  var input = document.getElementById("autoTeamTargetInput");
+  if (input) input.disabled = autoTeamEnabled;
+}
+function updateAutoTeamInfo() {
+  var el = document.getElementById("autoTeamInfo");
+  if (!el) return;
+  var count = Object.keys(localData || {}).length;
+  var teamCount = Math.max(1, Math.ceil(autoTeamTarget / selectedTeamSize));
+  if (autoTeamEnabled) {
+    el.innerHTML = "🟢 예약됨 — <strong>" + autoTeamTarget + "명</strong> 등록 시 <strong>" + selectedTeamSize + "명씩 약 " + teamCount + "팀</strong>으로 자동 편성·공개 (현재 <strong>" + count + "명</strong>)";
+  } else {
+    el.innerHTML = "목표 인원(<strong>" + autoTeamTarget + "명</strong>) 도달 시 " + selectedTeamSize + "명씩 자동 편성·공개됩니다. 버튼을 켜서 예약하세요.";
+  }
+}
+function toggleAutoTeamPublish() {
+  if (!admin) { toast("관리자만 설정할 수 있습니다"); return; }
+  if (!currentRoom) { toast("먼저 운영할 방을 선택하세요"); return; }
+  var next = !autoTeamEnabled;
+  if (!useFirebase) {
+    autoTeamEnabled = next;
+    updateAutoTeamButton(); updateAutoTeamInfo();
+    if (next) runAutoTeamIfNeeded();
+    toast(next ? "🤖 자동 팀공개 ON" : "자동 팀공개 OFF");
+    return;
+  }
+  var updates = { autoTeam: next, teamSize: selectedTeamSize, autoTeamTarget: autoTeamTarget };
+  if (next) updates.autoTeamDone = false; // 다시 켜면 재무장 (1회만 실행)
+  db.ref("rooms/" + currentRoom + "/meta").update(updates).then(function() {
+    if (next) {
+      toast("🤖 자동 팀공개 ON — " + autoTeamTarget + "명 도달 시 자동 편성됩니다.");
+      runAutoTeamIfNeeded(); // 켜는 순간 이미 목표 도달이면 즉시 실행
+    } else {
+      toast("자동 팀공개가 꺼졌습니다.");
+    }
+  }).catch(function() { toast("설정 저장에 실패했습니다.") });
+}
+// 목표 인원 도달 시 자동 팀편성 — 여러 기기 동시 실행 방지(트랜잭션으로 1회만)
+function runAutoTeamIfNeeded() {
+  if (!currentRoom || !autoTeamEnabled) return;
+  var target = clampTeamTarget(autoTeamTarget);
+  var count = Object.keys(localData || {}).length;
+  if (count < target) return;
+  if (currentTeams && currentTeams.length) return; // 이미 편성됨
+  if (!useFirebase) { autoAssignTeams(true); return; } // 로컬 모드: 바로 실행
+  db.ref("rooms/" + currentRoom + "/meta/autoTeamDone").transaction(function(cur) {
+    if (cur) return; // 이미 다른 기기가 실행함 → 중단
+    return true;     // 실행 권한 확보
+  }, function(err, committed) {
+    if (err || !committed) return;
+    autoAssignTeams(true); // 자동 실행
+  });
+}
+
 // ── 자동 팀편성 ──
-function autoAssignTeams() {
+function autoAssignTeams(isAuto) {
   var players = Object.values(localData || {});
   if (!players.length) { toast("참가자가 없습니다"); return; }
 
@@ -1752,18 +1893,31 @@ function autoAssignTeams() {
   var teamHandiSum = [];
   for (var i = 0; i < teamCount; i++) { teams.push([]); teamHandiSum.push(0); }
 
-  // 1) 여자 핸디 내림차순으로 팀당 1명씩 배정 (핸디합 낮은 팀 우선)
+  // 1) 여자: 팀 간 최대한 균등하게 분배 (각 팀의 여자 수 차이가 최대 1명).
+  //    예) 여자 6명·4팀 → 2,2,1,1  (여자가 한 팀에 몰리지 않음)
+  //    같은 여자 수 단계에서는 핸디합이 낮은 팀을 우선 배정 → 평균핸디 균형
   var femalesSorted = sortDesc(females);
+  var countFemales = function(team) {
+    var c = 0;
+    for (var k = 0; k < team.length; k++) { if (team[k].gender === 'female') c++; }
+    return c;
+  };
   for (var fi = 0; fi < femalesSorted.length; fi++) {
-    if (fi < teamCount) {
-      teams[fi].push(femalesSorted[fi]);
-      teamHandiSum[fi] += Number(femalesSorted[fi].handi);
-    } else {
-      var minIdx = -1;
-      for (var mi = 0; mi < teamCount; mi++) {
-        if (teams[mi].length < selectedTeamSize && (minIdx === -1 || teamHandiSum[mi] < teamHandiSum[minIdx])) minIdx = mi;
+    var bestIdx = -1;
+    var bestFCount = Infinity;
+    for (var ti0 = 0; ti0 < teamCount; ti0++) {
+      if (teams[ti0].length >= selectedTeamSize) continue; // 정원이 찬 팀은 제외
+      var fCount = countFemales(teams[ti0]);
+      // 1순위: 여자 수가 적은 팀  /  2순위: 핸디합이 낮은 팀
+      if (fCount < bestFCount ||
+          (fCount === bestFCount && (bestIdx === -1 || teamHandiSum[ti0] < teamHandiSum[bestIdx]))) {
+        bestFCount = fCount;
+        bestIdx = ti0;
       }
-      if (minIdx !== -1) { teams[minIdx].push(femalesSorted[fi]); teamHandiSum[minIdx] += Number(femalesSorted[fi].handi); }
+    }
+    if (bestIdx !== -1) {
+      teams[bestIdx].push(femalesSorted[fi]);
+      teamHandiSum[bestIdx] += Number(femalesSorted[fi].handi);
     }
   }
 
@@ -1783,7 +1937,7 @@ function autoAssignTeams() {
   // Firebase에 팀편성 결과 저장 → 일반 사용자 팀편성 탭에도 공개
   if (useFirebase && currentRoom) {
     db.ref("rooms/" + currentRoom + "/teams").set(teams).then(function() {
-      toast("⚡ 팀편성 완료! 팀편성 탭에 공개되었습니다.");
+      toast(isAuto ? ("🤖 목표 인원 도달! 자동 팀편성이 공개되었습니다.") : "⚡ 팀편성 완료! 팀편성 탭에 공개되었습니다.");
     }).catch(function() {
       toast("⚡ 팀편성 완료! (Firebase 저장 실패)");
     });
