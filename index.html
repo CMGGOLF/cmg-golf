@@ -1151,11 +1151,13 @@ var foursomeRankPublished = false; // 포썸 내부: 순위만 비공개→전�
 var foursomeEverReceived = false;  // 정식 데이터(관리자가 만든 방 구조) 수신 여부
 var foursomeModalOpen = false;
 var foursomePushTimers = {};
+var FOURSOME_PATH = "foursomeGlobal"; // 경기방과 무관하게 항상 같은 고정 경로 (독립 운영)
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.database();
   useFirebase = true;
   listenAllRooms();
+  foursomeListenGlobal(); // 🏆 포썸대회: 경기방과 무관하게 독립적으로 동작
 } catch(e) {
   console.error("Firebase 오류:", e.message);
   document.getElementById("roomNotice").style.display = "block";
@@ -1742,26 +1744,6 @@ function listenRoom() {
     // ✅ 관리자 여부와 관계없이 자동 공개 조건 체크
     runAutoPublishIfNeeded();
     runAutoTeamIfNeeded();
-
-    // 🏆 포썸대회 스코어 데이터 반영 (같은 room 트리 안의 foursome 서브트리)
-    foursomePublic = room.meta ? !!room.meta.foursomePublic : false;
-    updateFoursomePublicButton();
-    foursomeUpdateEntryVisibility();
-    var fs = room.foursome || null;
-    if (fs && Array.isArray(fs.rooms) && fs.rooms.length) {
-      foursomeApplyIncomingRooms(fs.rooms);
-      foursomeRankPublished = !!fs.published;
-      foursomeEverReceived = true;
-    } else if (admin) {
-      // 관리자 최초 접속 & 서버에 포썸 데이터 없음 → 시드 후 업로드
-      foursomeSeedRooms();
-      foursomeRankPublished = false;
-      db.ref("rooms/" + currentRoom + "/foursome").set({ rooms: foursomeRooms, published: false });
-    } else {
-      foursomeSeedRooms();
-      foursomeRankPublished = false;
-    }
-    if (foursomeModalOpen) foursomeRender();
   });
 }
 function getSorted(data) {
@@ -2521,6 +2503,39 @@ function foursomeOnInput(ri, ti, field, value, idx) {
   foursomeUpdateDerivedCell(ri, ti);
   foursomeUpdateAllRanks();
   foursomePushField(ri, ti, field, idx);
+  // 🏆 선수 이름이 입력되면 출석에도 자동으로 기록 (현재 연결된 경기방 기준, 타이핑 도중 부분입력은 무시)
+  if (field === "playerName") foursomeRecordAttendanceDebounced(ri, ti, idx, value);
+}
+
+var foursomeAttendTimers = {};
+function foursomeRecordAttendanceDebounced(ri, ti, idx, value) {
+  var key = ri + "-" + ti + "-" + idx;
+  if (foursomeAttendTimers[key]) clearTimeout(foursomeAttendTimers[key]);
+  foursomeAttendTimers[key] = setTimeout(function() {
+    delete foursomeAttendTimers[key];
+    foursomeRecordAttendance(value);
+  }, 800);
+}
+
+// 포썸대회에서 이름을 입력하면 그 사람도 출석 명단에 잡히도록 처리.
+// 연결된 경기방이 있으면 그 방으로, 없으면(포썸 단독 운영일) 오늘 날짜 기반 키로 자동 기록.
+function foursomeAttendanceRoomKey() {
+  if (currentRoom) return currentRoom;
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = ("0" + (d.getMonth() + 1)).slice(-2);
+  var day = ("0" + d.getDate()).slice(-2);
+  return y + "-" + m + "-" + day + "-포썸";
+}
+function foursomeRecordAttendance(rawName) {
+  if (!useFirebase) return;
+  var name = baseName(rawName);
+  if (!name) return;
+  var room = foursomeAttendanceRoomKey();
+  var attendRef = db.ref("attendance/" + name + "/" + room);
+  attendRef.once("value", function(snap) {
+    if (!snap.exists()) attendRef.set({ room: room, timestamp: Date.now() });
+  });
 }
 
 function foursomeApplyIncomingRooms(newRooms) {
@@ -2528,7 +2543,7 @@ function foursomeApplyIncomingRooms(newRooms) {
   foursomeRooms = newRooms;
   foursomeRooms.forEach(function(r) { r.teams.forEach(foursomeMigrateTeam); });
   Object.keys(foursomePushTimers).forEach(function(path) {
-    var m = path.match(/\/foursome\/rooms\/(\d+)\/teams\/(\d+)\/([^\/]+)(?:\/(\d+))?$/);
+    var m = path.match(/\/rooms\/(\d+)\/teams\/(\d+)\/([^\/]+)(?:\/(\d+))?$/);
     if (!m) return;
     var ri = Number(m[1]), ti = Number(m[2]), field = m[3];
     var idx = (m[4] !== undefined) ? Number(m[4]) : null;
@@ -2539,10 +2554,40 @@ function foursomeApplyIncomingRooms(newRooms) {
   });
 }
 
+// 🏆 경기방(currentRoom)과 무관하게 항상 같은 고정 경로 사용 — 방 선택 없이 바로 켜고 쓸 수 있음
+// (FOURSOME_PATH 값은 스크립트 상단에서 미리 선언됨 — hoisting 문제 방지)
+
+function foursomeListenGlobal() {
+  if (!useFirebase) return;
+  db.ref(FOURSOME_PATH).on("value", function(snap) {
+    var data = snap.val();
+    foursomePublic = data ? !!data.public : false;
+    updateFoursomePublicButton();
+    foursomeUpdateEntryVisibility();
+    if (data && Array.isArray(data.rooms) && data.rooms.length) {
+      foursomeApplyIncomingRooms(data.rooms);
+      foursomeRankPublished = !!data.published;
+      foursomeEverReceived = true;
+    } else if (admin) {
+      // 관리자 최초 접속 & 서버에 포썸 데이터 없음 → 시드 후 업로드
+      foursomeSeedRooms();
+      foursomeRankPublished = false;
+      db.ref(FOURSOME_PATH).update({ rooms: foursomeRooms, published: false, public: foursomePublic });
+    } else {
+      foursomeSeedRooms();
+      foursomeRankPublished = false;
+    }
+    if (foursomeModalOpen) foursomeRender();
+  }, function() {
+    var stateEl = document.getElementById("foursomeSaveState");
+    if (stateEl) stateEl.textContent = "⚠ 연결 오류(오프라인)";
+  });
+}
+
 function foursomePushField(ri, ti, field, idx) {
-  if (!useFirebase || !currentRoom) return;
+  if (!useFirebase) return;
   var hasIdx = (idx !== undefined && idx !== null);
-  var path = "rooms/" + currentRoom + "/foursome/rooms/" + ri + "/teams/" + ti + "/" + field + (hasIdx ? ("/" + idx) : "");
+  var path = FOURSOME_PATH + "/rooms/" + ri + "/teams/" + ti + "/" + field + (hasIdx ? ("/" + idx) : "");
   var stateEl = document.getElementById("foursomeSaveState");
   if (stateEl) stateEl.textContent = "저장 중…";
   if (foursomePushTimers[path]) clearTimeout(foursomePushTimers[path]);
@@ -2572,23 +2617,22 @@ function foursomeDelTeam(ri, ti) {
   foursomePushAllRooms();
 }
 function foursomePushAllRooms() {
-  if (!useFirebase || !currentRoom) return;
-  db.ref("rooms/" + currentRoom + "/foursome/rooms").set(foursomeRooms);
+  if (!useFirebase) return;
+  db.ref(FOURSOME_PATH + "/rooms").set(foursomeRooms);
 }
 function foursomeToggleRankPublish() {
   if (!admin) return;
   foursomeRankPublished = !foursomeRankPublished;
   foursomeRender();
-  if (useFirebase && currentRoom) db.ref("rooms/" + currentRoom + "/foursome/published").set(foursomeRankPublished);
+  if (useFirebase) db.ref(FOURSOME_PATH + "/published").set(foursomeRankPublished);
   toast(foursomeRankPublished ? "🌐 포썸 순위를 전체 공개했습니다" : "🔒 포썸 순위를 비공개로 전환했습니다");
 }
 
 function toggleFoursomePublic() {
   if (!admin) { toast("관리자만 가능합니다"); return; }
-  if (!currentRoom) { toast("먼저 운영할 방을 선택하세요"); return; }
   foursomePublic = !foursomePublic;
   updateFoursomePublicButton();
-  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta/foursomePublic").set(foursomePublic);
+  if (useFirebase) db.ref(FOURSOME_PATH + "/public").set(foursomePublic);
   foursomeUpdateEntryVisibility();
   toast(foursomePublic ? "🏆 포썸대회 스코어를 참가자에게 공개했습니다" : "포썸대회 스코어를 참가자 화면에서 숨겼습니다");
 }
