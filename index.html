@@ -673,6 +673,88 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+/* ── 포썸대회 스코어 팝업 ── */
+.foursome-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1200;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: 0.25s; pointer-events: none; backdrop-filter: blur(4px);
+}
+.foursome-overlay.open { opacity: 1; pointer-events: all; }
+.foursome-sheet {
+  width: 96vw; max-width: 1180px; height: 92vh;
+  background: var(--surface-1); border-radius: var(--radius); border: 1px solid var(--border-2);
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-lg);
+  transform: scale(0.96); transition: 0.25s;
+}
+.foursome-overlay.open .foursome-sheet { transform: scale(1); }
+.foursome-head {
+  padding: 16px 18px; background: linear-gradient(135deg, var(--green-dark), var(--green));
+  color: #fff; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.foursome-head h3 { margin: 0; font-size: 16px; font-weight: 800; flex: 1; }
+.foursome-close {
+  background: rgba(255,255,255,0.15); border: none; color: #fff; width: 32px; height: 32px;
+  border-radius: 8px; font-size: 16px; cursor: pointer; line-height: 1;
+}
+.foursome-toolbar { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--border-2); background: var(--surface-2); }
+.foursome-savestate { margin-left: auto; font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+.foursome-savestate .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.foursome-body { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 12px; }
+.foursome-wait { margin: 0 0 12px; padding: 12px 14px; background: var(--gold-light); border: 1px solid var(--gold-glow); border-radius: 10px; font-size: 13px; color: var(--gold-dim); display: none; }
+.foursome-legend { margin: 12px 2px 0; font-size: 11.5px; color: var(--text-3); line-height: 1.7; }
+.foursome-legend code { font-family: 'DM Mono', monospace; background: var(--surface-3); padding: 1px 6px; border-radius: 5px; color: var(--green-dark); }
+
+.foursome-table-wrap { border: 1px solid var(--border-2); border-radius: 12px; overflow: hidden; }
+.foursome-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.fs-table { border-collapse: collapse; width: 100%; min-width: 760px; }
+.fs-table thead th {
+  background: var(--green-dark); color: #fff; font-size: 11.5px; font-weight: 700;
+  padding: 10px 6px; text-align: center; white-space: nowrap; position: sticky; top: 0; z-index: 3;
+  border-right: 1px solid rgba(255,255,255,0.12);
+}
+.fs-table thead th:last-child { border-right: none; }
+.fs-table tbody td {
+  padding: 4px 5px; text-align: center; font-size: 13px;
+  border-right: 1px solid var(--border-2); border-top: 1px solid var(--border-2); vertical-align: middle;
+}
+.fs-table tbody td:last-child { border-right: none; }
+.fs-room-cell { font-family: 'DM Mono', monospace; font-weight: 800; font-size: 14px; color: var(--green-dark); background: var(--surface-2); border-right: 2px solid var(--border-3) !important; white-space: nowrap; }
+.fs-team-col { min-width: 100px; }
+.fs-player-col { min-width: 84px; }
+.fs-num-col { width: 62px; }
+.fs-calc-col { width: 66px; }
+.fs-rank-col { width: 60px; }
+.fs-calc { background: var(--surface-3); font-family: 'DM Mono', monospace; font-weight: 700; color: var(--green-dark); }
+.fs-calc.empty { color: #b7c3ba; font-weight: 500; }
+tr.fs-first td { background: var(--gold-light); }
+tr.fs-first .fs-calc { background: var(--gold-glow); }
+tr.fs-first .fs-room-cell { background: var(--surface-2); }
+.fs-rank-locked { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-3); background: var(--surface-3); padding: 4px 7px; border-radius: 6px; }
+.fs-del { border: none; background: none; color: #c99; font-size: 14px; cursor: pointer; padding: 3px; line-height: 1; }
+.fs-del:hover { color: #b23b3b; }
+input.fs-cell {
+  width: 100%; min-width: 0; border: 1px solid transparent; background: var(--surface-2);
+  border-radius: 6px; padding: 7px 4px; font-size: 13px; text-align: center;
+  font-family: 'DM Mono', monospace; color: var(--text); outline: none;
+}
+input.fs-cell:focus { border-color: var(--green); background: var(--surface-1); box-shadow: 0 0 0 2px var(--green-light); }
+input.fs-cell.fs-team-name { font-family: inherit; text-align: left; padding-left: 8px; font-weight: 600; }
+input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 1; cursor: default; }
+
+/* 관리자 페이지 내 포썸대회 관리 카드 */
+.foursome-admin-card { border: 1px dashed var(--border-3); border-radius: var(--radius-sm); padding: 14px; margin-top: 14px; background: var(--surface-2); }
+.foursome-admin-card .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+
+/* 참가자용 진입 버튼 */
+.foursome-entry-card {
+  display: none; margin: 0 0 14px; padding: 16px; border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--green-dark), var(--green)); color: #fff;
+  align-items: center; gap: 12px; cursor: pointer; border: none; width: 100%; text-align: left;
+}
+.foursome-entry-card .big-icon { font-size: 26px; }
+.foursome-entry-card .txt { flex: 1; }
+.foursome-entry-card .txt .t1 { font-weight: 800; font-size: 15px; }
+.foursome-entry-card .txt .t2 { font-size: 12px; opacity: 0.85; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -701,6 +783,14 @@ body {
       <div class="empty-state"><p>목록을 불러오는 중...</p></div>
     </div>
   </div>
+  <button class="foursome-entry-card" id="foursomeEntryCard" onclick="openFoursomeModal()">
+    <div class="big-icon">🏆</div>
+    <div class="txt">
+      <div class="t1">포썸대회 스코어</div>
+      <div class="t2">실시간 팀 스코어 확인하기</div>
+    </div>
+    <div style="font-size:20px;">›</div>
+  </button>
   <div style="background:linear-gradient(135deg,rgba(201,168,76,0.13),rgba(201,168,76,0.06)); border:1px solid rgba(201,168,76,0.35); border-radius:12px; padding:16px 18px; margin-bottom:12px; display:flex; align-items:flex-start; gap:12px;">
     <div style="font-size:22px; flex-shrink:0; margin-top:1px;">⏰</div>
     <div>
@@ -973,6 +1063,18 @@ body {
         </div>
       </div>
     </div>
+    <div class="admin-section">
+      <div class="card-title">🏆 포썸대회 스코어 관리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
+        공개 ON으로 켜야 참가자 화면에 "포썸대회 스코어" 버튼이 나타납니다. OFF 상태에서도 관리자는 미리 준비할 수 있습니다.
+      </div>
+      <div class="foursome-admin-card">
+        <button id="foursomePublicBtn" class="btn btn-gray btn-sm" style="width:100%;" onclick="toggleFoursomePublic()">⚫ 공개 OFF (참가자에게 안 보임)</button>
+        <div class="row">
+          <button class="btn btn-green-outline btn-sm" style="flex:1;" onclick="openFoursomeModal()">🏆 포썸 스코어 열기 (관리자 미리보기)</button>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title" style="color:#f87171">⚠ 위험 구역</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">아래 작업은 되돌릴 수 없습니다. (방 폭파)</div>
@@ -993,7 +1095,40 @@ body {
     </div>
   </div>
 </div>
+<div class="foursome-overlay" id="foursomeOverlay">
+  <div class="foursome-sheet">
+    <div class="foursome-head">
+      <h3>🏆 포썸대회 스코어</h3>
+      <button class="foursome-close" onclick="closeFoursomeModal()">✕</button>
+    </div>
+    <div class="foursome-toolbar">
+      <button class="btn btn-gray btn-sm" onclick="foursomeAddTeamAll()" id="foursomeAddTeamBtn" style="display:none;">＋ 모든 방에 팀 추가</button>
+      <button class="btn btn-gray btn-sm" onclick="foursomeToggleRankPublish()" id="foursomeRankPublishBtn" style="display:none;">🔒 순위 비공개</button>
+      <span class="foursome-savestate"><span class="dot"></span><span id="foursomeSaveState">연결 확인 중…</span></span>
+    </div>
+    <div class="foursome-body">
+      <div class="foursome-wait" id="foursomeWaitBanner">⏳ 데이터를 불러오는 중입니다. 잠시만 기다려 주세요.</div>
+      <div class="foursome-table-wrap">
+        <div class="foursome-scroll">
+          <table class="fs-table">
+            <thead>
+              <tr>
+                <th>방</th><th>팀</th><th>선수 이름</th><th>개인핸디</th><th>팀핸디</th>
+                <th>1경기</th><th>2경기</th><th>1,2경기합산</th><th>스코어</th><th>순위</th>
+              </tr>
+            </thead>
+            <tbody id="foursomeTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="foursome-legend">
+        <b>계산</b> · <code>팀핸디 = 선수1+선수2 핸디</code>(자동), <code>스코어 = 합산 − |팀핸디|</code>. 팀명·선수 이름·개인핸디·1,2경기는 누구나 입력 가능합니다. 팀 추가/삭제, 순위 전체공개는 관리자만 가능합니다.
+      </div>
+    </div>
+  </div>
+</div>
 <script>
+
 const firebaseConfig = {
   apiKey: "AIzaSyAXrZPMhTZXdj5uJufyj3ZyS5wbOiZfU9Y",
   authDomain: "cmg-golf.firebaseapp.com",
@@ -1007,6 +1142,15 @@ const firebaseConfig = {
 let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room", allRooms = {}, autoPublishEnabled = false, localAttendance = {};
 let autoTeamEnabled = false, autoTeamTarget = 20; // 자동 팀공개: 목표 인원 도달 시 자동 편성·공개
 let selectedGender = 'male'; // 성별 선택 상태
+// 🏆 포썸대회 상태 (스크립트 최상단에서 선언 — 초기 로드 시 자동 방입장으로 곧바로
+//  참조될 수 있으므로, 하단에 두면 아직 초기화 전에 접근되어 오류가 날 수 있음)
+var FOURSOME_ROOM_NUMBERS = [1, 2, 3, 5, 6, 7, 8, 9, 10, 11]; // 4방 제외
+var foursomeRooms = [];
+var foursomePublic = false;        // 관리자가 "공개 ON" 해야 참가자에게 버튼/팝업 노출
+var foursomeRankPublished = false; // 포썸 내부: 순위만 비공개→전체공개
+var foursomeEverReceived = false;  // 정식 데이터(관리자가 만든 방 구조) 수신 여부
+var foursomeModalOpen = false;
+var foursomePushTimers = {};
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.database();
@@ -1598,6 +1742,26 @@ function listenRoom() {
     // ✅ 관리자 여부와 관계없이 자동 공개 조건 체크
     runAutoPublishIfNeeded();
     runAutoTeamIfNeeded();
+
+    // 🏆 포썸대회 스코어 데이터 반영 (같은 room 트리 안의 foursome 서브트리)
+    foursomePublic = room.meta ? !!room.meta.foursomePublic : false;
+    updateFoursomePublicButton();
+    foursomeUpdateEntryVisibility();
+    var fs = room.foursome || null;
+    if (fs && Array.isArray(fs.rooms) && fs.rooms.length) {
+      foursomeApplyIncomingRooms(fs.rooms);
+      foursomeRankPublished = !!fs.published;
+      foursomeEverReceived = true;
+    } else if (admin) {
+      // 관리자 최초 접속 & 서버에 포썸 데이터 없음 → 시드 후 업로드
+      foursomeSeedRooms();
+      foursomeRankPublished = false;
+      db.ref("rooms/" + currentRoom + "/foursome").set({ rooms: foursomeRooms, published: false });
+    } else {
+      foursomeSeedRooms();
+      foursomeRankPublished = false;
+    }
+    if (foursomeModalOpen) foursomeRender();
   });
 }
 function getSorted(data) {
@@ -1712,6 +1876,7 @@ function enterAdminMode() {
   updateTeamSizeButtons(); updateTeamSizeInfo();
   var tIn0 = document.getElementById("autoTeamTargetInput"); if (tIn0) tIn0.value = autoTeamTarget;
   updateAutoTeamButton(); updateAutoTeamInfo();
+  updateFoursomePublicButton(); foursomeUpdateEntryVisibility(); if (foursomeModalOpen) foursomeRender();
 }
 function logoutAdmin() {
   if (!confirm("관리자 로그아웃하시겠습니까?\n(이 기기에서 자동 로그인이 해제됩니다)")) return;
@@ -1724,6 +1889,7 @@ function logoutAdmin() {
   if (teamAdmin) teamAdmin.style.display = "none";
   renderRank(); renderParticipantList();
   toast("관리자 로그아웃되었습니다");
+  updateFoursomePublicButton(); foursomeUpdateEntryVisibility(); if (foursomeModalOpen) foursomeRender();
 }
 function refreshAdminRoomStatus() {
   var el = document.getElementById("adminRoomStatus");
@@ -2178,6 +2344,276 @@ if (urlRoom) {
   updateRoomBadge();
   listenRoom();
   switchTab('list');
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🏆 포썸대회 스코어 팝업 (기존 Firebase/currentRoom/admin 재사용)
+// ══════════════════════════════════════════════════════════════
+// (포썸대회 상태 변수는 스크립트 상단에서 미리 선언됨 — 초기 로드 시 자동 방입장으로도
+//  안전하게 참조될 수 있도록 var hoisting 순서 문제 방지)
+
+function foursomeBlankTeam() { return { team: "", playerName: ["", ""], indHandi: ["", ""], g1: "", g2: "" }; }
+function foursomeMigrateTeam(t) {
+  if (!Array.isArray(t.playerName)) t.playerName = ["", ""];
+  else if (t.playerName.length < 2) t.playerName = [t.playerName[0] || "", ""];
+  if (!Array.isArray(t.indHandi)) t.indHandi = [(t.indHandi === undefined || t.indHandi === null) ? "" : t.indHandi, ""];
+  else if (t.indHandi.length < 2) t.indHandi = [t.indHandi[0] || "", ""];
+  return t;
+}
+function foursomeSeedRooms() {
+  foursomeRooms = FOURSOME_ROOM_NUMBERS.map(function(no) {
+    return { no: no, teams: [foursomeBlankTeam(), foursomeBlankTeam()] };
+  });
+}
+function foursomeNum(v) {
+  if (v === "" || v === null || v === undefined) return null;
+  var n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+function foursomeTeamHandiOf(t) {
+  var h1 = foursomeNum(t.indHandi[0]), h2 = foursomeNum(t.indHandi[1]);
+  if (h1 === null || h2 === null) return null;
+  return Math.round((h1 + h2) * 10) / 10;
+}
+function foursomeDerive(t) {
+  var g1 = foursomeNum(t.g1), g2 = foursomeNum(t.g2);
+  var th = foursomeTeamHandiOf(t);
+  var anyGame = (g1 !== null || g2 !== null);
+  var sum = anyGame ? (g1 || 0) + (g2 || 0) : null;
+  var score = (sum !== null) ? sum - Math.abs(th || 0) : null;
+  var complete = (g1 !== null && g2 !== null);
+  return { sum: sum, score: score, complete: complete, teamHandi: th };
+}
+function foursomeComputeRanks() {
+  var arr = [];
+  foursomeRooms.forEach(function(room, ri) {
+    room.teams.forEach(function(t, ti) {
+      var d = foursomeDerive(t);
+      if (d.complete && d.score !== null) arr.push({ ri: ri, ti: ti, score: d.score });
+    });
+  });
+  arr.sort(function(a, b) { return a.score - b.score; });
+  var rankMap = {}, lastScore = null, lastRank = 0;
+  arr.forEach(function(item, idx) {
+    var rank;
+    if (lastScore !== null && item.score === lastScore) rank = lastRank;
+    else { rank = idx + 1; lastRank = rank; lastScore = item.score; }
+    rankMap[item.ri + "-" + item.ti] = rank;
+  });
+  return rankMap;
+}
+function foursomeMedal(rank) { return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : ""; }
+function foursomeRankVisible() { return admin || foursomeRankPublished; }
+function foursomeRankHTML(rank) {
+  if (!rank) return '<span class="fs-calc empty" style="background:none;">–</span>';
+  if (!foursomeRankVisible()) return '<span class="fs-rank-locked">🔒 비공개</span>';
+  var m = foursomeMedal(rank);
+  var html = '<span>' + (m ? m + ' ' : "") + rank + '위</span>';
+  if (admin && !foursomeRankPublished) html += '<div style="font-size:9px;color:var(--gold-dim);">관리자만 보임</div>';
+  return html;
+}
+function foursomeFmt(n) { return (Math.round(n * 10) / 10).toString(); }
+function foursomeDataReady() { return !useFirebase || foursomeEverReceived; }
+
+function foursomeInp(ri, ti, field, val, extra, ph, idx, forceEditable) {
+  var v = (val === null || val === undefined) ? "" : String(val).replace(/"/g, "&quot;");
+  var hasIdx = (idx !== undefined && idx !== null);
+  var idxArg = hasIdx ? idx : "null";
+  var editable = (forceEditable !== undefined) ? forceEditable : true;
+  var disabledAttr = editable ? "" : "disabled";
+  var handler = editable ? (' oninput="foursomeOnInput(' + ri + ',' + ti + ',\'' + field + '\',this.value,' + idxArg + ')"') : "";
+  var autoId = "fscell-" + ri + "-" + ti + "-" + field + (hasIdx ? ("-" + idx) : "");
+  return '<input class="fs-cell ' + extra + '" type="text" inputmode="decimal" id="' + autoId + '"'
+       + ' value="' + v + '"' + (ph ? ' placeholder="' + ph + '"' : "") + ' ' + disabledAttr + handler + '>';
+}
+
+function foursomeRender() {
+  var tbody = document.getElementById("foursomeTbody");
+  if (!tbody) return;
+  var ranks = foursomeComputeRanks();
+  var reveal = foursomeRankVisible();
+  var ready = foursomeDataReady();
+  var html = "";
+
+  var active = document.activeElement;
+  var focusId = null, selStart = null, selEnd = null;
+  if (active && active.tagName === "INPUT" && active.id) {
+    focusId = active.id;
+    try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch (e) {}
+  }
+
+  foursomeRooms.forEach(function(room, ri) {
+    var roomRowSpan = room.teams.length * 2;
+    room.teams.forEach(function(t, ti) {
+      var d = foursomeDerive(t);
+      var rank = ranks[ri + "-" + ti];
+      var isFirst = (reveal && rank === 1) ? "fs-first" : "";
+      var delBtn = (admin && room.teams.length > 1)
+        ? '<button class="fs-del" onclick="foursomeDelTeam(' + ri + ',' + ti + ')">✕</button>' : "";
+
+      html += '<tr class="' + isFirst + '">';
+      if (ti === 0) html += '<td class="fs-room-cell" rowspan="' + roomRowSpan + '">' + room.no + '방</td>';
+      html += '<td class="fs-team-col" rowspan="2"><div style="display:flex;align-items:center;gap:2px;">'
+            + foursomeInp(ri, ti, "team", t.team, "fs-team-name", "팀 이름", null, ready) + delBtn + '</div></td>';
+      html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[0], "", "선수1 이름", 0, ready) + '</td>';
+      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[0], "", "선수1", 0, ready) + '</td>';
+      html += '<td class="fs-calc fs-calc-col ' + (d.teamHandi === null ? "empty" : "") + '" rowspan="2" id="fsth-' + ri + '-' + ti + '">' + (d.teamHandi === null ? "–" : foursomeFmt(d.teamHandi)) + '</td>';
+      html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g1", t.g1, "", "", null, ready) + '</td>';
+      html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g2", t.g2, "", "", null, ready) + '</td>';
+      html += '<td class="fs-calc fs-calc-col ' + (d.sum === null ? "empty" : "") + '" rowspan="2" id="fssum-' + ri + '-' + ti + '">' + (d.sum === null ? "–" : foursomeFmt(d.sum)) + '</td>';
+      html += '<td class="fs-calc fs-calc-col ' + (d.score === null ? "empty" : "") + '" rowspan="2" id="fssc-' + ri + '-' + ti + '">' + (d.score === null ? "–" : foursomeFmt(d.score)) + '</td>';
+      html += '<td class="fs-rank-col" rowspan="2" id="fsrk-' + ri + '-' + ti + '">' + foursomeRankHTML(rank) + '</td>';
+      html += '</tr>';
+      html += '<tr class="' + isFirst + '">';
+      html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[1], "", "선수2 이름", 1, ready) + '</td>';
+      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[1], "", "선수2", 1, ready) + '</td>';
+      html += '</tr>';
+    });
+  });
+  tbody.innerHTML = html;
+  document.getElementById("foursomeWaitBanner").style.display = (!ready) ? "block" : "none";
+  document.getElementById("foursomeAddTeamBtn").style.display = admin ? "" : "none";
+  document.getElementById("foursomeRankPublishBtn").style.display = admin ? "" : "none";
+  if (admin) {
+    var btn = document.getElementById("foursomeRankPublishBtn");
+    btn.textContent = foursomeRankPublished ? "🌐 순위 전체공개 중 (끄려면 클릭)" : "🔒 순위 비공개 (전체공개하려면 클릭)";
+    btn.className = "btn btn-sm " + (foursomeRankPublished ? "btn-gold" : "btn-gray");
+  }
+
+  if (focusId) {
+    var el = document.getElementById(focusId);
+    if (el) { el.focus(); if (selStart !== null) { try { el.setSelectionRange(selStart, selEnd); } catch (e) {} } }
+  }
+}
+
+function foursomeUpdateDerivedCell(ri, ti) {
+  var d = foursomeDerive(foursomeRooms[ri].teams[ti]);
+  var thEl = document.getElementById("fsth-" + ri + "-" + ti);
+  var sumEl = document.getElementById("fssum-" + ri + "-" + ti);
+  var scEl = document.getElementById("fssc-" + ri + "-" + ti);
+  if (thEl) { thEl.textContent = d.teamHandi === null ? "–" : foursomeFmt(d.teamHandi); thEl.classList.toggle("empty", d.teamHandi === null); }
+  if (sumEl) { sumEl.textContent = d.sum === null ? "–" : foursomeFmt(d.sum); sumEl.classList.toggle("empty", d.sum === null); }
+  if (scEl) { scEl.textContent = d.score === null ? "–" : foursomeFmt(d.score); scEl.classList.toggle("empty", d.score === null); }
+}
+function foursomeUpdateAllRanks() {
+  var ranks = foursomeComputeRanks();
+  var reveal = foursomeRankVisible();
+  foursomeRooms.forEach(function(room, ri) {
+    room.teams.forEach(function(t, ti) {
+      var rEl = document.getElementById("fsrk-" + ri + "-" + ti);
+      if (rEl) rEl.innerHTML = foursomeRankHTML(ranks[ri + "-" + ti]);
+      var tr = rEl ? rEl.closest("tr") : null;
+      if (tr) {
+        var isFirst = reveal && ranks[ri + "-" + ti] === 1;
+        tr.classList.toggle("fs-first", isFirst);
+        var tr2 = tr.nextElementSibling;
+        if (tr2) tr2.classList.toggle("fs-first", isFirst);
+      }
+    });
+  });
+}
+
+function foursomeOnInput(ri, ti, field, value, idx) {
+  if (!foursomeDataReady()) return; // 정식 데이터 수신 전에는 입력 차단(구조 손상 방지)
+  var t = foursomeRooms[ri].teams[ti];
+  if ((field === "indHandi" || field === "playerName") && idx !== undefined && idx !== null) t[field][idx] = value;
+  else t[field] = value;
+  foursomeUpdateDerivedCell(ri, ti);
+  foursomeUpdateAllRanks();
+  foursomePushField(ri, ti, field, idx);
+}
+
+function foursomeApplyIncomingRooms(newRooms) {
+  var oldRooms = foursomeRooms;
+  foursomeRooms = newRooms;
+  foursomeRooms.forEach(function(r) { r.teams.forEach(foursomeMigrateTeam); });
+  Object.keys(foursomePushTimers).forEach(function(path) {
+    var m = path.match(/\/foursome\/rooms\/(\d+)\/teams\/(\d+)\/([^\/]+)(?:\/(\d+))?$/);
+    if (!m) return;
+    var ri = Number(m[1]), ti = Number(m[2]), field = m[3];
+    var idx = (m[4] !== undefined) ? Number(m[4]) : null;
+    if (!foursomeRooms[ri] || !foursomeRooms[ri].teams[ti] || !oldRooms[ri] || !oldRooms[ri].teams[ti]) return;
+    var oldVal = (idx !== null) ? oldRooms[ri].teams[ti][field][idx] : oldRooms[ri].teams[ti][field];
+    if (idx !== null) foursomeRooms[ri].teams[ti][field][idx] = oldVal;
+    else foursomeRooms[ri].teams[ti][field] = oldVal;
+  });
+}
+
+function foursomePushField(ri, ti, field, idx) {
+  if (!useFirebase || !currentRoom) return;
+  var hasIdx = (idx !== undefined && idx !== null);
+  var path = "rooms/" + currentRoom + "/foursome/rooms/" + ri + "/teams/" + ti + "/" + field + (hasIdx ? ("/" + idx) : "");
+  var stateEl = document.getElementById("foursomeSaveState");
+  if (stateEl) stateEl.textContent = "저장 중…";
+  if (foursomePushTimers[path]) clearTimeout(foursomePushTimers[path]);
+  foursomePushTimers[path] = setTimeout(function() {
+    delete foursomePushTimers[path];
+    var value = hasIdx ? foursomeRooms[ri].teams[ti][field][idx] : foursomeRooms[ri].teams[ti][field];
+    db.ref(path).set(value).then(function() {
+      if (stateEl) stateEl.textContent = "🌐 실시간 동기화됨";
+    }).catch(function() {
+      if (stateEl) stateEl.textContent = "⚠ 저장 실패(연결 확인)";
+    });
+  }, 350);
+}
+
+function foursomeAddTeamAll() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  foursomeRooms.forEach(function(r) { r.teams.push(foursomeBlankTeam()); });
+  foursomeRender();
+  foursomePushAllRooms();
+  toast("모든 방에 팀 한 줄씩 추가했습니다");
+}
+function foursomeDelTeam(ri, ti) {
+  if (!admin) return;
+  if (foursomeRooms[ri].teams.length <= 1) { toast("방에는 최소 1팀이 필요합니다"); return; }
+  foursomeRooms[ri].teams.splice(ti, 1);
+  foursomeRender();
+  foursomePushAllRooms();
+}
+function foursomePushAllRooms() {
+  if (!useFirebase || !currentRoom) return;
+  db.ref("rooms/" + currentRoom + "/foursome/rooms").set(foursomeRooms);
+}
+function foursomeToggleRankPublish() {
+  if (!admin) return;
+  foursomeRankPublished = !foursomeRankPublished;
+  foursomeRender();
+  if (useFirebase && currentRoom) db.ref("rooms/" + currentRoom + "/foursome/published").set(foursomeRankPublished);
+  toast(foursomeRankPublished ? "🌐 포썸 순위를 전체 공개했습니다" : "🔒 포썸 순위를 비공개로 전환했습니다");
+}
+
+function toggleFoursomePublic() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!currentRoom) { toast("먼저 운영할 방을 선택하세요"); return; }
+  foursomePublic = !foursomePublic;
+  updateFoursomePublicButton();
+  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta/foursomePublic").set(foursomePublic);
+  foursomeUpdateEntryVisibility();
+  toast(foursomePublic ? "🏆 포썸대회 스코어를 참가자에게 공개했습니다" : "포썸대회 스코어를 참가자 화면에서 숨겼습니다");
+}
+function updateFoursomePublicButton() {
+  var b = document.getElementById("foursomePublicBtn");
+  if (!b) return;
+  b.textContent = foursomePublic ? "🟢 공개 ON (참가자에게 보임)" : "⚫ 공개 OFF (참가자에게 안 보임)";
+  b.className = "btn btn-sm " + (foursomePublic ? "btn-gold" : "btn-gray");
+}
+function foursomeUpdateEntryVisibility() {
+  var card = document.getElementById("foursomeEntryCard");
+  if (!card) return;
+  card.style.display = (foursomePublic || admin) ? "flex" : "none";
+}
+
+function openFoursomeModal() {
+  if (!foursomePublic && !admin) { toast("아직 공개되지 않았습니다"); return; }
+  foursomeModalOpen = true;
+  document.getElementById("foursomeOverlay").classList.add("open");
+  if (!foursomeRooms.length) foursomeSeedRooms();
+  foursomeRender();
+}
+function closeFoursomeModal() {
+  foursomeModalOpen = false;
+  document.getElementById("foursomeOverlay").classList.remove("open");
 }
 </script>
 </body>
