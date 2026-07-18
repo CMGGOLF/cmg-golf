@@ -1110,6 +1110,16 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
       <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
         여자 <strong>최소 1명</strong> 강제 배정 · 핸디 평준화 자동 배분
       </div>
+      <div style="border:1px dashed var(--border-3); border-radius:var(--radius-sm); padding:12px; margin-bottom:14px; background:var(--surface-2);">
+        <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:8px;">참가자 직접 추가 (본인 등록 전에 관리자가 미리 팀편성 가능)</div>
+        <input id="adminAddName" type="text" placeholder="이름" style="width:100%; padding:11px; margin-bottom:8px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface-1); color:var(--text); font-size:14px;">
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <input id="adminAddHandi" type="number" placeholder="핸디" style="flex:1; padding:11px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface-1); color:var(--text); font-size:14px;">
+          <button id="adminAddGenderBtnF" class="btn btn-sm" style="flex:1; background:var(--green); color:#fff;" onclick="setAdminAddGender('female')">여자 ✓</button>
+          <button id="adminAddGenderBtnM" class="btn btn-gray btn-sm" style="flex:1;" onclick="setAdminAddGender('male')">남자</button>
+        </div>
+        <button class="btn btn-gold btn-sm" style="width:100%;" onclick="adminAddPlayer()">＋ 참가자 추가</button>
+      </div>
       <div style="margin-bottom:10px;">
         <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">팀당 인원 선택</div>
         <div class="btn-row">
@@ -2053,6 +2063,42 @@ function deletePlayer(name) {
   if (useFirebase) db.ref("rooms/" + currentRoom + "/players/" + name).remove();
   else { delete localData[name]; renderRank(); renderParticipantList(); refreshAdminPlayerList(); refreshAdminRoomStatus(); }
   toast(name + " 삭제됨");
+}
+
+// ── 관리자가 참가자 본인 등록 전에 미리 추가 (팀편성을 미리 준비할 수 있도록) ──
+var adminAddGender = 'female';
+function setAdminAddGender(g) {
+  adminAddGender = g;
+  var fBtn = document.getElementById("adminAddGenderBtnF");
+  var mBtn = document.getElementById("adminAddGenderBtnM");
+  if (fBtn && mBtn) {
+    fBtn.className = "btn btn-sm" + (g === 'female' ? "" : " btn-gray");
+    if (g === 'female') fBtn.style.cssText = "flex:1; background:var(--green); color:#fff;"; else fBtn.style.cssText = "flex:1;";
+    mBtn.className = "btn btn-sm" + (g === 'male' ? "" : " btn-gray");
+    if (g === 'male') mBtn.style.cssText = "flex:1; background:var(--green); color:#fff;"; else mBtn.style.cssText = "flex:1;";
+    fBtn.textContent = "여자" + (g === 'female' ? " ✓" : "");
+    mBtn.textContent = "남자" + (g === 'male' ? " ✓" : "");
+  }
+}
+function adminAddPlayer() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!currentRoom) { toast("먼저 경기방에 입장하세요"); return; }
+  var name = document.getElementById("adminAddName").value.trim();
+  var handiStr = document.getElementById("adminAddHandi").value.trim();
+  if (!name) { toast("이름을 입력하세요"); return; }
+  if (localData[name]) { toast("이미 등록된 이름입니다"); return; }
+  var handi = handiStr !== "" ? Number(handiStr) : 0;
+  var entry = { name: name, handi: handi, score: "", timestamp: Date.now(), gender: adminAddGender };
+  localData[name] = entry;
+  if (useFirebase) {
+    db.ref("rooms/" + currentRoom + "/players/" + name).set(entry);
+  } else {
+    renderRank(); renderParticipantList();
+  }
+  refreshAdminPlayerList(); updateTeamSizeInfo(); updateAutoTeamInfo();
+  document.getElementById("adminAddName").value = "";
+  document.getElementById("adminAddHandi").value = "";
+  toast("✅ " + name + "님을 추가했습니다 (점수 미입력 상태 · 팀편성에는 바로 사용 가능)");
 }
 
 // ── 팀편성 인원 설정 ──
