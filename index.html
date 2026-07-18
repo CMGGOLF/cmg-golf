@@ -2998,23 +2998,36 @@ function pmRender() {
     return '<div class="pm-row"><div><div class="nm">' + f + '</div>' + badge + '</div>' + btn + '</div>';
   }).join("");
 
-  var remainingMales = pmRemainingMales();
-  var matchedMaleNames = Object.keys(pmMaleMatches);
-  if (pmMaleRoundOpen && (remainingMales.length || matchedMaleNames.length)) {
-    html += '<div style="margin:18px 0 10px; padding-top:14px; border-top:1px dashed var(--border-3); font-size:12.5px; font-weight:700; color:var(--text-2);">👬 여자 매칭 완료 후 남은 남자끼리 매칭</div>';
-    var maleRows = pmMales.filter(function(m) { return !pmUsedByFemale()[m]; });
-    html += maleRows.map(function(m) {
-      var matched = !!pmMaleMatches[m];
-      var badge = matched
-        ? '<span class="pm-badge done">✅ 매칭완료</span>'
-        : '<span class="pm-badge wait">🎲 매칭 참여</span>';
-      var btn = matched
-        ? '<button class="pm-check-btn" onclick="pmMaleDraw(\'' + m.replace(/'/g, "\\'") + '\')">내 결과 확인</button>'
-        : '<button class="pm-draw-btn" onclick="pmMaleDraw(\'' + m.replace(/'/g, "\\'") + '\')">매칭</button>';
-      return '<div class="pm-row"><div><div class="nm">' + m + '</div>' + badge + '</div>' + btn + '</div>';
-    }).join("");
-  }
+  var maleRows = pmMales.map(function(m) {
+    var femalePartner = pmFindFemalePartnerOf(m);
+    var malePartner = pmMaleMatches[m];
+    var matched = !!femalePartner || !!malePartner;
+    var badge, btn;
+    if (matched) {
+      badge = '<span class="pm-badge done">✅ 매칭완료</span>';
+      var partnerName = femalePartner || malePartner;
+      btn = '<button class="pm-check-btn" onclick="pmShowResult(\'' + m.replace(/'/g, "\\'") + '\', \'' + partnerName.replace(/'/g, "\\'") + '\')">내 결과 확인</button>';
+    } else if (pmMaleRoundOpen) {
+      badge = '<span class="pm-badge wait">🎲 매칭 가능</span>';
+      btn = '<button class="pm-draw-btn" onclick="pmMaleDraw(\'' + m.replace(/'/g, "\\'") + '\')">매칭</button>';
+    } else {
+      badge = '<span class="pm-badge wait">⏳ 대기 중</span>';
+      btn = '<button class="pm-check-btn" disabled style="opacity:0.5; cursor:default;">대기 중</button>';
+    }
+    return '<div class="pm-row"><div><div class="nm">' + m + '</div>' + badge + '</div>' + btn + '</div>';
+  }).join("");
+  html += '<div style="margin:18px 0 10px; padding-top:14px; border-top:1px dashed var(--border-3); font-size:12.5px; font-weight:700; color:var(--text-2);">🤵 남자 목록 (본인 결과 확인)</div>';
+  html += maleRows;
   listEl.innerHTML = html;
+}
+
+// 이 남자가 어떤 여자와 매칭됐는지 찾기 (여자쪽에서 뽑기로 배정된 경우)
+function pmFindFemalePartnerOf(maleName) {
+  var found = null;
+  Object.keys(pmMatches).forEach(function(f) {
+    if (pmMatches[f] && pmMatches[f].male === maleName) found = f;
+  });
+  return found;
 }
 
 // 매칭 실행 — Firebase 트랜잭션으로 원자적 처리 (동시에 여러 명이 눌러도 같은 남자가 중복 배정되지 않음)
@@ -3082,6 +3095,8 @@ function pmRemainingMales() {
 // 남자끼리 매칭 — 버튼을 누르면 그 순간 "남는 남자" 풀에서 무작위로 한 명을 뽑아 즉시 매칭 (여자쪽 매칭과 동일한 방식)
 function pmMaleDraw(maleName) {
   if (pmMaleMatches[maleName]) { pmShowResult(maleName, pmMaleMatches[maleName]); return; }
+  var existingFemalePartner = pmFindFemalePartnerOf(maleName);
+  if (existingFemalePartner) { pmShowResult(maleName, existingFemalePartner); return; } // 이미 여자와 매칭됨 → 안전장치
   if (!useFirebase) {
     var usedByFemaleLocal = pmUsedByFemale();
     var poolLocal = pmMales.filter(function(m) { return m !== maleName && !usedByFemaleLocal[m] && !pmMaleMatches[m]; });
