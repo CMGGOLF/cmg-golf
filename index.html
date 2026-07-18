@@ -1090,6 +1090,13 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
     </div>
     <div class="card">
       <div class="card-title">참가자 관리</div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <span id="teamSelectCount" style="font-size:12px; color:var(--text-3); font-family:'DM Mono',monospace;">0 / 0명 선택됨</span>
+        <span style="flex:1;"></span>
+        <button class="btn btn-gray btn-sm" style="width:auto; padding:7px 12px; font-size:12px;" onclick="teamSelectAll(true)">전체 선택</button>
+        <button class="btn btn-gray btn-sm" style="width:auto; padding:7px 12px; font-size:12px;" onclick="teamSelectAll(false)">전체 해제</button>
+      </div>
+      <div class="notice notice-info" style="margin:0 0 10px; font-size:11.5px;">체크된 사람만 팀편성에 사용됩니다. 등록은 됐지만 오늘 불참하는 사람은 체크를 해제하세요.</div>
       <div id="adminPlayerList">
         <div class="empty-state" style="padding:16px 0"><p>참가자가 없습니다</p></div>
       </div>
@@ -1296,6 +1303,7 @@ var FOURSOME_PATH = "foursomeGlobal"; // 경기방과 무관하게 항상 같은
 
 // 🤝 파트너 매칭 상태 (역시 스크립트 최상단에서 선언 — hoisting 문제 방지)
 var PM_PATH = "partnerMatch"; // 경기방과 무관한 고정 경로
+var teamExcluded = {}; // { 이름: true } = 팀편성에서 제외됨(체크 해제). 없으면 기본적으로 포함.
 var pmFemales = [];
 var pmMales = [];
 var pmMatches = {};  // { 여자이름: { male: 남자이름, ts: timestamp } }
@@ -2047,7 +2055,9 @@ function refreshAdminPlayerList() {
   el.innerHTML = arr.map(function(p) {
     var gIcon = p.gender === 'female' ? '여' : '';
     var gColor = p.gender === 'female' ? '#f472b6' : '#7eb4ff';
+    var checked = teamExcluded[p.name] ? "" : "checked";
     return '<div style="display:flex; align-items:center; padding:11px 0; border-bottom:1px solid var(--border-1);">' +
+      '<input type="checkbox" ' + checked + ' onchange="toggleTeamSelect(\'' + p.name.replace(/'/g, "\\'") + '\', this.checked)" title="팀편성에 포함" style="width:18px; height:18px; margin-right:10px; flex-shrink:0; accent-color:var(--green);">' +
       '<div style="width:28px; font-family:\'DM Mono\',monospace; font-size:14px; color:var(--text-3)">' + p.rank + '</div>' +
       '<div style="width:20px; font-size:13px; color:' + gColor + '; font-weight:700;">' + gIcon + '</div>' +
       '<div style="flex:1; font-size:14px; font-weight:500; color:var(--text);">' + p.name + '</div>' +
@@ -2057,7 +2067,31 @@ function refreshAdminPlayerList() {
       '<button onclick="deletePlayer(\'' + p.name + '\')" style="background:none; border:none; font-size:16px; cursor:pointer; padding:4px; color:var(--text-3);">🗑</button>' +
     '</div>';
   }).join("");
+  updateTeamSelectCount();
 }
+
+// ── 팀편성에 포함할 참가자 선택 (체크박스) — 등록은 됐지만 오늘 팀편성엔 빼고 싶은 사람 제외 가능 ──
+// (teamExcluded 자체는 스크립트 상단에서 미리 선언됨 — hoisting 문제 방지)
+function toggleTeamSelect(name, isChecked) {
+  if (!admin) return;
+  if (isChecked) delete teamExcluded[name];
+  else teamExcluded[name] = true;
+  updateTeamSelectCount();
+}
+function teamSelectAll(select) {
+  if (!admin) return;
+  if (select) { teamExcluded = {}; }
+  else { Object.keys(localData).forEach(function(n) { teamExcluded[n] = true; }); }
+  refreshAdminPlayerList();
+}
+function updateTeamSelectCount() {
+  var el = document.getElementById("teamSelectCount");
+  if (!el) return;
+  var total = Object.keys(localData).length;
+  var excluded = Object.keys(teamExcluded).filter(function(n) { return localData[n]; }).length;
+  el.textContent = (total - excluded) + " / " + total + "명 선택됨";
+}
+
 function deletePlayer(name) {
   if (!confirm("[" + name + "] 을 삭제할까요?")) return;
   if (useFirebase) db.ref("rooms/" + currentRoom + "/players/" + name).remove();
@@ -2125,7 +2159,7 @@ function updateTeamSizeButtons() {
 }
 
 function updateTeamSizeInfo() {
-  var total = Object.keys(localData || {}).length;
+  var total = Object.keys(localData || {}).filter(function(n) { return !teamExcluded[n]; }).length;
   var teamCount = Math.max(1, Math.ceil(total / selectedTeamSize));
   var totalEl = document.getElementById("teamSizeTotal");
   var countEl = document.getElementById("teamSizeCount");
@@ -2216,8 +2250,8 @@ function runAutoTeamIfNeeded() {
 
 // ── 자동 팀편성 ──
 function autoAssignTeams(isAuto) {
-  var players = Object.values(localData || {});
-  if (!players.length) { toast("참가자가 없습니다"); return; }
+  var players = Object.values(localData || {}).filter(function(p) { return !teamExcluded[p.name]; });
+  if (!players.length) { toast("선택된 참가자가 없습니다"); return; }
 
   var females = players.filter(function(p) { return p.gender === 'female'; });
   var males   = players.filter(function(p) { return p.gender !== 'female'; });
