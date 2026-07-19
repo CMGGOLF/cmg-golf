@@ -1192,6 +1192,15 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
         <div id="pmAdminTableWrap" style="margin-top:12px;"></div>
       </div>
     </div>
+    <div class="admin-section">
+      <div class="card-title">📊 회원별 평균 핸디 관리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
+        지금까지 만들어진 모든 방의 "핸디+친타수" 기록을 모아 회원별 평균을 계산합니다. 넷스코어(친타수−핸디)가 그날 전체 참가자 평균보다 꾸준히 낮으면(잘 침) 핸디를 낮추고, 높으면(못 침) 핸디를 올리는 방향으로 <strong>제안 핸디</strong>를 계산합니다.<br>
+        "핸디 반영"을 누르면 그 회원의 <strong>기본 핸디</strong>로 저장되어, 다음에 새 방에서 그 이름으로 등록할 때(불러오기) 자동으로 채워집니다.
+      </div>
+      <button class="btn btn-gray btn-sm" style="width:100%; margin-bottom:10px;" onclick="renderMemberHandiStats(true)">🔄 통계 새로고침</button>
+      <div id="memberHandiStatsWrap"><div class="empty-state" style="padding:12px 0"><p>통계 새로고침을 눌러주세요</p></div></div>
+    </div>
     <div class="card">
       <div class="card-title" style="color:#f87171">⚠ 위험 구역</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">아래 작업은 되돌릴 수 없습니다. (방 폭파)</div>
@@ -1832,7 +1841,22 @@ function loadMyData() {
   localStorage.setItem("myGolfName", name);
   if (useFirebase) {
     db.ref("rooms/" + currentRoom + "/players/" + name).once("value", function(snap) {
-      var d = snap.val(); if (!d) { toast("저장된 데이터가 없습니다"); return; }
+      var d = snap.val();
+      if (!d) {
+        // 이 방엔 기록이 없음 → 회원 기본 핸디가 저장되어 있으면 핸디만 자동으로 채워줌
+        var bn = baseName(name) || name;
+        db.ref("memberDefaultHandi/" + bn).once("value", function(snap2) {
+          var def = snap2.val();
+          if (def && def.handi !== undefined) {
+            document.getElementById("pHandi").value = def.handi;
+            validateHandi(document.getElementById("pHandi"));
+            toast("기본 핸디(" + def.handi + ")를 불러왔습니다");
+          } else {
+            toast("저장된 데이터가 없습니다");
+          }
+        });
+        return;
+      }
       var hasScore = (d.score !== "" && d.score !== undefined);
       document.getElementById("pHandi").value = d.handi;
       document.getElementById("pScore").value = hasScore ? d.score : "";
@@ -1991,7 +2015,7 @@ function renderRank() {
 }
 function unlockAdmin() {
   var pw = document.getElementById("adminPw").value;
-  if (pw === "1217") {
+  if (pw === "9080") {
     try { localStorage.setItem("cmgAdmin", "1"); } catch(e) {}
     enterAdminMode();
     toast("관리자 모드 활성화 — 다음부터 자동 로그인됩니다");
@@ -2012,6 +2036,7 @@ function enterAdminMode() {
   updateAutoTeamButton(); updateAutoTeamInfo();
   updateFoursomePublicButton(); foursomeUpdateEntryVisibility(); if (foursomeModalOpen) foursomeRender();
   updatePmPublicButton(); updatePmMaleRoundButton(); pmUpdateEntryVisibility(); pmRenderAdminTable(); if (pmModalOpen) pmRender();
+  renderMemberHandiStats();
 }
 function logoutAdmin() {
   if (!confirm("관리자 로그아웃하시겠습니까?\n(이 기기에서 자동 로그인이 해제됩니다)")) return;
@@ -3196,6 +3221,84 @@ function pmOpenModal() {
 function pmCloseModal() {
   pmModalOpen = false;
   document.getElementById("pmOverlay").classList.remove("open");
+}
+
+// ══════════════════════════════════════════════════════════════
+// 📊 회원별 평균 핸디 관리 (모든 방의 핸디+친타수 기록을 모아 계산)
+// ══════════════════════════════════════════════════════════════
+function computeMemberHandiStats() {
+  var perRoomAvgNet = {}; // roomKey -> 그 방 전체 참가자 평균 넷스코어
+  var records = {};       // baseName -> [{net, handi, score, ts, room}]
+
+  Object.keys(allRooms || {}).forEach(function(roomKey) {
+    var room = allRooms[roomKey];
+    if (!room || !room.players) return;
+    var roomNets = [];
+    Object.keys(room.players).forEach(function(pname) {
+      var p = room.players[pname];
+      if (!p) return;
+      var handi = Number(p.handi);
+      var score = Number(p.score);
+      if (p.score === "" || p.score === undefined || p.score === null || isNaN(score) || isNaN(handi)) return;
+      var net = score - handi;
+      roomNets.push(net);
+      var bn = baseName(pname) || pname;
+      if (!records[bn]) records[bn] = [];
+      records[bn].push({ net: net, handi: handi, score: score, ts: p.timestamp || 0, room: roomKey });
+    });
+    perRoomAvgNet[roomKey] = roomNets.length ? (roomNets.reduce(function(a, b) { return a + b; }, 0) / roomNets.length) : null;
+  });
+
+  var stats = [];
+  Object.keys(records).forEach(function(name) {
+    var rounds = records[name];
+    var gamesCount = rounds.length;
+    var avgScore = rounds.reduce(function(a, r) { return a + r.score; }, 0) / gamesCount;
+    var avgNet = rounds.reduce(function(a, r) { return a + r.net; }, 0) / gamesCount;
+    // 라운드별 "그 방 전체 평균 대비 편차"를 구해서 평균 (같은 날 다른 사람들과 비교한 상대적 실력)
+    var deviations = rounds.map(function(r) {
+      var roomAvg = perRoomAvgNet[r.room];
+      return (roomAvg === null || roomAvg === undefined) ? 0 : (r.net - roomAvg);
+    });
+    var avgDeviation = deviations.reduce(function(a, b) { return a + b; }, 0) / deviations.length;
+    var latest = rounds.slice().sort(function(a, b) { return b.ts - a.ts; })[0];
+    var suggestedHandi = Math.round(latest.handi + avgDeviation);
+    stats.push({
+      name: name, gamesCount: gamesCount, avgScore: avgScore, avgNet: avgNet,
+      latestHandi: latest.handi, suggestedHandi: suggestedHandi
+    });
+  });
+  stats.sort(function(a, b) { return b.gamesCount - a.gamesCount; });
+  return stats;
+}
+
+function renderMemberHandiStats(showToast) {
+  var wrap = document.getElementById("memberHandiStatsWrap");
+  if (!wrap || !admin) return;
+  var stats = computeMemberHandiStats();
+  if (!stats.length) {
+    wrap.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>아직 핸디·친타수가 모두 입력된 기록이 없습니다</p></div>';
+  } else {
+    wrap.innerHTML = '<div class="foursome-scroll"><table class="pm-admin-table"><thead><tr>'
+      + '<th>이름</th><th>게임수</th><th>평균친타수</th><th>평균넷</th><th>최근핸디</th><th>제안핸디</th><th></th>'
+      + '</tr></thead><tbody>' + stats.map(function(s) {
+        return '<tr><td>' + s.name + '</td><td>' + s.gamesCount + '</td><td>' + s.avgScore.toFixed(1) + '</td>'
+          + '<td>' + (s.avgNet >= 0 ? "+" : "") + s.avgNet.toFixed(1) + '</td><td>' + s.latestHandi + '</td>'
+          + '<td><strong style="color:var(--gold)">' + s.suggestedHandi + '</strong></td>'
+          + '<td><button class="btn btn-gold btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" onclick="applyMemberHandi(\'' + s.name.replace(/'/g, "\\'") + '\', ' + s.suggestedHandi + ')">핸디 반영</button></td></tr>';
+      }).join("") + '</tbody></table></div>';
+  }
+  if (showToast) toast("통계를 새로고침했습니다");
+}
+
+function applyMemberHandi(name, handi) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  db.ref("memberDefaultHandi/" + name).set({ handi: handi, updatedAt: Date.now() }).then(function() {
+    toast("✅ " + name + "님의 기본 핸디를 " + handi + "로 저장했습니다. 다음 방부터 자동 적용됩니다.");
+  }).catch(function() {
+    toast("저장 실패(연결 확인)");
+  });
 }
 </script>
 </body>
