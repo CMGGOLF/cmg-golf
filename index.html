@@ -2250,10 +2250,10 @@ function autoAssignTeams(isAuto) {
     }
   });
   // 0-2) 참가자 관리에서 체크한 사람들도 하나의 팀으로 강제 묶기 (2명 이상 체크했을 때만)
+  //      이 조는 핸디밸런스와 무관하게 항상 "중앙 조"에 배정한다.
   var checkedGroup = players.filter(function(p) { return teamGrouped[p.name] && !groupedNames[p.name]; });
   var hasCheckedGroup = checkedGroup.length >= 2;
   if (hasCheckedGroup) {
-    forcedGroups.push(checkedGroup);
     checkedGroup.forEach(function(p) { groupedNames[p.name] = true; });
   }
   var overflow = false;
@@ -2274,6 +2274,26 @@ function autoAssignTeams(isAuto) {
     }
     grp.forEach(function(p) { teams[bestIdx].push(p); teamHandiSum[bestIdx] += Number(p.handi); });
   });
+
+  // 체크박스로 묶은 조는 핸디밸런스 상관없이 "중앙 조"에 배정
+  // (예: 5개조 → 3조, 4개조 → 중앙에서 뒤쪽인 3조)
+  var checkedGroupCenterIndex = -1;
+  if (hasCheckedGroup) {
+    var centerIdx = Math.ceil((teamCount - 1) / 2); // 0-based, 뒤쪽으로 살짝 치우친 중앙
+    var targetIdx = -1;
+    if (teams[centerIdx].length + checkedGroup.length <= selectedTeamSize) {
+      targetIdx = centerIdx;
+    } else {
+      // 중앙 조에 자리가 없으면 가장 가까운 자리 있는 조를 찾음
+      for (var d = 1; d < teamCount && targetIdx === -1; d++) {
+        if (centerIdx + d < teamCount && teams[centerIdx + d].length + checkedGroup.length <= selectedTeamSize) targetIdx = centerIdx + d;
+        else if (centerIdx - d >= 0 && teams[centerIdx - d].length + checkedGroup.length <= selectedTeamSize) targetIdx = centerIdx - d;
+      }
+      if (targetIdx === -1) { targetIdx = centerIdx; overflow = true; } // 그래도 없으면 중앙 조에 정원 초과로 강제 배치
+    }
+    checkedGroupCenterIndex = targetIdx;
+    checkedGroup.forEach(function(p) { teams[targetIdx].push(p); teamHandiSum[targetIdx] += Number(p.handi); });
+  }
 
   // 묶이지 않은 나머지 참가자만 따로 배분
   var singles = players.filter(function(p) { return !groupedNames[p.name]; });
@@ -2314,7 +2334,7 @@ function autoAssignTeams(isAuto) {
     warnMsgs.push("이름 뒤 숫자가 같은 참가자(" + groupKeys.sort(function(a,b){return Number(a)-Number(b);}).map(function(k){return k+"번";}).join(", ") + ")는 같은 조로 묶었습니다.");
   }
   if (hasCheckedGroup) {
-    warnMsgs.push("체크 표시한 " + checkedGroup.length + "명(" + checkedGroup.map(function(p){return p.name;}).join(", ") + ")은 같은 조로 묶었습니다.");
+    warnMsgs.push("체크 표시한 " + checkedGroup.length + "명(" + checkedGroup.map(function(p){return p.name;}).join(", ") + ")은 " + (checkedGroupCenterIndex + 1) + "조(중앙 조)로 묶었습니다.");
   }
   if (overflow) {
     warnMsgs.push("묶음 인원이 많아 일부 조가 선택한 팀당 인원(" + selectedTeamSize + "명)을 초과했습니다.");
@@ -3031,6 +3051,21 @@ function pmFindFemalePartnerOf(maleName) {
 }
 
 // 매칭 실행 — Firebase 트랜잭션으로 원자적 처리 (동시에 여러 명이 눌러도 같은 남자가 중복 배정되지 않음)
+// 이름 뒤 숫자 추출 (팀편성과 같은 규칙: 예 "이영희1" → "1")
+function pmTrailingNum(nm) {
+  var m = String(nm == null ? "" : nm).match(/(\d+)\s*$/);
+  return m ? m[1] : null;
+}
+// 이 이름과 같은 숫자가 붙은, 아직 안 잡힌 상대를 찾는다 (없으면 null)
+function pmFindSameNumberPartner(name, pool, usedSet) {
+  var key = pmTrailingNum(name);
+  if (key === null) return null;
+  for (var i = 0; i < pool.length; i++) {
+    if (pool[i] !== name && !usedSet[pool[i]] && pmTrailingNum(pool[i]) === key) return pool[i];
+  }
+  return null;
+}
+
 function pmDraw(femaleName) {
   if (!useFirebase) {
     // 오프라인(로컬) 모드 — 트랜잭션 없이 그 자리에서 처리
@@ -3039,7 +3074,13 @@ function pmDraw(femaleName) {
     Object.keys(pmMatches).forEach(function(k) { usedLocal[pmMatches[k].male] = true; });
     var poolLocal = pmMales.filter(function(m) { return !usedLocal[m]; });
     if (!poolLocal.length) { toast("매칭 가능한 남자 파트너가 없습니다"); return; }
-    var pickedLocal = poolLocal[Math.floor(Math.random() * poolLocal.length)];
+    // 번호 붙은 남자는 같은 번호 여자 전용 — 안 맞으면 무작위 후보에서 아예 제외
+    var pickedLocal = pmFindSameNumberPartner(femaleName, poolLocal, usedLocal);
+    if (!pickedLocal) {
+      var randomPoolLocal = poolLocal.filter(function(m) { return pmTrailingNum(m) === null; });
+      if (!randomPoolLocal.length) { toast("매칭 가능한 남자 파트너가 없습니다"); return; }
+      pickedLocal = randomPoolLocal[Math.floor(Math.random() * randomPoolLocal.length)];
+    }
     pmMatches[femaleName] = { male: pickedLocal, ts: Date.now() };
     pmCheckAutoOpenMaleRound();
     pmRenderAdminTable();
@@ -3054,7 +3095,14 @@ function pmDraw(femaleName) {
     Object.keys(current).forEach(function(f) { used[current[f].male] = true; });
     var pool = pmMales.filter(function(m) { return !used[m]; });
     if (!pool.length) return; // undefined 반환 → 트랜잭션 중단
-    var picked = pool[Math.floor(Math.random() * pool.length)];
+    // 이름 뒤 숫자가 같은 남자가 아직 안 잡혔으면 그 사람과 우선 매칭.
+    // 번호 붙은 남자는 그 전용 짝 여자 외에는 절대 무작위로 걸리지 않도록 무작위 후보에서 제외.
+    var picked = pmFindSameNumberPartner(femaleName, pool, used);
+    if (!picked) {
+      var randomPool = pool.filter(function(m) { return pmTrailingNum(m) === null; });
+      if (!randomPool.length) return; // undefined 반환 → 트랜잭션 중단(매칭 가능한 남자 없음)
+      picked = randomPool[Math.floor(Math.random() * randomPool.length)];
+    }
     current[femaleName] = { male: picked, ts: Date.now() };
     return current;
   }, function(err, committed, snap) {
@@ -3101,7 +3149,8 @@ function pmMaleDraw(maleName) {
     var usedByFemaleLocal = pmUsedByFemale();
     var poolLocal = pmMales.filter(function(m) { return m !== maleName && !usedByFemaleLocal[m] && !pmMaleMatches[m]; });
     if (!poolLocal.length) { toast("매칭 가능한 상대가 없습니다"); return; }
-    var pickedLocal = poolLocal[Math.floor(Math.random() * poolLocal.length)];
+    var pickedLocal = pmFindSameNumberPartner(maleName, poolLocal, {}) ||
+      poolLocal[Math.floor(Math.random() * poolLocal.length)];
     pmMaleMatches[maleName] = pickedLocal;
     pmMaleMatches[pickedLocal] = maleName;
     pmRenderAdminTable();
@@ -3115,7 +3164,8 @@ function pmMaleDraw(maleName) {
     var usedByFemale = pmUsedByFemale();
     var pool = pmMales.filter(function(m) { return m !== maleName && !usedByFemale[m] && !current[m]; });
     if (!pool.length) return; // undefined 반환 → 트랜잭션 중단
-    var picked = pool[Math.floor(Math.random() * pool.length)];
+    var picked = pmFindSameNumberPartner(maleName, pool, {}) ||
+      pool[Math.floor(Math.random() * pool.length)];
     current[maleName] = picked;
     current[picked] = maleName;
     return current;
