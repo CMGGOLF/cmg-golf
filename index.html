@@ -1202,9 +1202,13 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
       <div id="memberHandiStatsWrap"><div class="empty-state" style="padding:12px 0"><p>통계 새로고침을 눌러주세요</p></div></div>
     </div>
     <div class="card">
-      <div class="card-title" style="color:#f87171">⚠ 위험 구역</div>
-      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px;">아래 작업은 되돌릴 수 없습니다. (방 폭파)</div>
-      <button class="btn btn-danger btn-sm" onclick="resetRoom()">방 완전 삭제 (영구 삭제)</button>
+      <div class="card-title">📦 방 정리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.7;">
+        게임이 끝난 방은 <strong>보관 처리</strong>를 추천합니다 — 목록에서는 사라지지만 점수 기록은 그대로 남아 회원 평균 핸디 통계에 계속 반영됩니다.
+      </div>
+      <button class="btn btn-gold btn-sm" style="width:100%; margin-bottom:12px;" onclick="archiveRoom()">📦 현재 방 보관 처리 (목록에서만 숨기기)</button>
+      <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">보관된 방</div>
+      <div id="archivedRoomsWrap"><div class="empty-state" style="padding:10px 0"><p>새로고침하면 표시됩니다</p></div></div>
     </div>
   </div>
 </div>
@@ -1400,21 +1404,29 @@ function listenAllRooms() {
       if (admin) refreshAdminRoomStatus();
       return;
     }
-    var roomsArray = Object.keys(data).map(function(key) {
+    var roomsArray = Object.keys(data).filter(function(key) {
+      return !(data[key].meta && data[key].meta.archived); // 보관 처리된 방은 목록에서 숨김(통계 데이터는 유지)
+    }).map(function(key) {
       return {
         id: key,
         created: (data[key].meta && data[key].meta.created) ? data[key].meta.created : 0
       };
     }).sort(function(a, b) { return b.created - a.created; });
-    listEl.innerHTML = roomsArray.map(function(r, idx) {
-      return '<button class="btn btn-gray" style="margin-bottom:10px; text-align:left; padding:18px; display:flex; justify-content:space-between; align-items:center; background:' + (currentRoom === r.id ? 'rgba(46,204,113,0.08)' : 'var(--surface-2)') + '; border:1px solid ' + (currentRoom === r.id ? 'rgba(46,204,113,0.3)' : 'var(--border-2)') + ';" onclick="joinRoom(\'' + r.id + '\')">' +
-        '<span style="font-size:15px; font-weight:600; color:var(--text);">📍 ' + r.id + (idx === 0 ? ' <span style="font-size:11px; color:var(--green); font-weight:700;">(현재 운영 방)</span>' : '') + '</span>' +
-        '<span style="font-size:13px; color:var(--gold); font-weight:600;">바로 보기 ›</span>' +
-        '</button>';
-    }).join("");
-    if ((!currentRoom || !data[currentRoom]) && roomsArray.length) {
+    if (!roomsArray.length) {
+      listEl.innerHTML = '<div class="empty-state"><p>현재 진행 중인 경기방이 없습니다.<br>[관리자] 탭에서 방을 생성해주세요.</p></div>';
+    } else {
+      listEl.innerHTML = roomsArray.map(function(r, idx) {
+        return '<button class="btn btn-gray" style="margin-bottom:10px; text-align:left; padding:18px; display:flex; justify-content:space-between; align-items:center; background:' + (currentRoom === r.id ? 'rgba(46,204,113,0.08)' : 'var(--surface-2)') + '; border:1px solid ' + (currentRoom === r.id ? 'rgba(46,204,113,0.3)' : 'var(--border-2)') + ';" onclick="joinRoom(\'' + r.id + '\')">' +
+          '<span style="font-size:15px; font-weight:600; color:var(--text);">📍 ' + r.id + (idx === 0 ? ' <span style="font-size:11px; color:var(--green); font-weight:700;">(현재 운영 방)</span>' : '') + '</span>' +
+          '<span style="font-size:13px; color:var(--gold); font-weight:600;">바로 보기 ›</span>' +
+          '</button>';
+      }).join("");
+    }
+    var curRoomArchived = currentRoom && data[currentRoom] && data[currentRoom].meta && data[currentRoom].meta.archived;
+    if ((!currentRoom || !data[currentRoom] || curRoomArchived) && roomsArray.length) {
       joinRoom(roomsArray[0].id, true);
     }
+    if (admin) renderArchivedRooms();
   });
 }
 function createRoom() {
@@ -2037,6 +2049,7 @@ function enterAdminMode() {
   updateFoursomePublicButton(); foursomeUpdateEntryVisibility(); if (foursomeModalOpen) foursomeRender();
   updatePmPublicButton(); updatePmMaleRoundButton(); pmUpdateEntryVisibility(); pmRenderAdminTable(); if (pmModalOpen) pmRender();
   renderMemberHandiStats();
+  renderArchivedRooms();
 }
 function logoutAdmin() {
   if (!confirm("관리자 로그아웃하시겠습니까?\n(이 기기에서 자동 로그인이 해제됩니다)")) return;
@@ -2549,13 +2562,33 @@ function adminHide() {
   else { published = false; renderRank(); refreshAdminRoomStatus(); }
   toast("🔒 순위 숨김 처리");
 }
-function resetRoom() {
+// 방을 완전히 지우지 않고 "목록에서만 숨김" 처리 — 참가자 기록은 그대로 남아 회원 평균 핸디 통계 등에 계속 반영됨
+function archiveRoom() {
   if (!admin) { toast("관리자만 가능"); return; }
-  if (!confirm("이 경기방을 완전히 삭제하시겠습니까? (목록에서도 영구적으로 사라집니다)")) return;
-  if (useFirebase) db.ref("rooms/" + currentRoom).remove();
-  else { localData = {}; published = false; }
-  toast("경기방이 완전히 삭제되었습니다.");
-  setTimeout(function() { location.href = location.href.split("?"); }, 1500);
+  if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
+  if (!confirm("[" + currentRoom + "] 을 목록에서 숨기시겠습니까?\n(점수 기록은 삭제되지 않고 평균 핸디 통계 등에 계속 사용됩니다. 관리자 탭에서 언제든 다시 꺼낼 수 있습니다.)")) return;
+  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta/archived").set(true);
+  toast("경기방을 목록에서 숨겼습니다. (기록은 유지됨)");
+  setTimeout(function() { location.href = location.href.split("?"); }, 1200);
+}
+function renderArchivedRooms() {
+  var wrap = document.getElementById("archivedRoomsWrap");
+  if (!wrap || !admin) return;
+  var archived = Object.keys(allRooms || {}).filter(function(k) {
+    return allRooms[k].meta && allRooms[k].meta.archived;
+  }).sort(function(a, b) { return (allRooms[b].meta.created || 0) - (allRooms[a].meta.created || 0); });
+  if (!archived.length) { wrap.innerHTML = '<div class="empty-state" style="padding:10px 0"><p>보관된 방이 없습니다</p></div>'; return; }
+  wrap.innerHTML = archived.map(function(k) {
+    return '<div style="display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border-1); font-size:13px;">'
+      + '<span>📦 ' + k + '</span>'
+      + '<button class="btn btn-gray btn-sm" style="width:auto; padding:6px 12px; font-size:12px;" onclick="unarchiveRoom(\'' + k + '\')">목록에 복원</button>'
+      + '</div>';
+  }).join("");
+}
+function unarchiveRoom(roomKey) {
+  if (!admin) { toast("관리자만 가능"); return; }
+  if (useFirebase) db.ref("rooms/" + roomKey + "/meta/archived").remove();
+  toast(roomKey + " 을 목록에 복원했습니다.");
 }
 var urlRoom = new URLSearchParams(location.search).get("room");
 if (urlRoom) {
