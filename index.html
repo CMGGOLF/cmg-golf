@@ -3079,10 +3079,8 @@ function pmSaveLists() {
   var clearedCount = (Object.keys(pmMatches).length - Object.keys(newMatches).length)
     + (Object.keys(pmMaleMatches).length - Object.keys(newMaleMatches).length);
 
-  if (clearedCount > 0) {
-    if (!confirm("명단에서 빠진 " + (removedFemales.length + removedMales.length) + "명과 관련된 매칭 " + clearedCount + "건이 초기화됩니다.\n(그 외 나머지 매칭 결과는 그대로 유지됩니다) 계속할까요?")) return;
-  }
-
+  // ⚠ 카카오톡 인앱 브라우저 등 일부 환경에서 confirm() 팝업이 안 뜨거나 자동 취소되어
+  // 저장 자체가 조용히 실패하는 문제가 있었음 → 확인창 없이 바로 저장하고 결과만 안내
   pmFemales = females; pmMales = males; pmMatches = newMatches; pmMaleMatches = newMaleMatches;
   if (useFirebase) db.ref(PM_PATH).update({ females: females, males: males, matches: newMatches, maleRound: newMaleMatches });
   toast("명단을 저장했습니다 (여자 " + females.length + "명 · 남자 " + males.length + "명)" + (clearedCount > 0 ? " · 매칭 " + clearedCount + "건 초기화" : ""));
