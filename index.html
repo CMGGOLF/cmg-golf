@@ -1169,7 +1169,7 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
       <div class="card-title">🤝 파트너 매칭 관리</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
         여자·남자 명단을 한 번에 입력하세요(한 줄에 한 명). 공개 ON으로 켜야 참가자가 매칭을 시작할 수 있습니다.
-        매칭 결과는 본인 화면에만 보이고, 다른 사람 결과는 관리자만 아래 표에서 볼 수 있습니다.
+        매칭 결과는 본인 화면에만 보입니다.
       </div>
       <div class="pm-admin-card">
         <label>여자 명단</label>
@@ -1189,7 +1189,6 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
         <div class="row">
           <button id="pmMaleRoundBtn" class="btn btn-gray btn-sm" style="flex:1;" onclick="pmToggleMaleRound()">👬 남자끼리 매칭 잠금 (여자 전원 완료 시 자동 열림)</button>
         </div>
-        <div id="pmAdminTableWrap" style="margin-top:12px;"></div>
       </div>
     </div>
     <div class="admin-section">
@@ -1207,8 +1206,11 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
         게임이 끝난 방은 <strong>보관 처리</strong>를 추천합니다 — 목록에서는 사라지지만 점수 기록은 그대로 남아 회원 평균 핸디 통계에 계속 반영됩니다.
       </div>
       <button class="btn btn-gold btn-sm" style="width:100%; margin-bottom:12px;" onclick="archiveRoom()">📦 현재 방 보관 처리 (목록에서만 숨기기)</button>
-      <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">보관된 방</div>
-      <div id="archivedRoomsWrap"><div class="empty-state" style="padding:10px 0"><p>새로고침하면 표시됩니다</p></div></div>
+      <button class="btn btn-gray btn-sm" style="width:100%; display:flex; justify-content:space-between; align-items:center;" onclick="toggleArchivedRoomsList()">
+        <span id="archivedRoomsToggleLabel">보관된 방 보기</span>
+        <span id="archivedRoomsToggleIcon">▾</span>
+      </button>
+      <div id="archivedRoomsWrap" style="display:none; margin-top:8px;"><div class="empty-state" style="padding:10px 0"><p>새로고침하면 표시됩니다</p></div></div>
     </div>
   </div>
 </div>
@@ -1252,7 +1254,7 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
         </div>
       </div>
       <div class="foursome-legend">
-        <b>계산</b> · <code>팀핸디 = 선수1+선수2 핸디</code>(자동), <code>스코어 = 합산 − |팀핸디|</code>. 팀명·선수 이름·개인핸디·1,2경기는 누구나 입력 가능합니다. 팀 추가/삭제, 순위 전체공개는 관리자만 가능합니다.
+        <b>계산</b> · <code>팀핸디 = 선수1+선수2 핸디</code>(자동), <code>스코어 = 합산 − |팀핸디|</code>. 팀명·선수 이름·개인핸디·1,2경기는 누구나 입력 가능합니다. 팀 추가/삭제, 순위 전체공개는 관리자만 가능합니다.<br>🔒 한 번 어떤 팀의 칸을 입력하면 이 휴대폰에서는 그 팀만 계속 입력할 수 있습니다.
       </div>
     </div>
   </div>
@@ -1564,6 +1566,12 @@ function saveMyScore() {
   if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
   if (!checkHandiValid()) return;
+  // 🔒 본인 이름만 저장 가능 — 이 휴대폰에서 이미 다른 이름으로 등록한 적이 있으면 차단
+  var myGolfNameClaim = localStorage.getItem("myGolfName");
+  if (!admin && myGolfNameClaim && myGolfNameClaim !== name) {
+    showNotice(notice, "error", '🔒 이미 "' + myGolfNameClaim + '"님으로 등록하셨습니다. 이 휴대폰에서는 다른 이름으로 저장할 수 없습니다.');
+    return;
+  }
   localStorage.setItem("myGolfName", name);
   localStorage.setItem("myGolfGender", selectedGender);
   if (handiStr === "-") handiStr = "0";
@@ -1850,6 +1858,12 @@ function loadMyData() {
   var name = document.getElementById("pName").value.trim();
   if (!name) { toast("이름을 먼저 입력하세요"); return; }
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
+  // 🔒 본인 이름만 불러오기 가능 — 다른 사람 데이터를 훔쳐보거나 덮어쓰지 못하도록 차단
+  var myGolfNameClaim = localStorage.getItem("myGolfName");
+  if (!admin && myGolfNameClaim && myGolfNameClaim !== name) {
+    toast('🔒 이미 "' + myGolfNameClaim + '"님으로 등록하셨습니다. 이 휴대폰에서는 다른 이름을 불러올 수 없습니다.');
+    return;
+  }
   localStorage.setItem("myGolfName", name);
   if (useFirebase) {
     db.ref("rooms/" + currentRoom + "/players/" + name).once("value", function(snap) {
@@ -2573,10 +2587,12 @@ function archiveRoom() {
 }
 function renderArchivedRooms() {
   var wrap = document.getElementById("archivedRoomsWrap");
+  var label = document.getElementById("archivedRoomsToggleLabel");
   if (!wrap || !admin) return;
   var archived = Object.keys(allRooms || {}).filter(function(k) {
     return allRooms[k].meta && allRooms[k].meta.archived;
   }).sort(function(a, b) { return (allRooms[b].meta.created || 0) - (allRooms[a].meta.created || 0); });
+  if (label) label.textContent = "보관된 방 보기 (" + archived.length + "개)";
   if (!archived.length) { wrap.innerHTML = '<div class="empty-state" style="padding:10px 0"><p>보관된 방이 없습니다</p></div>'; return; }
   wrap.innerHTML = archived.map(function(k) {
     return '<div style="display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border-1); font-size:13px;">'
@@ -2584,6 +2600,14 @@ function renderArchivedRooms() {
       + '<button class="btn btn-gray btn-sm" style="width:auto; padding:6px 12px; font-size:12px;" onclick="unarchiveRoom(\'' + k + '\')">목록에 복원</button>'
       + '</div>';
   }).join("");
+}
+function toggleArchivedRoomsList() {
+  var wrap = document.getElementById("archivedRoomsWrap");
+  var icon = document.getElementById("archivedRoomsToggleIcon");
+  if (!wrap) return;
+  var open = wrap.style.display !== "none";
+  wrap.style.display = open ? "none" : "block";
+  if (icon) icon.textContent = open ? "▾" : "▴";
 }
 function unarchiveRoom(roomKey) {
   if (!admin) { toast("관리자만 가능"); return; }
@@ -2667,6 +2691,26 @@ function foursomeRankHTML(rank) {
 function foursomeFmt(n) { return (Math.round(n * 10) / 10).toString(); }
 function foursomeDataReady() { return !useFirebase || foursomeEverReceived; }
 
+// 🔒 기기 잠금 — 이 휴대폰에서 한 번 어떤 팀의 칸을 건드리면, 그 팀에만 계속 입력 가능 (관리자는 예외)
+var FS_CLAIM_KEY = "fsClaimedTeam";
+function fsGetClaim() {
+  if (admin) return null;
+  try { return localStorage.getItem(FS_CLAIM_KEY); } catch (e) { return null; }
+}
+function fsDeviceGuard(ri, ti) {
+  if (admin) return true;
+  var key = ri + "-" + ti;
+  var claimed = fsGetClaim();
+  if (claimed && claimed !== key) {
+    toast("🔒 이미 다른 팀에 참여하셨습니다. 이 휴대폰에서는 그 팀만 입력할 수 있습니다.");
+    return false;
+  }
+  if (!claimed) {
+    try { localStorage.setItem(FS_CLAIM_KEY, key); } catch (e) {}
+  }
+  return true;
+}
+
 function foursomeInp(ri, ti, field, val, extra, ph, idx, forceEditable) {
   var v = (val === null || val === undefined) ? "" : String(val).replace(/"/g, "&quot;");
   var hasIdx = (idx !== undefined && idx !== null);
@@ -2694,6 +2738,8 @@ function foursomeRender() {
     try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch (e) {}
   }
 
+  var myFsClaim = fsGetClaim(); // 관리자는 항상 null(모든 팀 편집 가능)
+
   foursomeRooms.forEach(function(room, ri) {
     var roomRowSpan = room.teams.length * 2;
     room.teams.forEach(function(t, ti) {
@@ -2702,23 +2748,25 @@ function foursomeRender() {
       var isFirst = (reveal && rank === 1) ? "fs-first" : "";
       var delBtn = (admin && room.teams.length > 1)
         ? '<button class="fs-del" onclick="foursomeDelTeam(' + ri + ',' + ti + ')">✕</button>' : "";
+      var teamKey = ri + "-" + ti;
+      var teamEditable = ready && (!myFsClaim || myFsClaim === teamKey);
 
       html += '<tr class="' + isFirst + '">';
       if (ti === 0) html += '<td class="fs-room-cell" rowspan="' + roomRowSpan + '">' + room.no + '방</td>';
       html += '<td class="fs-team-col" rowspan="2"><div style="display:flex;align-items:center;gap:2px;">'
-            + foursomeInp(ri, ti, "team", t.team, "fs-team-name", "팀 이름", null, ready) + delBtn + '</div></td>';
-      html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[0], "", "선수1 이름", 0, ready) + '</td>';
-      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[0], "", "선수1", 0, ready) + '</td>';
+            + foursomeInp(ri, ti, "team", t.team, "fs-team-name", "팀 이름", null, teamEditable) + delBtn + '</div></td>';
+      html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[0], "", "선수1 이름", 0, teamEditable) + '</td>';
+      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[0], "", "선수1", 0, teamEditable) + '</td>';
       html += '<td class="fs-calc fs-calc-col ' + (d.teamHandi === null ? "empty" : "") + '" rowspan="2" id="fsth-' + ri + '-' + ti + '">' + (d.teamHandi === null ? "–" : foursomeFmt(d.teamHandi)) + '</td>';
-      html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g1", t.g1, "", "", null, ready) + '</td>';
-      html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g2", t.g2, "", "", null, ready) + '</td>';
+      html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g1", t.g1, "", "", null, teamEditable) + '</td>';
+      html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g2", t.g2, "", "", null, teamEditable) + '</td>';
       html += '<td class="fs-calc fs-calc-col ' + (d.sum === null ? "empty" : "") + '" rowspan="2" id="fssum-' + ri + '-' + ti + '">' + (d.sum === null ? "–" : foursomeFmt(d.sum)) + '</td>';
       html += '<td class="fs-calc fs-calc-col ' + (d.score === null ? "empty" : "") + '" rowspan="2" id="fssc-' + ri + '-' + ti + '">' + (d.score === null ? "–" : foursomeFmt(d.score)) + '</td>';
       html += '<td class="fs-rank-col" rowspan="2" id="fsrk-' + ri + '-' + ti + '">' + foursomeRankHTML(rank) + '</td>';
       html += '</tr>';
       html += '<tr class="' + isFirst + '">';
-      html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[1], "", "선수2 이름", 1, ready) + '</td>';
-      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[1], "", "선수2", 1, ready) + '</td>';
+      html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[1], "", "선수2 이름", 1, teamEditable) + '</td>';
+      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[1], "", "선수2", 1, teamEditable) + '</td>';
       html += '</tr>';
     });
   });
@@ -2770,6 +2818,7 @@ function foursomeUpdateAllRanks() {
 
 function foursomeOnInput(ri, ti, field, value, idx) {
   if (!foursomeDataReady()) return; // 정식 데이터 수신 전에는 입력 차단(구조 손상 방지)
+  if (!fsDeviceGuard(ri, ti)) return; // 다른 팀에는 손 못 대도록(기기 잠금)
   var room = foursomeRooms[ri];
   var t = room && room.teams[ti];
   if (!t) return; // 이미 삭제된 팀이면 조용히 무시(에러 방지)
