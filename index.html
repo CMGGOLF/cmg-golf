@@ -1195,10 +1195,39 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
       <div class="card-title">📊 회원별 평균 핸디 관리</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
         지금까지 만들어진 모든 방의 "핸디+친타수" 기록을 모아 회원별 평균을 계산합니다. 넷스코어(친타수−핸디)가 그날 전체 참가자 평균보다 꾸준히 낮으면(잘 침) 핸디를 낮추고, 높으면(못 침) 핸디를 올리는 방향으로 <strong>제안 핸디</strong>를 계산합니다.<br>
+        <strong>게임수 5회 미만</strong>인 회원은 아직 데이터가 부족하다고 보고 제안핸디를 적용하지 않습니다.<br>
         "핸디 반영"을 누르면 그 회원의 <strong>기본 핸디</strong>로 저장되어, 다음에 새 방에서 그 이름으로 등록할 때(불러오기) 자동으로 채워집니다.
       </div>
       <button class="btn btn-gray btn-sm" style="width:100%; margin-bottom:10px;" onclick="renderMemberHandiStats(true)">🔄 통계 새로고침</button>
       <div id="memberHandiStatsWrap"><div class="empty-state" style="padding:12px 0"><p>통계 새로고침을 눌러주세요</p></div></div>
+    </div>
+    <div class="admin-section">
+      <div class="card-title">⚙️ 핸디 관리 정책 (3가지 방법 조합)</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.8;">
+        고수와 하수의 격차를 좁혀서 다들 비슷한 스코어가 나오게 하는 3가지 방법을 같이 적용합니다.<br>
+        <b>① 정기적 핸디 리뷰</b> — 위 "회원별 평균 핸디 관리" 표를 주기적으로(예: 한 달에 한 번) 확인하고 "핸디 반영"을 눌러 실력에 맞게 조정하는 것 자체가 이 방법입니다.<br>
+        <b>② 퍼센트 핸디</b> — 조정할 핸디를 100% 그대로 반영하지 않고, 아래에서 정한 비율만 적용합니다. 90%를 고르면 상급자·하급자 모두 핸디 변화폭이 10%씩 줄어들어 격차가 원천적으로 좁혀집니다.<br>
+        <b>③ 스테이블포드 취지 순위 캡</b> — 홀별 타수를 입력할 수 없어 정식 스테이블포드(홀마다 포인트 환산)는 만들 수 없지만, 같은 취지로 <u>그날 필드 평균보다 지정한 타수 이상 나쁜 스코어는 순위 계산에서만 그 초과분을 캡 처리</u>합니다. 한 사람이 크게 무너진 한 라운드가 전체 순위를 과도하게 좌우하지 않게 해서, 접전을 유도합니다. (화면에 보이는 실제 스코어는 그대로 표시되고, <b>순위 매기는 기준에만</b> 적용됩니다.)
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">② 퍼센트 핸디</div>
+        <select id="handiPercentSelect" onchange="setHandiPercent(this.value)" style="width:100%; padding:11px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface-1); color:var(--text); font-size:14px;">
+          <option value="100">100% (그대로 반영)</option>
+          <option value="95">95%</option>
+          <option value="90" selected>90% (권장)</option>
+          <option value="85">85%</option>
+          <option value="80">80%</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">③ 스테이블포드 취지 순위 캡</div>
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+          <span style="font-size:13px; color:var(--text-2); white-space:nowrap;">필드평균 +</span>
+          <input id="stablefordCapInput" type="number" value="10" min="0" onchange="setStablefordCapAmount(this.value)" style="flex:1; padding:11px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface-1); color:var(--text); font-size:14px; text-align:center;">
+          <span style="font-size:13px; color:var(--text-2); white-space:nowrap;">타 초과분 캡</span>
+        </div>
+        <button id="stablefordCapBtn" class="btn btn-gray btn-sm" style="width:100%;" onclick="toggleStablefordCap()">⚫ 순위 캡 꺼짐 (원래 방식)</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">📦 방 정리</div>
@@ -1309,6 +1338,10 @@ var FOURSOME_PATH = "foursomeGlobal"; // 경기방과 무관하게 항상 같은
 // 🤝 파트너 매칭 상태 (역시 스크립트 최상단에서 선언 — hoisting 문제 방지)
 var PM_PATH = "partnerMatch"; // 경기방과 무관한 고정 경로
 var teamGrouped = {}; // { 이름: true } = 체크됨(팀편성 시 강제로 한 팀으로 묶임). 없으면 기본값(일반 자동배정).
+// ── 핸디 관리 정책 (관리자 전용, 이 기기의 화면 설정 — 서버 저장 없이 즉시 적용) ──
+var handiPercent = 90;             // 퍼센트 핸디: 제안핸디에 곱해서 적용할 비율 (기본 90%, 드롭다운 기본 선택과 일치)
+var stablefordCapEnabled = false; // 스테이블포드 취지의 순위 캡 적용 여부 (기본 OFF, 켜야 적용됨)
+var stablefordCapAmount = 10;     // 필드 평균 넷스코어보다 이 타수 이상 나쁜 스코어는 순위 계산 시 이 값으로 캡
 var pmFemales = [];
 var pmMales = [];
 var pmMatches = {};  // { 여자이름: { male: 남자이름, ts: timestamp } }
@@ -1954,13 +1987,23 @@ function getSorted(data) {
     p.hasScore = (p.score !== "" && p.score !== undefined);
     if (p.hasScore) p.net = parseFloat((p.score - p.handi).toFixed(1));
   });
+  // 스테이블포드 취지를 반영한 순위 계산용 보정값(rankNet). 화면에 보이는 실제 넷스코어(net)는 그대로 두고,
+  // "순위를 매기는 기준"만 한 라운드 크게 무너진 사람의 영향을 제한하도록 캡을 씌운다 (기본은 꺼져있어 기존과 동일).
+  if (stablefordCapEnabled) {
+    var withScore = arr.filter(function(p) { return p.hasScore; });
+    var avgNet = withScore.length ? withScore.reduce(function(a, p) { return a + p.net; }, 0) / withScore.length : 0;
+    var cap = avgNet + stablefordCapAmount;
+    arr.forEach(function(p) { if (p.hasScore) p.rankNet = Math.min(p.net, cap); });
+  } else {
+    arr.forEach(function(p) { if (p.hasScore) p.rankNet = p.net; });
+  }
   arr.sort(function(a, b) {
-    if (!a.hasScore) return 1; if (!b.hasScore) return -1; return a.net - b.net;
+    if (!a.hasScore) return 1; if (!b.hasScore) return -1; return a.rankNet - b.rankNet;
   });
   var rank = 1, actualIndex = 1;
   arr.forEach(function(p, i) {
     if (!p.hasScore) { p.rank = '통계전'; }
-    else { if (i > 0 && p.hasScore && p.net !== arr[i-1].net) rank = actualIndex; p.rank = rank; actualIndex++; }
+    else { if (i > 0 && p.hasScore && p.rankNet !== arr[i-1].rankNet) rank = actualIndex; p.rank = rank; actualIndex++; }
   });
   return arr;
 }
@@ -3476,16 +3519,19 @@ function computeMemberHandiStats() {
     });
     var avgDeviation = deviations.reduce(function(a, b) { return a + b; }, 0) / deviations.length;
     var latest = rounds.slice().sort(function(a, b) { return b.ts - a.ts; })[0];
-    var suggestedHandi = Math.round(latest.handi + avgDeviation);
+    var rawSuggestedHandi = latest.handi + avgDeviation;
+    // 퍼센트 핸디: 계산된 핸디를 100% 그대로 반영하지 않고 설정된 비율만 적용해서 격차를 원천적으로 좁힘
+    var suggestedHandi = Math.round(rawSuggestedHandi * (handiPercent / 100));
     stats.push({
       name: name, gamesCount: gamesCount, avgScore: avgScore, avgNet: avgNet,
-      latestHandi: latest.handi, suggestedHandi: suggestedHandi
+      latestHandi: latest.handi, suggestedHandi: suggestedHandi, rawSuggestedHandi: Math.round(rawSuggestedHandi)
     });
   });
   stats.sort(function(a, b) { return b.gamesCount - a.gamesCount; });
   return stats;
 }
 
+var MEMBER_HANDI_MIN_GAMES = 5; // 이 횟수 미만이면 제안핸디를 신뢰하지 않고 "데이터 부족"으로 표시
 function renderMemberHandiStats(showToast) {
   var wrap = document.getElementById("memberHandiStatsWrap");
   if (!wrap || !admin) return;
@@ -3493,13 +3539,22 @@ function renderMemberHandiStats(showToast) {
   if (!stats.length) {
     wrap.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>아직 핸디·친타수가 모두 입력된 기록이 없습니다</p></div>';
   } else {
-    wrap.innerHTML = '<div class="foursome-scroll"><table class="pm-admin-table"><thead><tr>'
+    wrap.innerHTML = '<div style="font-size:11px; color:var(--text-3); margin-bottom:8px;">게임수 ' + MEMBER_HANDI_MIN_GAMES + '회 미만은 아직 데이터가 부족해 제안핸디를 적용하지 않습니다. 현재 퍼센트 핸디: <strong>' + handiPercent + '%</strong></div>'
+      + '<div class="foursome-scroll"><table class="pm-admin-table"><thead><tr>'
       + '<th>이름</th><th>게임수</th><th>평균친타수</th><th>평균넷</th><th>최근핸디</th><th>제안핸디</th><th></th>'
       + '</tr></thead><tbody>' + stats.map(function(s) {
-        return '<tr><td>' + s.name + '</td><td>' + s.gamesCount + '</td><td>' + s.avgScore.toFixed(1) + '</td>'
+        var enough = s.gamesCount >= MEMBER_HANDI_MIN_GAMES;
+        var pctNote = (handiPercent !== 100 && enough) ? '<div style="font-size:9.5px; color:var(--text-3);">(100%: ' + s.rawSuggestedHandi + ' → ' + handiPercent + '%: ' + s.suggestedHandi + ')</div>' : '';
+        var suggestedCell = enough
+          ? '<strong style="color:var(--gold)">' + s.suggestedHandi + '</strong>' + pctNote
+          : '<span style="color:var(--text-3); font-size:11px;">데이터 부족(' + s.gamesCount + '/' + MEMBER_HANDI_MIN_GAMES + ')</span>';
+        var btnCell = enough
+          ? '<button class="btn btn-gold btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" onclick="applyMemberHandi(\'' + s.name.replace(/'/g, "\\'") + '\', ' + s.suggestedHandi + ')">핸디 반영</button>'
+          : '<button class="btn btn-gray btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" disabled>핸디 반영</button>';
+        return '<tr' + (enough ? '' : ' style="opacity:0.6;"') + '><td>' + s.name + '</td><td>' + s.gamesCount + '</td><td>' + s.avgScore.toFixed(1) + '</td>'
           + '<td>' + (s.avgNet >= 0 ? "+" : "") + s.avgNet.toFixed(1) + '</td><td>' + s.latestHandi + '</td>'
-          + '<td><strong style="color:var(--gold)">' + s.suggestedHandi + '</strong></td>'
-          + '<td><button class="btn btn-gold btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" onclick="applyMemberHandi(\'' + s.name.replace(/'/g, "\\'") + '\', ' + s.suggestedHandi + ')">핸디 반영</button></td></tr>';
+          + '<td>' + suggestedCell + '</td>'
+          + '<td>' + btnCell + '</td></tr>';
       }).join("") + '</tbody></table></div>';
   }
   if (showToast) toast("통계를 새로고침했습니다");
@@ -3508,11 +3563,50 @@ function renderMemberHandiStats(showToast) {
 function applyMemberHandi(name, handi) {
   if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  var stats = computeMemberHandiStats();
+  var row = stats.filter(function(s) { return s.name === name; })[0];
+  if (!row || row.gamesCount < MEMBER_HANDI_MIN_GAMES) {
+    toast("⚠ 게임수가 " + MEMBER_HANDI_MIN_GAMES + "회 미만이라 아직 핸디를 반영할 수 없습니다.");
+    return;
+  }
   db.ref("memberDefaultHandi/" + name).set({ handi: handi, updatedAt: Date.now() }).then(function() {
     toast("✅ " + name + "님의 기본 핸디를 " + handi + "로 저장했습니다. 다음 방부터 자동 적용됩니다.");
   }).catch(function() {
     toast("저장 실패(연결 확인)");
   });
+}
+
+// ── 퍼센트 핸디 설정 (제안핸디 계산에 곱해서 적용, 이 기기 화면 설정) ──
+function setHandiPercent(v) {
+  if (!admin) return;
+  handiPercent = Number(v);
+  renderMemberHandiStats();
+  toast("퍼센트 핸디를 " + handiPercent + "%로 설정했습니다.");
+}
+
+// ── 스테이블포드 취지의 순위 캡 설정 (랭킹 탭 순위 계산에만 영향, 화면에 보이는 스코어 자체는 그대로) ──
+function toggleStablefordCap() {
+  if (!admin) return;
+  stablefordCapEnabled = !stablefordCapEnabled;
+  updateStablefordCapUI();
+  renderRank();
+  if (typeof refreshAdminPlayerList === "function") refreshAdminPlayerList();
+  toast(stablefordCapEnabled ? "📊 스테이블포드 취지 순위 캡을 켰습니다 (필드평균+" + stablefordCapAmount + "타 초과분은 순위 계산에서 캡)" : "스테이블포드 취지 순위 캡을 껐습니다(원래 방식)");
+}
+function setStablefordCapAmount(v) {
+  if (!admin) return;
+  var n = Number(v);
+  if (isNaN(n) || n < 0) { toast("0 이상의 숫자를 입력하세요"); return; }
+  stablefordCapAmount = n;
+  if (stablefordCapEnabled) { renderRank(); if (typeof refreshAdminPlayerList === "function") refreshAdminPlayerList(); }
+  toast("캡 기준을 필드평균+" + n + "타로 설정했습니다.");
+}
+function updateStablefordCapUI() {
+  var btn = document.getElementById("stablefordCapBtn");
+  if (btn) {
+    btn.textContent = stablefordCapEnabled ? "🟢 순위 캡 적용 중 (끄려면 클릭)" : "⚫ 순위 캡 꺼짐 (원래 방식)";
+    btn.className = "btn btn-sm " + (stablefordCapEnabled ? "btn-gold" : "btn-gray");
+  }
 }
 </script>
 </body>
