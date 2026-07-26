@@ -2739,7 +2739,10 @@ function foursomeRender() {
 }
 
 function foursomeUpdateDerivedCell(ri, ti) {
-  var d = foursomeDerive(foursomeRooms[ri].teams[ti]);
+  var room = foursomeRooms[ri];
+  var t = room && room.teams[ti];
+  if (!t) return; // 이미 삭제된 팀이면 조용히 무시(에러 방지)
+  var d = foursomeDerive(t);
   var thEl = document.getElementById("fsth-" + ri + "-" + ti);
   var sumEl = document.getElementById("fssum-" + ri + "-" + ti);
   var scEl = document.getElementById("fssc-" + ri + "-" + ti);
@@ -2767,7 +2770,9 @@ function foursomeUpdateAllRanks() {
 
 function foursomeOnInput(ri, ti, field, value, idx) {
   if (!foursomeDataReady()) return; // 정식 데이터 수신 전에는 입력 차단(구조 손상 방지)
-  var t = foursomeRooms[ri].teams[ti];
+  var room = foursomeRooms[ri];
+  var t = room && room.teams[ti];
+  if (!t) return; // 이미 삭제된 팀이면 조용히 무시(에러 방지)
   if ((field === "indHandi" || field === "playerName") && idx !== undefined && idx !== null) t[field][idx] = value;
   else t[field] = value;
   foursomeUpdateDerivedCell(ri, ti);
@@ -2863,7 +2868,10 @@ function foursomePushField(ri, ti, field, idx) {
   if (foursomePushTimers[path]) clearTimeout(foursomePushTimers[path]);
   foursomePushTimers[path] = setTimeout(function() {
     delete foursomePushTimers[path];
-    var value = hasIdx ? foursomeRooms[ri].teams[ti][field][idx] : foursomeRooms[ri].teams[ti][field];
+    var room = foursomeRooms[ri];
+    var t = room && room.teams[ti];
+    if (!t) return; // 그 사이 팀이 삭제/이동되었으면 엉뚱한 자리에 덮어쓰지 않도록 조용히 취소
+    var value = hasIdx ? t[field][idx] : t[field];
     db.ref(path).set(value).then(function() {
       if (stateEl) stateEl.textContent = "🌐 실시간 동기화됨";
     }).catch(function() {
@@ -2872,8 +2880,18 @@ function foursomePushField(ri, ti, field, idx) {
   }, 350);
 }
 
+// 팀 구조가 바뀌면(추가/삭제) 이미 예약된 디바운스 전송들은 이제 위치가 어긋날 수 있으므로 전부 취소.
+// (foursomePushAllRooms가 곧바로 현재 상태 전체를 저장하므로, 취소해도 데이터 유실은 없음)
+function foursomeCancelPendingPushes(ri) {
+  var prefix = FOURSOME_PATH + "/rooms/" + (ri === undefined ? "" : ri + "/");
+  Object.keys(foursomePushTimers).forEach(function(path) {
+    if (path.indexOf(prefix) === 0) { clearTimeout(foursomePushTimers[path]); delete foursomePushTimers[path]; }
+  });
+}
+
 function foursomeAddTeamAll() {
   if (!admin) { toast("관리자만 가능합니다"); return; }
+  foursomeCancelPendingPushes(); // 구조가 바뀌므로 예약된 개별 전송은 전부 취소(전체 저장으로 대체)
   foursomeRooms.forEach(function(r) { r.teams.push(foursomeBlankTeam()); });
   foursomeRender();
   foursomePushAllRooms();
@@ -2881,8 +2899,10 @@ function foursomeAddTeamAll() {
 }
 function foursomeDelTeam(ri, ti) {
   if (!admin) return;
-  if (foursomeRooms[ri].teams.length <= 1) { toast("방에는 최소 1팀이 필요합니다"); return; }
-  foursomeRooms[ri].teams.splice(ti, 1);
+  var room = foursomeRooms[ri];
+  if (!room || room.teams.length <= 1) { toast("방에는 최소 1팀이 필요합니다"); return; }
+  foursomeCancelPendingPushes(ri); // 이 방의 팀 위치가 바뀌므로 예약된 개별 전송 취소
+  room.teams.splice(ti, 1);
   foursomeRender();
   foursomePushAllRooms();
 }
