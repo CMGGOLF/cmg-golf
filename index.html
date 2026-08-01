@@ -2762,7 +2762,10 @@ function foursomeInp(ri, ti, field, val, extra, ph, idx, forceEditable) {
   var disabledAttr = editable ? "" : "disabled";
   var handler = editable ? (' oninput="foursomeOnInput(' + ri + ',' + ti + ',\'' + field + '\',this.value,' + idxArg + ')"') : "";
   var autoId = "fscell-" + ri + "-" + ti + "-" + field + (hasIdx ? ("-" + idx) : "");
-  return '<input class="fs-cell ' + extra + '" type="text" inputmode="decimal" id="' + autoId + '"'
+  // 팀명·선수 이름은 한글 입력이 필요하므로 일반 텍스트 자판, 개인핸디·점수만 숫자(소수) 자판으로 제한
+  var isTextField = (field === "team" || field === "playerName");
+  var typeAttr = isTextField ? 'type="text"' : 'type="text" inputmode="decimal"';
+  return '<input class="fs-cell ' + extra + '" ' + typeAttr + ' id="' + autoId + '"'
        + ' value="' + v + '"' + (ph ? ' placeholder="' + ph + '"' : "") + ' ' + disabledAttr + handler + '>';
 }
 
