@@ -731,8 +731,6 @@ tr.fs-first .fs-calc { background: var(--gold-glow); }
 tr.fs-first .fs-room-cell { background: var(--surface-2); }
 .fs-rank-locked { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-3); background: var(--surface-3); padding: 4px 7px; border-radius: 6px; }
 .fs-del { border: none; background: none; color: #c99; font-size: 14px; cursor: pointer; padding: 3px; line-height: 1; }
-.fs-minus-btn { flex: 0 0 20px; border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text-2); font-size: 13px; font-weight: 700; border-radius: 5px; padding: 0; height: 26px; cursor: pointer; }
-.fs-minus-btn:active { background: var(--border-2); }
 .fs-del:hover { color: #b23b3b; }
 input.fs-cell {
   width: 100%; min-width: 0; border: 1px solid transparent; background: var(--surface-2);
@@ -920,18 +918,12 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
     <div class="field-row">
       <div class="field">
         <label style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">핸디캡 <span style="color:#b91c1c; font-size:11px; white-space:nowrap;">(최대 14)</span></label>
-        <div style="display:flex; gap:6px;">
-          <button type="button" class="btn btn-gray" style="flex:0 0 32px; padding:0; font-size:20px; font-weight:bold; border-radius:var(--radius-sm);" onclick="toggleMinus('pHandi')">-</button>
-          <input id="pHandi" type="text" inputmode="decimal" placeholder="예: 7.6" style="flex:1;" oninput="validateHandi(this)">
-        </div>
+        <input id="pHandi" type="text" placeholder="예: 7.6 또는 -4" oninput="validateHandi(this)">
         <div id="handiError" style="display:none; font-size:11px; color:#fca5a5; margin-top:4px;">⚠ 핸디캡은 최대 14까지만 입력 가능합니다</div>
       </div>
       <div class="field">
         <label>친타수</label>
-        <div style="display:flex; gap:6px;">
-          <button type="button" class="btn btn-gray" style="flex:0 0 32px; padding:0; font-size:20px; font-weight:bold; border-radius:var(--radius-sm);" onclick="toggleMinus('pScore')">-</button>
-          <input id="pScore" type="text" inputmode="numeric" placeholder="예: 7" style="flex:1;">
-        </div>
+        <input id="pScore" type="text" placeholder="예: 77">
       </div>
     </div>
     <div class="btn-row" style="margin-top:4px">
@@ -1545,6 +1537,7 @@ function runAutoPublishIfNeeded() {
   });
 }
 function toggleAutoPublish() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!currentRoom) { toast("먼저 운영할 방을 선택하세요"); return; }
   if (!useFirebase) {
     autoPublishEnabled = !autoPublishEnabled;
@@ -1574,13 +1567,6 @@ function toggleAutoPublish() {
   }).catch(function() {
     toast("자동 공개 설정 저장에 실패했습니다.");
   });
-}
-function toggleMinus(targetId) {
-  var el = document.getElementById(targetId);
-  var val = el.value.trim();
-  el.value = val.startsWith("-") ? val.substring(1) : "-" + val;
-  if (targetId === "pHandi") validateHandi(el);
-  el.focus();
 }
 function editMyScore(name) {
   var d = localData[name]; if (!d) return;
@@ -1854,6 +1840,7 @@ function closeAttendDeleteModal() {
 }
 
 function confirmAttendDelete() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   var name = document.getElementById("attendDelName").value.trim();
   var room = document.getElementById("attendDelRoom").value.trim();
   if (!name) { toast("이름을 입력하세요"); return; }
@@ -1880,6 +1867,7 @@ function confirmAttendDelete() {
 }
 
 function confirmAttendAdd() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   var name = baseName(document.getElementById("attendAddName").value.trim()) || document.getElementById("attendAddName").value.trim();
   var room = document.getElementById("attendAddRoom").value.trim() || currentRoom;
   if (!name) { toast("이름을 입력하세요"); return; }
@@ -2195,6 +2183,7 @@ function updateTeamSelectCount() {
 }
 
 function deletePlayer(name) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!confirm("[" + name + "] 을 삭제할까요?")) return;
   if (useFirebase) db.ref("rooms/" + currentRoom + "/players/" + name).remove();
   else { delete localData[name]; renderRank(); renderParticipantList(); refreshAdminPlayerList(); refreshAdminRoomStatus(); }
@@ -2205,12 +2194,13 @@ function deletePlayer(name) {
 var selectedTeamSize = 4;
 
 function setTeamSize(n) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   selectedTeamSize = n;
   updateTeamSizeButtons();
   updateTeamSizeInfo();
   updateAutoTeamInfo();
   // 팀당 인원을 Firebase에 저장 → 자동 팀공개가 다른 기기에서 실행돼도 동일 인원 적용
-  if (useFirebase && currentRoom && admin) db.ref("rooms/" + currentRoom + "/meta/teamSize").set(n);
+  if (useFirebase && currentRoom) db.ref("rooms/" + currentRoom + "/meta/teamSize").set(n);
 }
 
 function updateTeamSizeButtons() {
@@ -2242,18 +2232,20 @@ function clampTeamTarget(n) {
   return n;
 }
 function adjustAutoTeamTarget(delta) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   if (autoTeamEnabled) { toast("자동 팀공개를 끈 뒤 변경하세요"); return; }
   var input = document.getElementById("autoTeamTargetInput");
   var base = input ? Number(input.value) : autoTeamTarget;
   setAutoTeamTarget(base + delta);
 }
 function setAutoTeamTarget(n) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   if (autoTeamEnabled) return; // ON 상태에서는 변경 잠금
   autoTeamTarget = clampTeamTarget(n);
   var input = document.getElementById("autoTeamTargetInput");
   if (input) input.value = autoTeamTarget;
   updateAutoTeamInfo();
-  if (useFirebase && currentRoom && admin) db.ref("rooms/" + currentRoom + "/meta/autoTeamTarget").set(autoTeamTarget);
+  if (useFirebase && currentRoom) db.ref("rooms/" + currentRoom + "/meta/autoTeamTarget").set(autoTeamTarget);
 }
 function updateAutoTeamButton() {
   var btn = document.getElementById("autoTeamBtn");
@@ -2316,6 +2308,7 @@ function runAutoTeamIfNeeded() {
 
 // ── 자동 팀편성 ──
 function autoAssignTeams(isAuto) {
+  if (!isAuto && !admin) { toast("관리자만 가능합니다"); return; }
   var players = Object.values(localData || {});
   if (!players.length) { toast("참가자가 없습니다"); return; }
 
@@ -2510,6 +2503,7 @@ function renderTeams(teams) {
 }
 
 function clearTeams() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   currentTeams = [];
   teamEditMode = false;
   document.getElementById("teamResult").innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p></div>';
@@ -2553,6 +2547,7 @@ function toggleTeamEditMode() {
 }
 
 function openMoveModal(name, fromTeamIdx) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   moveTarget = { name: name, fromTeam: fromTeamIdx };
   document.getElementById("moveModalSub").textContent = '"' + name + '" 을(를) 이동할 조를 선택하세요';
   var grid = document.getElementById("teamPickGrid");
@@ -2573,6 +2568,7 @@ function closeMoveModal() {
 }
 
 function confirmMove(toTeamIdx) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!moveTarget) return;
   var name = moveTarget.name;
   var from = moveTarget.fromTeam;
@@ -2604,6 +2600,7 @@ function confirmMove(toTeamIdx) {
 }
 
 function removeFromTeam(name, fromTeamIdx) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!confirm("[" + name + "] 을(를) 이 조에서 제거할까요?\n(참가자 명단에는 남아있습니다)")) return;
   currentTeams[fromTeamIdx] = currentTeams[fromTeamIdx].filter(function(p) { return p.name !== name; });
   currentTeams = currentTeams.filter(function(t) { return t.length > 0; });
@@ -2615,12 +2612,14 @@ function removeFromTeam(name, fromTeamIdx) {
   toast(name + " 제거됨");
 }
 function adminPreview() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
   document.getElementById("previewContent").innerHTML = '<div class="rank-list">' + buildRankHTML(getSorted(localData)) + '</div>';
   document.getElementById("previewModal").classList.add("open");
 }
 function closePreview(e) { if (e.target.id === "previewModal") document.getElementById("previewModal").classList.remove("open"); }
 function adminPublish() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
   if (!confirm("순위를 전체 공개할까요?")) return;
   document.getElementById("previewModal").classList.remove("open");
@@ -2629,6 +2628,7 @@ function adminPublish() {
   toast("🚀 순위 공개 완료!");
 }
 function adminHide() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!confirm("순위를 다시 숨길까요?")) return;
   if (useFirebase) db.ref("rooms/" + currentRoom + "/meta/published").set(false);
   else { published = false; renderRank(); refreshAdminRoomStatus(); }
@@ -2778,8 +2778,9 @@ function foursomeInp(ri, ti, field, val, extra, ph, idx, forceEditable) {
   var handler = editable ? (' oninput="foursomeOnInput(' + ri + ',' + ti + ',\'' + field + '\',this.value,' + idxArg + ')"') : "";
   var autoId = "fscell-" + ri + "-" + ti + "-" + field + (hasIdx ? ("-" + idx) : "");
   // 팀명·선수 이름은 한글 입력이 필요하므로 일반 텍스트 자판, 개인핸디·점수만 숫자(소수) 자판으로 제한
-  var isTextField = (field === "team" || field === "playerName");
-  var typeAttr = isTextField ? 'type="text"' : 'type="text" inputmode="decimal"';
+  // 팀명·선수 이름·개인핸디는 일반 자판(개인핸디는 마이너스 부호가 필요해서 숫자 전용 자판 대신 일반 자판 사용)
+  // 팀명·선수 이름·개인핸디·1경기·2경기 전부 일반 자판(마이너스 부호 입력 가능)
+  var typeAttr = 'type="text"';
   return '<input class="fs-cell ' + extra + '" ' + typeAttr + ' id="' + autoId + '"'
        + ' value="' + v + '"' + (ph ? ' placeholder="' + ph + '"' : "") + ' ' + disabledAttr + handler + '>';
 }
@@ -2818,15 +2819,13 @@ function foursomeRender() {
         ? '<button class="fs-del" onclick="foursomeDelTeam(' + ri + ',' + ti + ')">✕</button>' : "";
       var teamKey = ri + "-" + ti;
       var teamEditable = ready && (!myFsClaim || myFsClaim === teamKey);
-      var minusBtn1 = teamEditable ? '<button type="button" class="fs-minus-btn" onclick="foursomeToggleMinus(' + ri + ',' + ti + ',0)">−</button>' : "";
-      var minusBtn2 = teamEditable ? '<button type="button" class="fs-minus-btn" onclick="foursomeToggleMinus(' + ri + ',' + ti + ',1)">−</button>' : "";
 
       html += '<tr class="' + isFirst + '">';
       if (ti === 0) html += '<td class="fs-room-cell" rowspan="' + roomRowSpan + '">' + room.no + '방</td>';
       html += '<td class="fs-team-col" rowspan="2"><div style="display:flex;align-items:center;gap:2px;">'
             + foursomeInp(ri, ti, "team", t.team, "fs-team-name", "팀 이름", null, teamEditable) + delBtn + '</div></td>';
       html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[0], "", "선수1 이름", 0, teamEditable) + '</td>';
-      html += '<td class="fs-num-col"><div style="display:flex;align-items:center;gap:2px;">' + minusBtn1 + foursomeInp(ri, ti, "indHandi", t.indHandi[0], "", "선수1", 0, teamEditable) + '</div></td>';
+      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[0], "", "선수1", 0, teamEditable) + '</td>';
       html += '<td class="fs-calc fs-calc-col ' + (d.teamHandi === null ? "empty" : "") + '" rowspan="2" id="fsth-' + ri + '-' + ti + '">' + (d.teamHandi === null ? "–" : foursomeFmt(d.teamHandi)) + '</td>';
       html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g1", t.g1, "", "", null, teamEditable) + '</td>';
       html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g2", t.g2, "", "", null, teamEditable) + '</td>';
@@ -2836,7 +2835,7 @@ function foursomeRender() {
       html += '</tr>';
       html += '<tr class="' + isFirst + '">';
       html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[1], "", "선수2 이름", 1, teamEditable) + '</td>';
-      html += '<td class="fs-num-col"><div style="display:flex;align-items:center;gap:2px;">' + minusBtn2 + foursomeInp(ri, ti, "indHandi", t.indHandi[1], "", "선수2", 1, teamEditable) + '</div></td>';
+      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[1], "", "선수2", 1, teamEditable) + '</td>';
       html += '</tr>';
     });
   });
@@ -2884,18 +2883,6 @@ function foursomeUpdateAllRanks() {
       }
     });
   });
-}
-
-// 모바일 숫자 자판(inputmode=decimal)에는 보통 마이너스(-) 키가 없어서, 버튼으로 부호를 토글해준다.
-function foursomeToggleMinus(ri, ti, idx) {
-  var id = "fscell-" + ri + "-" + ti + "-indHandi-" + idx;
-  var el = document.getElementById(id);
-  if (!el) return;
-  var val = el.value.trim();
-  var newVal = val.startsWith("-") ? val.substring(1) : ("-" + val);
-  el.value = newVal;
-  foursomeOnInput(ri, ti, "indHandi", newVal, idx);
-  el.focus();
 }
 
 function foursomeOnInput(ri, ti, field, value, idx) {
