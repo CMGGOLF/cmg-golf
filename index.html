@@ -731,6 +731,8 @@ tr.fs-first .fs-calc { background: var(--gold-glow); }
 tr.fs-first .fs-room-cell { background: var(--surface-2); }
 .fs-rank-locked { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-3); background: var(--surface-3); padding: 4px 7px; border-radius: 6px; }
 .fs-del { border: none; background: none; color: #c99; font-size: 14px; cursor: pointer; padding: 3px; line-height: 1; }
+.fs-minus-btn { flex: 0 0 20px; border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text-2); font-size: 13px; font-weight: 700; border-radius: 5px; padding: 0; height: 26px; cursor: pointer; }
+.fs-minus-btn:active { background: var(--border-2); }
 .fs-del:hover { color: #b23b3b; }
 input.fs-cell {
   width: 100%; min-width: 0; border: 1px solid transparent; background: var(--surface-2);
@@ -1332,6 +1334,7 @@ var foursomePublic = false;        // 관리자가 "공개 ON" 해야 참가자�
 var foursomeRankPublished = false; // 포썸 내부: 순위만 비공개→전체공개
 var foursomeEverReceived = false;  // 정식 데이터(관리자가 만든 방 구조) 수신 여부
 var foursomeModalOpen = false;
+var foursomeRenderPending = false; // 타이핑(특히 한글 조합) 중이라 미뤄둔 재렌더링이 있는지
 var foursomePushTimers = {};
 var FOURSOME_PATH = "foursomeGlobal"; // 경기방과 무관하게 항상 같은 고정 경로 (독립 운영)
 
@@ -1363,6 +1366,18 @@ try {
   document.getElementById("roomNotice").style.display = "block";
   document.getElementById("roomNotice").textContent = "⚠ Firebase 연결 오류 (데이터베이스 규칙을 확인하세요)";
 }
+// 포썸 입력칸에서 포커스가 빠지면(다른 칸으로 이동/탭 전환 등), 타이핑 중이라 미뤄뒀던 재렌더링을 그제서야 적용
+document.addEventListener("focusout", function(e) {
+  if (foursomeRenderPending && e.target && e.target.id && e.target.id.indexOf("fscell-") === 0) {
+    foursomeRenderPending = false;
+    setTimeout(function() {
+      // 바로 다른 fscell로 포커스가 옮겨간 경우(예: 다음 칸으로 탭 이동)까지 다시 미룸
+      var active = document.activeElement;
+      if (active && active.id && active.id.indexOf("fscell-") === 0) { foursomeRenderPending = true; return; }
+      foursomeRender();
+    }, 30);
+  }
+});
 window.addEventListener("DOMContentLoaded", function() {
   var savedName = localStorage.getItem("myGolfName");
   if (savedName) document.getElementById("pName").value = savedName;
@@ -2772,6 +2787,13 @@ function foursomeInp(ri, ti, field, val, extra, ph, idx, forceEditable) {
 function foursomeRender() {
   var tbody = document.getElementById("foursomeTbody");
   if (!tbody) return;
+  // 누군가 이 표의 입력칸에 타이핑 중이면(특히 한글 조합 중) 지금 통째로 다시 그리면
+  // IME 조합이 끊겨 글자가 이상하게 써지는 문제가 있어, 포커스를 벗어날 때까지 렌더링을 미룬다.
+  var activeNow = document.activeElement;
+  if (activeNow && activeNow.id && activeNow.id.indexOf("fscell-") === 0) {
+    foursomeRenderPending = true;
+    return;
+  }
   var ranks = foursomeComputeRanks();
   var reveal = foursomeRankVisible();
   var ready = foursomeDataReady();
@@ -2796,13 +2818,15 @@ function foursomeRender() {
         ? '<button class="fs-del" onclick="foursomeDelTeam(' + ri + ',' + ti + ')">✕</button>' : "";
       var teamKey = ri + "-" + ti;
       var teamEditable = ready && (!myFsClaim || myFsClaim === teamKey);
+      var minusBtn1 = teamEditable ? '<button type="button" class="fs-minus-btn" onclick="foursomeToggleMinus(' + ri + ',' + ti + ',0)">−</button>' : "";
+      var minusBtn2 = teamEditable ? '<button type="button" class="fs-minus-btn" onclick="foursomeToggleMinus(' + ri + ',' + ti + ',1)">−</button>' : "";
 
       html += '<tr class="' + isFirst + '">';
       if (ti === 0) html += '<td class="fs-room-cell" rowspan="' + roomRowSpan + '">' + room.no + '방</td>';
       html += '<td class="fs-team-col" rowspan="2"><div style="display:flex;align-items:center;gap:2px;">'
             + foursomeInp(ri, ti, "team", t.team, "fs-team-name", "팀 이름", null, teamEditable) + delBtn + '</div></td>';
       html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[0], "", "선수1 이름", 0, teamEditable) + '</td>';
-      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[0], "", "선수1", 0, teamEditable) + '</td>';
+      html += '<td class="fs-num-col"><div style="display:flex;align-items:center;gap:2px;">' + minusBtn1 + foursomeInp(ri, ti, "indHandi", t.indHandi[0], "", "선수1", 0, teamEditable) + '</div></td>';
       html += '<td class="fs-calc fs-calc-col ' + (d.teamHandi === null ? "empty" : "") + '" rowspan="2" id="fsth-' + ri + '-' + ti + '">' + (d.teamHandi === null ? "–" : foursomeFmt(d.teamHandi)) + '</td>';
       html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g1", t.g1, "", "", null, teamEditable) + '</td>';
       html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g2", t.g2, "", "", null, teamEditable) + '</td>';
@@ -2812,7 +2836,7 @@ function foursomeRender() {
       html += '</tr>';
       html += '<tr class="' + isFirst + '">';
       html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[1], "", "선수2 이름", 1, teamEditable) + '</td>';
-      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[1], "", "선수2", 1, teamEditable) + '</td>';
+      html += '<td class="fs-num-col"><div style="display:flex;align-items:center;gap:2px;">' + minusBtn2 + foursomeInp(ri, ti, "indHandi", t.indHandi[1], "", "선수2", 1, teamEditable) + '</div></td>';
       html += '</tr>';
     });
   });
@@ -2860,6 +2884,18 @@ function foursomeUpdateAllRanks() {
       }
     });
   });
+}
+
+// 모바일 숫자 자판(inputmode=decimal)에는 보통 마이너스(-) 키가 없어서, 버튼으로 부호를 토글해준다.
+function foursomeToggleMinus(ri, ti, idx) {
+  var id = "fscell-" + ri + "-" + ti + "-indHandi-" + idx;
+  var el = document.getElementById(id);
+  if (!el) return;
+  var val = el.value.trim();
+  var newVal = val.startsWith("-") ? val.substring(1) : ("-" + val);
+  el.value = newVal;
+  foursomeOnInput(ri, ti, "indHandi", newVal, idx);
+  el.focus();
 }
 
 function foursomeOnInput(ri, ti, field, value, idx) {
