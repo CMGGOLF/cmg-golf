@@ -851,6 +851,31 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
   <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
 </div>
 <div class="page active" id="page-room">
+  <div class="card" id="memberAuthCard" style="border:1.5px solid var(--gold-dim);">
+    <div class="card-title">👤 회원가입 / 로그인</div>
+    <div id="memberLoggedOutBox">
+      <div style="font-size:13px; color:var(--gold); font-weight:600; margin-bottom:10px;">처음 오셨다면 먼저 회원가입해주세요! 한 번만 하면 계속 자동 로그인됩니다.</div>
+      <div class="field">
+        <label>이름</label>
+        <input id="memberAuthName" placeholder="이름을 입력하세요" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>비밀번호</label>
+        <input id="memberAuthPw" type="password" placeholder="비밀번호 (4자리 이상)" autocomplete="off">
+      </div>
+      <div class="btn-row" style="margin-top:4px">
+        <button class="btn btn-gold btn-sm" onclick="memberSignUp()">✍️ 회원가입</button>
+        <button class="btn btn-gray btn-sm" onclick="memberLogin()">로그인</button>
+      </div>
+      <div id="memberAuthNotice" style="display:none" class="notice"></div>
+    </div>
+    <div id="memberLoggedInBox" style="display:none;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-size:15px; font-weight:600; color:var(--text);">✅ <span id="memberLoggedInName"></span>님으로 로그인됨</div>
+        <button class="btn btn-gray btn-sm" style="width:auto; padding:8px 14px;" onclick="memberLogout()">로그아웃</button>
+      </div>
+    </div>
+  </div>
   <div id="roomNotice" class="notice notice-warn" style="display:none; margin-bottom:14px;"></div>
   <div class="card">
     <div class="card-title">진행 중인 경기방</div>
@@ -902,33 +927,6 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
   </div>
 </div>
 <div class="page" id="page-score">
-  <div class="card" id="memberAuthCard">
-    <div class="card-title">회원 로그인</div>
-    <div id="memberLoggedOutBox">
-      <div class="field">
-        <label>이름</label>
-        <input id="memberAuthName" placeholder="이름을 입력하세요" autocomplete="off">
-      </div>
-      <div class="field">
-        <label>비밀번호</label>
-        <input id="memberAuthPw" type="password" placeholder="비밀번호 (4자리 이상)" autocomplete="off">
-      </div>
-      <div class="btn-row" style="margin-top:4px">
-        <button class="btn btn-gray btn-sm" onclick="memberSignUp()">회원가입</button>
-        <button class="btn btn-green btn-sm" onclick="memberLogin()">로그인</button>
-      </div>
-      <div id="memberAuthNotice" style="display:none" class="notice"></div>
-      <div style="font-size:11px; color:var(--text-3); margin-top:8px; line-height:1.6;">
-        처음이시면 <b>회원가입</b>을, 이미 가입하셨으면 <b>로그인</b>을 눌러주세요. 한 번 로그인하면 이 휴대폰에서는 계속 로그인 상태가 유지됩니다.
-      </div>
-    </div>
-    <div id="memberLoggedInBox" style="display:none;">
-      <div style="display:flex; align-items:center; justify-content:space-between;">
-        <div style="font-size:15px; font-weight:600; color:var(--text);">✅ <span id="memberLoggedInName"></span>님으로 로그인됨</div>
-        <button class="btn btn-gray btn-sm" style="width:auto; padding:8px 14px;" onclick="memberLogout()">로그아웃</button>
-      </div>
-    </div>
-  </div>
   <div class="card">
     <div class="card-title">내 정보</div>
     <div class="field">
