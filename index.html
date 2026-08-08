@@ -1216,12 +1216,11 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
     </div>
     <div class="admin-section">
       <div class="card-title">👤 회원 관리</div>
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-        <span id="memberListCount" style="font-size:12px; color:var(--text-3); font-family:'DM Mono',monospace;">0명 가입</span>
-        <span style="flex:1;"></span>
-        <button class="btn btn-gray btn-sm" style="width:auto; padding:7px 12px; font-size:12px;" onclick="renderMemberList(true)">🔄 새로고침</button>
-      </div>
-      <div id="memberListWrap"><div class="empty-state" style="padding:12px 0"><p>새로고침을 눌러주세요</p></div></div>
+      <button class="btn btn-gray btn-sm" style="width:100%; display:flex; justify-content:space-between; align-items:center;" onclick="toggleMemberList()">
+        <span id="memberListToggleLabel">회원 명부 보기 (0명)</span>
+        <span id="memberListToggleIcon">▾</span>
+      </button>
+      <div id="memberListWrap" style="display:none; margin-top:8px;"><div class="empty-state" style="padding:12px 0"><p>펼치면 표시됩니다</p></div></div>
     </div>
     <div class="admin-section">
       <div class="card-title">📊 회원별 평균 핸디 관리</div>
@@ -2872,10 +2871,10 @@ function membersListenGlobal() {
 }
 function renderMemberList(showToast) {
   var wrap = document.getElementById("memberListWrap");
-  var countEl = document.getElementById("memberListCount");
+  var label = document.getElementById("memberListToggleLabel");
   if (!wrap || !admin) return;
   var names = Object.keys(allMembers).sort();
-  if (countEl) countEl.textContent = names.length + "명 가입";
+  if (label) label.textContent = "회원 명부 보기 (" + names.length + "명)";
   if (!names.length) {
     wrap.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>가입한 회원이 없습니다</p></div>';
   } else {
@@ -2890,6 +2889,14 @@ function renderMemberList(showToast) {
     }).join("");
   }
   if (showToast) toast("회원 목록을 새로고침했습니다");
+}
+function toggleMemberList() {
+  var wrap = document.getElementById("memberListWrap");
+  var icon = document.getElementById("memberListToggleIcon");
+  if (!wrap) return;
+  var open = wrap.style.display !== "none";
+  wrap.style.display = open ? "none" : "block";
+  if (icon) icon.textContent = open ? "▾" : "▴";
 }
 // 목록에서 바로 초기화(이름을 직접 입력할 필요 없음)
 function adminResetMemberPasswordDirect(name) {
