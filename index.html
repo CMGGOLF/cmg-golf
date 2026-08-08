@@ -902,11 +902,38 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
   </div>
 </div>
 <div class="page" id="page-score">
+  <div class="card" id="memberAuthCard">
+    <div class="card-title">회원 로그인</div>
+    <div id="memberLoggedOutBox">
+      <div class="field">
+        <label>이름</label>
+        <input id="memberAuthName" placeholder="이름을 입력하세요" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>비밀번호</label>
+        <input id="memberAuthPw" type="password" placeholder="비밀번호 (4자리 이상)" autocomplete="off">
+      </div>
+      <div class="btn-row" style="margin-top:4px">
+        <button class="btn btn-gray btn-sm" onclick="memberSignUp()">회원가입</button>
+        <button class="btn btn-green btn-sm" onclick="memberLogin()">로그인</button>
+      </div>
+      <div id="memberAuthNotice" style="display:none" class="notice"></div>
+      <div style="font-size:11px; color:var(--text-3); margin-top:8px; line-height:1.6;">
+        처음이시면 <b>회원가입</b>을, 이미 가입하셨으면 <b>로그인</b>을 눌러주세요. 한 번 로그인하면 이 휴대폰에서는 계속 로그인 상태가 유지됩니다.
+      </div>
+    </div>
+    <div id="memberLoggedInBox" style="display:none;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-size:15px; font-weight:600; color:var(--text);">✅ <span id="memberLoggedInName"></span>님으로 로그인됨</div>
+        <button class="btn btn-gray btn-sm" style="width:auto; padding:8px 14px;" onclick="memberLogout()">로그아웃</button>
+      </div>
+    </div>
+  </div>
   <div class="card">
     <div class="card-title">내 정보</div>
     <div class="field">
       <label>이름</label>
-      <input id="pName" placeholder="이름을 입력하세요" autocomplete="off">
+      <input id="pName" placeholder="먼저 로그인해주세요" autocomplete="off" disabled>
     </div>
     <div class="field">
       <label>성별</label>
@@ -1186,6 +1213,14 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
       </div>
     </div>
     <div class="admin-section">
+      <div class="card-title">🔑 회원 비밀번호 초기화</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
+        비밀번호를 잊은 회원의 이름을 입력하고 초기화하면, 그 회원의 가입 정보가 삭제되어 <b>같은 이름으로 다시 회원가입</b>할 수 있게 됩니다.
+      </div>
+      <input id="resetMemberNameInput" placeholder="회원 이름" style="width:100%; padding:11px; margin-bottom:8px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface-1); color:var(--text); font-size:14px;">
+      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="adminResetMemberPassword()">초기화</button>
+    </div>
+    <div class="admin-section">
       <div class="card-title">📊 회원별 평균 핸디 관리</div>
       <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
         지금까지 만들어진 모든 방의 "핸디+친타수" 기록을 모아 회원별 평균을 계산합니다. 넷스코어(친타수−핸디)가 그날 전체 참가자 평균보다 꾸준히 낮으면(잘 침) 핸디를 낮추고, 높으면(못 침) 핸디를 올리는 방향으로 <strong>제안 핸디</strong>를 계산합니다.<br>
@@ -1333,6 +1368,9 @@ var FOURSOME_PATH = "foursomeGlobal"; // 경기방과 무관하게 항상 같은
 // 🤝 파트너 매칭 상태 (역시 스크립트 최상단에서 선언 — hoisting 문제 방지)
 var PM_PATH = "partnerMatch"; // 경기방과 무관한 고정 경로
 var teamGrouped = {}; // { 이름: true } = 체크됨(팀편성 시 강제로 한 팀으로 묶임). 없으면 기본값(일반 자동배정).
+var loggedInMemberName = null; // 로그인된 회원 이름(null이면 로그인 안 됨). 관리자는 이 로그인과 무관하게 항상 자유 입력 가능.
+var teamGroupedDirty = false;   // 방금 로컬에서 체크를 바꿨는데 아직 서버 저장이 안 끝난 상태인지
+var teamGroupedPushTimer = null;
 // ── 핸디 관리 정책 (관리자 전용, 이 기기의 화면 설정 — 서버 저장 없이 즉시 적용) ──
 var handiPercent = 90;             // 퍼센트 핸디: 제안핸디에 곱해서 적용할 비율 (기본 90%, 드롭다운 기본 선택과 일치)
 var stablefordCapEnabled = false; // 스테이블포드 취지의 순위 캡 적용 여부 (기본 OFF, 켜야 적용됨)
@@ -1370,11 +1408,26 @@ document.addEventListener("focusout", function(e) {
     }, 30);
   }
 });
+// 관리자 참가자 목록: 체크박스를 누르는 도중(mousedown~mouseup 사이) 실시간 재렌더링이 끼어들어
+// 클릭이 씹히는 문제 방지 — 누르기 시작하면 잠깐 렌더링을 잠그고, 손을 떼면 풀어서 반영한다.
+function adminListInteractStart(e) {
+  if (e.target && e.target.closest && e.target.closest("#adminPlayerList")) adminListInteracting = true;
+}
+function adminListInteractEnd() {
+  if (!adminListInteracting) return;
+  setTimeout(function() {
+    adminListInteracting = false;
+    if (adminListRenderPending) { adminListRenderPending = false; refreshAdminPlayerList(); }
+  }, 250); // change 이벤트가 확실히 처리될 시간을 준 뒤 잠금 해제
+}
+document.addEventListener("mousedown", adminListInteractStart);
+document.addEventListener("touchstart", adminListInteractStart, { passive: true });
+document.addEventListener("mouseup", adminListInteractEnd);
+document.addEventListener("touchend", adminListInteractEnd);
 window.addEventListener("DOMContentLoaded", function() {
-  var savedName = localStorage.getItem("myGolfName");
-  if (savedName) document.getElementById("pName").value = savedName;
   var savedGender = localStorage.getItem("myGolfGender");
   if (savedGender) setGender(savedGender);
+  restoreMemberSession(); // 저장된 회원 로그인 자동 복원
   // 저장된 관리자 세션 자동 복원 (모바일에서 매번 재로그인 방지)
   try { if (localStorage.getItem("cmgAdmin") === "1") enterAdminMode(); } catch(e) {}
 });
@@ -1568,10 +1621,105 @@ function toggleAutoPublish() {
     toast("자동 공개 설정 저장에 실패했습니다.");
   });
 }
+// ══════════════════════════════════════════════════════════════
+// 👤 회원 가입/로그인 — 비밀번호는 SHA-256으로 해시해서 저장(평문 저장 안 함)
+// 한 번 로그인하면 이 휴대폰에서는 localStorage에 남아 계속 자동 로그인 유지됨.
+// ══════════════════════════════════════════════════════════════
+function hashPassword(pw) {
+  if (!window.crypto || !window.crypto.subtle) {
+    return Promise.reject(new Error("이 브라우저/연결(HTTPS 아님)에서는 회원가입·로그인을 사용할 수 없습니다"));
+  }
+  var enc = new TextEncoder().encode(pw);
+  return crypto.subtle.digest("SHA-256", enc).then(function(buf) {
+    return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+  });
+}
+function memberAuthNotice(type, msg) { showNotice(document.getElementById("memberAuthNotice"), type, msg); }
+
+function memberSignUp() {
+  var name = document.getElementById("memberAuthName").value.trim();
+  var pw = document.getElementById("memberAuthPw").value;
+  if (!name) { memberAuthNotice("error", "이름을 입력하세요"); return; }
+  if (!pw || pw.length < 4) { memberAuthNotice("error", "비밀번호는 4자리 이상 입력하세요"); return; }
+  if (!useFirebase) { memberAuthNotice("error", "온라인 상태에서만 가입할 수 있습니다"); return; }
+  db.ref("members/" + name).once("value").then(function(snap) {
+    if (snap.exists()) { memberAuthNotice("error", "이미 가입된 이름입니다. 로그인해주세요."); return; }
+    hashPassword(pw).then(function(hash) {
+      return db.ref("members/" + name).set({ passwordHash: hash, createdAt: Date.now() });
+    }).then(function() {
+      completeMemberLogin(name);
+      toast("✅ 회원가입 완료! 자동으로 로그인되었습니다.");
+    }).catch(function(err) {
+      memberAuthNotice("error", (err && err.message) ? err.message : "가입 실패 — 연결을 확인해주세요");
+    });
+  });
+}
+function memberLogin() {
+  var name = document.getElementById("memberAuthName").value.trim();
+  var pw = document.getElementById("memberAuthPw").value;
+  if (!name || !pw) { memberAuthNotice("error", "이름과 비밀번호를 입력하세요"); return; }
+  if (!useFirebase) { memberAuthNotice("error", "온라인 상태에서만 로그인할 수 있습니다"); return; }
+  db.ref("members/" + name).once("value").then(function(snap) {
+    var data = snap.val();
+    if (!data) { memberAuthNotice("error", "가입되지 않은 이름입니다. 회원가입을 먼저 해주세요."); return; }
+    return hashPassword(pw).then(function(hash) {
+      if (hash !== data.passwordHash) { memberAuthNotice("error", "비밀번호가 일치하지 않습니다"); return; }
+      completeMemberLogin(name);
+      toast("✅ " + name + "님, 로그인되었습니다.");
+    });
+  }).catch(function(err) {
+    memberAuthNotice("error", (err && err.message) ? err.message : "로그인 실패 — 연결을 확인해주세요");
+  });
+}
+function completeMemberLogin(name) {
+  loggedInMemberName = name;
+  try { localStorage.setItem("cmgMemberName", name); } catch (e) {}
+  localStorage.setItem("myGolfName", name); // 기존 기기잠금과 연동(같은 값 사용)
+  document.getElementById("memberAuthName").value = "";
+  document.getElementById("memberAuthPw").value = "";
+  updateMemberAuthUI();
+}
+function memberLogout() {
+  if (!confirm("로그아웃하시겠습니까? 다음에 다시 로그인해야 합니다.")) return;
+  loggedInMemberName = null;
+  try { localStorage.removeItem("cmgMemberName"); } catch (e) {}
+  updateMemberAuthUI();
+  toast("로그아웃되었습니다");
+}
+function updateMemberAuthUI() {
+  var card = document.getElementById("memberAuthCard");
+  var outBox = document.getElementById("memberLoggedOutBox");
+  var inBox = document.getElementById("memberLoggedInBox");
+  var nameEl = document.getElementById("memberLoggedInName");
+  var pNameInput = document.getElementById("pName");
+  if (admin) {
+    // 관리자는 회원 로그인과 무관하게 항상 자유롭게 이름을 입력할 수 있음
+    if (card) card.style.display = "none";
+    if (pNameInput) { pNameInput.disabled = false; pNameInput.placeholder = "이름을 입력하세요"; }
+    return;
+  }
+  if (card) card.style.display = "";
+  if (loggedInMemberName) {
+    if (outBox) outBox.style.display = "none";
+    if (inBox) inBox.style.display = "block";
+    if (nameEl) nameEl.textContent = loggedInMemberName;
+    if (pNameInput) { pNameInput.disabled = true; pNameInput.value = loggedInMemberName; pNameInput.placeholder = ""; }
+  } else {
+    if (outBox) outBox.style.display = "block";
+    if (inBox) inBox.style.display = "none";
+    if (pNameInput) { pNameInput.disabled = true; pNameInput.value = ""; pNameInput.placeholder = "먼저 로그인해주세요"; }
+  }
+}
+function restoreMemberSession() {
+  var saved = null;
+  try { saved = localStorage.getItem("cmgMemberName"); } catch (e) {}
+  if (saved) loggedInMemberName = saved;
+  updateMemberAuthUI();
+}
+
 function editMyScore(name) {
   var d = localData[name]; if (!d) return;
-  var myName = localStorage.getItem("myGolfName");
-  if (!admin && name !== myName) { toast("🔒 본인의 점수만 수정할 수 있습니다."); return; }
+  if (!admin && (!loggedInMemberName || name !== loggedInMemberName)) { toast("🔒 본인의 점수만 수정할 수 있습니다."); return; }
   document.getElementById("pName").value = d.name;
   document.getElementById("pHandi").value = d.handi;
   if (d.gender) setGender(d.gender); else setGender('male');
@@ -1593,19 +1741,14 @@ function baseName(name) {
   return String(name == null ? "" : name).replace(/\s*\d+\s*$/, "").trim();
 }
 function saveMyScore() {
-  var name = document.getElementById("pName").value.trim();
+  if (!admin && !loggedInMemberName) { showNotice(document.getElementById("scoreNotice"), "error", "🔒 먼저 로그인해주세요"); return; }
+  var name = (!admin && loggedInMemberName) ? loggedInMemberName : document.getElementById("pName").value.trim();
   var handiStr = document.getElementById("pHandi").value.trim();
   var scoreStr = document.getElementById("pScore").value.trim();
   var notice = document.getElementById("scoreNotice");
   if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
   if (!checkHandiValid()) return;
-  // 🔒 본인 이름만 저장 가능 — 이 휴대폰에서 이미 다른 이름으로 등록한 적이 있으면 차단
-  var myGolfNameClaim = localStorage.getItem("myGolfName");
-  if (!admin && myGolfNameClaim && myGolfNameClaim !== name) {
-    showNotice(notice, "error", '🔒 이미 "' + myGolfNameClaim + '"님으로 등록하셨습니다. 이 휴대폰에서는 다른 이름으로 저장할 수 없습니다.');
-    return;
-  }
   localStorage.setItem("myGolfName", name);
   localStorage.setItem("myGolfGender", selectedGender);
   if (handiStr === "-") handiStr = "0";
@@ -1891,15 +2034,10 @@ function confirmAttendAdd() {
   }
 }
 function loadMyData() {
-  var name = document.getElementById("pName").value.trim();
+  if (!admin && !loggedInMemberName) { toast("🔒 먼저 로그인해주세요"); return; }
+  var name = (!admin && loggedInMemberName) ? loggedInMemberName : document.getElementById("pName").value.trim();
   if (!name) { toast("이름을 먼저 입력하세요"); return; }
   if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
-  // 🔒 본인 이름만 불러오기 가능 — 다른 사람 데이터를 훔쳐보거나 덮어쓰지 못하도록 차단
-  var myGolfNameClaim = localStorage.getItem("myGolfName");
-  if (!admin && myGolfNameClaim && myGolfNameClaim !== name) {
-    toast('🔒 이미 "' + myGolfNameClaim + '"님으로 등록하셨습니다. 이 휴대폰에서는 다른 이름을 불러올 수 없습니다.');
-    return;
-  }
   localStorage.setItem("myGolfName", name);
   if (useFirebase) {
     db.ref("rooms/" + currentRoom + "/players/" + name).once("value", function(snap) {
@@ -1952,6 +2090,9 @@ function listenRoom() {
     autoTeamEnabled = room.meta ? !!room.meta.autoTeam : false;
     if (room.meta && room.meta.autoTeamTarget) autoTeamTarget = clampTeamTarget(room.meta.autoTeamTarget);
     if (room.meta && room.meta.teamSize) selectedTeamSize = Number(room.meta.teamSize);
+    if (!teamGroupedDirty) {
+      teamGrouped = (room.meta && room.meta.teamGrouped && typeof room.meta.teamGrouped === "object") ? room.meta.teamGrouped : {};
+    }
     localData = room.players || {};
     updateAutoPublishButton();
     renderRank();
@@ -2110,6 +2251,7 @@ function enterAdminMode() {
   updatePmPublicButton(); updatePmMaleRoundButton(); pmUpdateEntryVisibility(); pmRenderAdminTable(); if (pmModalOpen) pmRender();
   renderMemberHandiStats();
   renderArchivedRooms();
+  updateMemberAuthUI();
 }
 function logoutAdmin() {
   if (!confirm("관리자 로그아웃하시겠습니까?\n(이 기기에서 자동 로그인이 해제됩니다)")) return;
@@ -2124,6 +2266,7 @@ function logoutAdmin() {
   toast("관리자 로그아웃되었습니다");
   updateFoursomePublicButton(); foursomeUpdateEntryVisibility(); if (foursomeModalOpen) foursomeRender();
   updatePmPublicButton(); updatePmMaleRoundButton(); pmUpdateEntryVisibility(); pmRenderAdminTable(); if (pmModalOpen) pmRender();
+  updateMemberAuthUI();
 }
 function refreshAdminRoomStatus() {
   var el = document.getElementById("adminRoomStatus");
@@ -2136,7 +2279,13 @@ function refreshAdminRoomStatus() {
     '<span style="font-size:13px; color:var(--text-2)">' + statusText + autoText + '</span></div>' +
     '<div style="font-size:13px; color:var(--text-3)">총 참가자 ' + count + '명 등록됨</div>';
 }
+var adminListInteracting = false;  // 관리자가 참가자 목록(체크박스 등)을 만지고 있는 중인지
+var adminListRenderPending = false; // 그 사이에 놓친 재렌더링 요청이 있는지
 function refreshAdminPlayerList() {
+  // 다른 참가자의 실시간 점수 입력 등으로 재렌더링 신호가 왔더라도, 관리자가 지금 막 체크박스를
+  // 누르는 중이면 통째로 다시 그리면 그 클릭이 씹혀서 "체크했는데 바로 풀린다"는 문제가 생긴다.
+  // 그래서 만지는 중에는 렌더링을 잠깐 미뤘다가, 손을 뗀 직후에 한 번에 반영한다.
+  if (adminListInteracting) { adminListRenderPending = true; return; }
   var el = document.getElementById("adminPlayerList");
   var arr = getSorted(localData);
   if (!arr.length) { el.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>참가자가 없습니다</p></div>'; return; }
@@ -2164,13 +2313,32 @@ function toggleTeamSelect(name, isChecked) {
   if (!admin) return;
   if (isChecked) teamGrouped[name] = true;
   else delete teamGrouped[name];
+  teamGroupedDirty = true;
   updateTeamSelectCount();
+  pushTeamGrouped();
 }
 function teamSelectAll(select) {
   if (!admin) return;
   if (select) { Object.keys(localData).forEach(function(n) { teamGrouped[n] = true; }); }
   else { teamGrouped = {}; }
+  teamGroupedDirty = true;
   refreshAdminPlayerList();
+  pushTeamGrouped();
+}
+// 체크 상태를 서버에 저장 — 새로고침해도, 다른 관리자 기기에서도 유지되도록.
+// 저장이 완료되기 전까지는(teamGroupedDirty) 실시간으로 들어오는 다른 변경사항이 방금 누른 체크를
+// 덮어쓰지 않도록 listenRoom()에서 보호한다.
+function pushTeamGrouped() {
+  if (!useFirebase || !currentRoom) { teamGroupedDirty = false; return; }
+  clearTimeout(teamGroupedPushTimer);
+  teamGroupedPushTimer = setTimeout(function() {
+    db.ref("rooms/" + currentRoom + "/meta/teamGrouped").set(teamGrouped).then(function() {
+      teamGroupedDirty = false;
+    }).catch(function() {
+      teamGroupedDirty = false;
+      toast("⚠ 체크 상태 저장 실패 — 새로고침하면 이전 상태로 보일 수 있습니다.");
+    });
+  }, 250);
 }
 function updateTeamSelectCount() {
   var el = document.getElementById("teamSelectCount");
@@ -2653,11 +2821,23 @@ function renderArchivedRooms() {
   if (label) label.textContent = "보관된 방 보기 (" + archived.length + "개)";
   if (!archived.length) { wrap.innerHTML = '<div class="empty-state" style="padding:10px 0"><p>보관된 방이 없습니다</p></div>'; return; }
   wrap.innerHTML = archived.map(function(k) {
-    return '<div style="display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border-1); font-size:13px;">'
-      + '<span>📦 ' + k + '</span>'
-      + '<button class="btn btn-gray btn-sm" style="width:auto; padding:6px 12px; font-size:12px;" onclick="unarchiveRoom(\'' + k + '\')">목록에 복원</button>'
+    return '<div style="display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border-1); font-size:13px; gap:8px;">'
+      + '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📦 ' + k + '</span>'
+      + '<button class="btn btn-gray btn-sm" style="width:auto; padding:6px 10px; font-size:12px; flex-shrink:0;" onclick="unarchiveRoom(\'' + k + '\')">목록에 복원</button>'
+      + '<button class="btn btn-danger btn-sm" style="width:auto; padding:6px 10px; font-size:12px; flex-shrink:0;" onclick="permanentlyDeleteRoom(\'' + k + '\')">영구삭제</button>'
       + '</div>';
   }).join("");
+}
+function permanentlyDeleteRoom(roomKey) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!confirm("[" + roomKey + "] 을 완전히 삭제하시겠습니까?\n(되돌릴 수 없고, 그 안의 점수 기록도 사라져 회원 평균 핸디 통계에서도 제외됩니다)")) return;
+  if (useFirebase) {
+    db.ref("rooms/" + roomKey).remove().then(function() {
+      toast("🗑 [" + roomKey + "] 이(가) 완전히 삭제되었습니다.");
+    }).catch(function() {
+      toast("⚠ 삭제 실패! 서버에 반영되지 않았습니다.");
+    });
+  }
 }
 function toggleArchivedRoomsList() {
   var wrap = document.getElementById("archivedRoomsWrap");
@@ -2671,6 +2851,19 @@ function unarchiveRoom(roomKey) {
   if (!admin) { toast("관리자만 가능"); return; }
   if (useFirebase) db.ref("rooms/" + roomKey + "/meta/archived").remove();
   toast(roomKey + " 을 목록에 복원했습니다.");
+}
+function adminResetMemberPassword() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  var name = document.getElementById("resetMemberNameInput").value.trim();
+  if (!name) { toast("이름을 입력하세요"); return; }
+  if (!confirm("[" + name + "]님의 로그인 정보를 초기화할까요?\n(그 회원은 같은 이름으로 다시 회원가입해야 합니다)")) return;
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  db.ref("members/" + name).remove().then(function() {
+    toast("✅ [" + name + "]님의 로그인 정보가 초기화되었습니다.");
+    document.getElementById("resetMemberNameInput").value = "";
+  }).catch(function() {
+    toast("⚠ 초기화 실패! 서버에 반영되지 않았습니다.");
+  });
 }
 var urlRoom = new URLSearchParams(location.search).get("room");
 if (urlRoom) {
