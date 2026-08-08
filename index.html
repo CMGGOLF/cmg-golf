@@ -2873,7 +2873,9 @@ function renderMemberList(showToast) {
   var wrap = document.getElementById("memberListWrap");
   var label = document.getElementById("memberListToggleLabel");
   if (!wrap || !admin) return;
-  var names = Object.keys(allMembers).sort();
+  var names = Object.keys(allMembers).sort(function(a, b) {
+    return (allMembers[a].createdAt || 0) - (allMembers[b].createdAt || 0);
+  });
   if (label) label.textContent = "회원 명부 보기 (" + names.length + "명)";
   if (!names.length) {
     wrap.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>가입한 회원이 없습니다</p></div>';
