@@ -1320,7 +1320,7 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
         </div>
       </div>
       <div class="foursome-legend">
-        <b>계산</b> · <code>팀핸디 = 선수1+선수2 핸디</code>(자동), <code>스코어 = 합산 − |팀핸디|</code>. 팀명·선수 이름·개인핸디·1,2경기는 누구나 입력 가능합니다. 팀 추가/삭제, 순위 전체공개는 관리자만 가능합니다.<br>🔒 한 번 어떤 팀의 칸을 입력하면 이 휴대폰에서는 그 팀만 계속 입력할 수 있습니다. 실수로 다른 팀을 눌러서 잠기셨다면 아래 버튼으로 푸실 수 있습니다.
+        <b>계산</b> · <code>팀핸디 = 선수1+선수2 핸디</code>(자동), <code>스코어 = 합산 − 팀핸디</code>. 팀명·선수 이름·개인핸디·1,2경기는 누구나 입력 가능합니다. 팀 추가/삭제, 순위 전체공개는 관리자만 가능합니다.<br>🔒 한 번 어떤 팀의 칸을 입력하면 이 휴대폰에서는 그 팀만 계속 입력할 수 있습니다. 실수로 다른 팀을 눌러서 잠기셨다면 아래 버튼으로 푸실 수 있습니다.
         <div id="fsUnlockWrap" style="display:none; margin-top:8px;">
           <button type="button" class="btn btn-gray btn-sm" style="width:100%;" onclick="fsUnlockTeam()">🔓 이 휴대폰의 팀 잠금 풀기</button>
         </div>
@@ -2995,7 +2995,7 @@ function foursomeDerive(t) {
   var th = foursomeTeamHandiOf(t);
   var anyGame = (g1 !== null || g2 !== null);
   var sum = anyGame ? (g1 || 0) + (g2 || 0) : null;
-  var score = (sum !== null) ? sum - Math.abs(th || 0) : null;
+  var score = (sum !== null) ? sum - (th || 0) : null;
   var complete = (g1 !== null && g2 !== null);
   return { sum: sum, score: score, complete: complete, teamHandi: th };
 }
