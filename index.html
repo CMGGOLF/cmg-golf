@@ -1481,6 +1481,10 @@ function checkHandiValid() {
   return true;
 }
 function switchTab(tab) {
+  if (!admin && !loggedInMemberName && tab !== "room" && tab !== "admin") {
+    toast("🔒 먼저 회원가입/로그인해주세요");
+    tab = "room";
+  }
   document.querySelectorAll(".page").forEach(function(p) { p.classList.remove("active"); });
   document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
   document.getElementById("page-" + tab).classList.add("active");
