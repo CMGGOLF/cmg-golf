@@ -851,9 +851,12 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
   <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
 </div>
 <div class="page active" id="page-room">
-  <div class="card" id="memberAuthCard" style="border:1.5px solid var(--gold-dim);">
-    <div class="card-title">👤 회원가입 / 로그인</div>
-    <div id="memberLoggedOutBox">
+  <div class="card" id="memberAuthCard" style="border:1.5px solid var(--gold-dim); padding:12px 16px;">
+    <div class="card-title" id="memberAuthTitle" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:14px; margin-bottom:0; letter-spacing:0.06em;" onclick="toggleMemberAuthCard()">
+      <span>👤 회원가입 / 로그인</span>
+      <span id="memberAuthToggleIcon" style="font-size:13px; color:var(--text-3);">▾</span>
+    </div>
+    <div id="memberLoggedOutBox" style="display:none; margin-top:14px;">
       <div style="font-size:13px; color:var(--gold); font-weight:600; margin-bottom:10px;">처음 오셨다면 먼저 회원가입해주세요! 한 번만 하면 계속 자동 로그인됩니다.</div>
       <div class="field">
         <label>이름</label>
@@ -873,7 +876,7 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
       </div>
       <div id="memberAuthNotice" style="display:none" class="notice"></div>
     </div>
-    <div id="memberLoggedInBox" style="display:none;">
+    <div id="memberLoggedInBox" style="display:none; margin-top:12px;">
       <div style="display:flex; align-items:center; justify-content:space-between;">
         <div style="font-size:15px; font-weight:600; color:var(--text);">✅ <span id="memberLoggedInName"></span>님으로 로그인됨</div>
         <button class="btn btn-gray btn-sm" style="width:auto; padding:8px 14px;" onclick="memberLogout()">로그아웃</button>
@@ -1227,6 +1230,7 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
         <span id="memberListToggleIcon">▾</span>
       </button>
       <div id="memberListWrap" style="display:none; margin-top:8px;"><div class="empty-state" style="padding:12px 0"><p>펼치면 표시됩니다</p></div></div>
+      <button class="btn btn-gray btn-sm" style="width:100%; margin-top:8px;" onclick="adminBackfillMemberPhones()">📞 전화번호 중복가입 인덱스 소급 생성</button>
     </div>
     <div class="admin-section">
       <div class="card-title">📊 회원별 평균 핸디 관리</div>
@@ -1484,6 +1488,8 @@ function switchTab(tab) {
   if (!admin && !loggedInMemberName && tab !== "room" && tab !== "admin") {
     toast("🔒 먼저 회원가입/로그인해주세요");
     tab = "room";
+    memberAuthExpanded = true;
+    updateMemberAuthUI();
   }
   document.querySelectorAll(".page").forEach(function(p) { p.classList.remove("active"); });
   document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
@@ -1664,13 +1670,22 @@ function memberSignUp() {
   if (!useFirebase) { memberAuthNotice("error", "온라인 상태에서만 가입할 수 있습니다"); return; }
   db.ref("members/" + name).once("value").then(function(snap) {
     if (snap.exists()) { memberAuthNotice("error", "이미 가입된 이름입니다. 로그인해주세요."); return; }
-    hashPassword(pw).then(function(hash) {
-      return db.ref("members/" + name).set({ passwordHash: hash, phone: phone, createdAt: Date.now() });
-    }).then(function() {
-      completeMemberLogin(name);
-      toast("✅ 회원가입 완료! 자동으로 로그인되었습니다.");
-    }).catch(function(err) {
-      memberAuthNotice("error", (err && err.message) ? err.message : "가입 실패 — 연결을 확인해주세요");
+    db.ref("memberPhones/" + phoneDigits).once("value").then(function(phoneSnap) {
+      if (phoneSnap.exists()) {
+        var existingName = phoneSnap.val();
+        memberAuthNotice("error", "이 전화번호로는 이미 [" + existingName + "]님이 가입되어 있습니다. 한 번호당 한 명만 가입할 수 있어요. 본인 계정이라면 로그인해주세요.");
+        return;
+      }
+      hashPassword(pw).then(function(hash) {
+        return db.ref("members/" + name).set({ passwordHash: hash, phone: phone, createdAt: Date.now() }).then(function() {
+          return db.ref("memberPhones/" + phoneDigits).set(name);
+        });
+      }).then(function() {
+        completeMemberLogin(name);
+        toast("✅ 회원가입 완료! 자동으로 로그인되었습니다.");
+      }).catch(function(err) {
+        memberAuthNotice("error", (err && err.message) ? err.message : "가입 실패 — 연결을 확인해주세요");
+      });
     });
   });
 }
@@ -1707,12 +1722,18 @@ function memberLogout() {
   updateMemberAuthUI();
   toast("로그아웃되었습니다");
 }
+var memberAuthExpanded = false; // 회원가입/로그인 카드 기본값: 접힘
+function toggleMemberAuthCard() {
+  memberAuthExpanded = !memberAuthExpanded;
+  updateMemberAuthUI();
+}
 function updateMemberAuthUI() {
   var card = document.getElementById("memberAuthCard");
   var outBox = document.getElementById("memberLoggedOutBox");
   var inBox = document.getElementById("memberLoggedInBox");
   var nameEl = document.getElementById("memberLoggedInName");
   var pNameInput = document.getElementById("pName");
+  var icon = document.getElementById("memberAuthToggleIcon");
   if (admin) {
     // 관리자는 회원 로그인과 무관하게 항상 자유롭게 이름을 입력할 수 있음
     if (card) card.style.display = "none";
@@ -1725,10 +1746,12 @@ function updateMemberAuthUI() {
     if (inBox) inBox.style.display = "block";
     if (nameEl) nameEl.textContent = loggedInMemberName;
     if (pNameInput) { pNameInput.disabled = true; pNameInput.value = loggedInMemberName; pNameInput.placeholder = ""; }
+    if (icon) icon.textContent = "";
   } else {
-    if (outBox) outBox.style.display = "block";
+    if (outBox) outBox.style.display = memberAuthExpanded ? "block" : "none";
     if (inBox) inBox.style.display = "none";
     if (pNameInput) { pNameInput.disabled = true; pNameInput.value = ""; pNameInput.placeholder = "먼저 로그인해주세요"; }
+    if (icon) icon.textContent = memberAuthExpanded ? "▴" : "▾";
   }
 }
 function restoreMemberSession() {
@@ -2933,11 +2956,58 @@ function togglePmAdminPanel() {
   if (label) label.textContent = open ? "파트너 매칭 관리 펼치기" : "파트너 매칭 관리 접기";
 }
 // 목록에서 바로 초기화(이름을 직접 입력할 필요 없음)
+function adminBackfillMemberPhones() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  db.ref("members").once("value").then(function(snap) {
+    var members = snap.val() || {};
+    var names = Object.keys(members);
+    if (!names.length) { toast("가입된 회원이 없습니다"); return; }
+    return db.ref("memberPhones").once("value").then(function(phoneSnap) {
+      var phoneIndex = phoneSnap.val() || {};
+      var updates = {};
+      var skipped = [];
+      var added = 0;
+      names.forEach(function(name) {
+        var phone = members[name] && members[name].phone;
+        var phoneDigits = phone ? phone.replace(/[^0-9]/g, "") : "";
+        if (!phoneDigits) return; // 전화번호 없는 회원은 건너뜀
+        if (phoneIndex[phoneDigits] && phoneIndex[phoneDigits] !== name) {
+          skipped.push(name + " (전화번호가 [" + phoneIndex[phoneDigits] + "]님과 중복)");
+          return;
+        }
+        if (!phoneIndex[phoneDigits]) {
+          updates["memberPhones/" + phoneDigits] = name;
+          phoneIndex[phoneDigits] = name;
+          added++;
+        }
+      });
+      var applyUpdates = Object.keys(updates).length ? db.ref().update(updates) : Promise.resolve();
+      return applyUpdates.then(function() {
+        var msg = "✅ 전화번호 인덱스 " + added + "건 생성 완료";
+        if (skipped.length) {
+          msg += "\n⚠ 전화번호 중복으로 건너뜀:\n" + skipped.join("\n");
+          alert(msg);
+        } else {
+          toast(msg);
+        }
+      });
+    });
+  }).catch(function(err) {
+    toast("⚠ 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
+  });
+}
 function adminResetMemberPasswordDirect(name) {
   if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!confirm("[" + name + "]님의 로그인 정보를 초기화할까요?\n(그 회원은 같은 이름으로 다시 회원가입해야 합니다)")) return;
   if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
-  db.ref("members/" + name).remove().then(function() {
+  db.ref("members/" + name).once("value").then(function(snap) {
+    var data = snap.val();
+    var phoneDigits = (data && data.phone) ? data.phone.replace(/[^0-9]/g, "") : "";
+    return db.ref("members/" + name).remove().then(function() {
+      if (phoneDigits) return db.ref("memberPhones/" + phoneDigits).remove();
+    });
+  }).then(function() {
     toast("✅ [" + name + "]님의 로그인 정보가 초기화되었습니다.");
   }).catch(function() {
     toast("⚠ 초기화 실패! 서버에 반영되지 않았습니다.");
