@@ -853,7 +853,7 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
 <div class="page active" id="page-room">
   <div class="card" id="memberAuthCard" style="border:1.5px solid var(--gold-dim); padding:12px 16px;">
     <div class="card-title" id="memberAuthTitle" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:14px; margin-bottom:0; letter-spacing:0.06em;" onclick="toggleMemberAuthCard()">
-      <span>👤 회원가입 / 로그인</span>
+      <span>👤 회원가입 / 회원은 자동로그인</span>
       <span id="memberAuthToggleIcon" style="font-size:13px; color:var(--text-3);">▾</span>
     </div>
     <div id="memberLoggedOutBox" style="display:none; margin-top:14px;">
@@ -2926,6 +2926,7 @@ function renderMemberList(showToast) {
       return '<div data-name="' + name.replace(/"/g, "&quot;") + '" style="padding:9px 0; border-bottom:1px solid var(--border-1); font-size:13px;">'
         + '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">'
         + '<div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span style="font-weight:600; color:var(--text);">' + name + '</span><span style="font-size:10.5px; color:var(--text-3); margin-left:6px;">' + dateStr + ' 가입</span></div>'
+        + '<button class="btn btn-gray btn-sm" style="width:auto; padding:6px 10px; font-size:11px; flex-shrink:0;" onclick="adminKickMemberQuiet(this, \'' + escName + '\')">내보내기</button>'
         + '<button class="btn btn-danger btn-sm" style="width:auto; padding:6px 10px; font-size:11px; flex-shrink:0;" onclick="adminResetMemberPasswordDirect(\'' + escName + '\')">초기화</button>'
         + '</div>'
         + '<div style="display:flex; gap:6px;">'
@@ -2995,6 +2996,39 @@ function adminBackfillMemberPhones() {
     });
   }).catch(function(err) {
     toast("⚠ 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
+  });
+}
+function adminKickMemberQuiet(btn, name) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  if (!btn.dataset.armed) {
+    // 1차 클릭: 조용히 버튼 문구만 바꿔서 확인 유도 (네이티브 팝업 없음)
+    btn.dataset.armed = "1";
+    var original = btn.textContent;
+    btn.textContent = "한번 더";
+    btn.style.color = "var(--red, #d33)";
+    if (btn._kickTimer) clearTimeout(btn._kickTimer);
+    btn._kickTimer = setTimeout(function() {
+      btn.textContent = original;
+      btn.style.color = "";
+      delete btn.dataset.armed;
+    }, 3000);
+    return;
+  }
+  // 2차 클릭: 조용히 실행
+  clearTimeout(btn._kickTimer);
+  btn.disabled = true;
+  db.ref("members/" + name).once("value").then(function(snap) {
+    var data = snap.val();
+    var phoneDigits = (data && data.phone) ? data.phone.replace(/[^0-9]/g, "") : "";
+    return db.ref("members/" + name).remove().then(function() {
+      if (phoneDigits) return db.ref("memberPhones/" + phoneDigits).remove();
+    });
+  }).then(function() {
+    toast("👋 " + name + "님을 조용히 내보냈습니다");
+  }).catch(function() {
+    toast("⚠ 처리 실패 — 연결을 확인해주세요");
+    btn.disabled = false;
   });
 }
 function adminResetMemberPasswordDirect(name) {
