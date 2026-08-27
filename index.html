@@ -652,6 +652,14 @@ body {
   font-family: 'DM Mono', monospace;
 }
 .attend-more-btn:hover { text-decoration: underline; }
+.attend-year-block { margin-bottom: 6px; }
+.attend-year-label {
+  font-size: 13px; font-weight: 600; color: var(--text-3);
+  margin: 6px 0 4px; letter-spacing: 0.02em;
+}
+.attend-year-toggle { cursor: pointer; user-select: none; }
+.attend-year-toggle:hover { color: var(--green); }
+.attend-year-archived { padding-top: 4px; border-top: 1px dashed var(--border-1); }
 .attend-add-modal {
   background: #ffffff;
   border: 1px solid var(--border-2);
@@ -1860,43 +1868,53 @@ function renderAttendance() {
 
 function buildAttendanceHTML(data) {
   var html = "";
-  // 출석 많은순 정렬
-  var sortedNames = Object.keys(data).sort(function(a, b) {
-    var countA = 0, countB = 0;
-    Object.keys(data[a] || {}).forEach(function(r) {
-      var e = data[a][r];
-      if (e && typeof e === 'object' && !e.timestamp) countA += Object.keys(e).length;
-      else countA++;
-    });
-    Object.keys(data[b] || {}).forEach(function(r) {
-      var e = data[b][r];
-      if (e && typeof e === 'object' && !e.timestamp) countB += Object.keys(e).length;
-      else countB++;
-    });
-    return countB - countA;
-  });
-  sortedNames.forEach(function(name) {
-    var count = 0;
+  var currentYear = new Date().getFullYear();
+
+  // 각 사람별 출석 기록을 실제 타임스탬프와 함께 수집
+  var namesInfo = Object.keys(data).map(function(name) {
     var entries = [];
     Object.keys(data[name] || {}).forEach(function(room) {
       var entry = data[name][room];
       if (entry && typeof entry === 'object' && !entry.timestamp) {
         Object.keys(entry).forEach(function(subRoom) {
-          count++;
-          entries.push({ label: room + " [" + subRoom + "]", key: room, subKey: subRoom });
+          var sub = entry[subRoom];
+          var ts = (sub && sub.timestamp) ? sub.timestamp : 0;
+          entries.push({ label: room + " [" + subRoom + "]", key: room, subKey: subRoom, ts: ts });
         });
       } else {
-        count++;
-        entries.push({ label: room, key: room, subKey: null });
+        var ts = (entry && entry.timestamp) ? entry.timestamp : 0;
+        entries.push({ label: room, key: room, subKey: null, ts: ts });
       }
     });
-    entries.sort(function(a,b){ return b.label.localeCompare(a.label); });
+    // 날짜순(최신순) 정렬 — 방 이름이 아니라 실제 출석 시각 기준
+    entries.sort(function(a, b) { return b.ts - a.ts; });
+    var currentYearCount = entries.filter(function(e) {
+      return e.ts && new Date(e.ts).getFullYear() === currentYear;
+    }).length;
+    return { name: name, entries: entries, currentYearCount: currentYearCount, totalCount: entries.length };
+  });
+
+  // 올해 출석 많은 순으로 정렬 (동률이면 누적 출석 많은 순) — 새해엔 출석수가 0부터 다시 시작
+  namesInfo.sort(function(a, b) {
+    if (b.currentYearCount !== a.currentYearCount) return b.currentYearCount - a.currentYearCount;
+    return b.totalCount - a.totalCount;
+  });
+
+  namesInfo.forEach(function(info) {
+    var name = info.name;
+    var entries = info.entries;
+    var count = info.currentYearCount;
+
+    // 연도별 그룹화
+    var byYear = {};
+    entries.forEach(function(e) {
+      var y = e.ts ? new Date(e.ts).getFullYear() : 0; // 타임스탬프 없는 옛 기록은 '기타'로 묶음
+      if (!byYear[y]) byYear[y] = [];
+      byYear[y].push(e);
+    });
+    var years = Object.keys(byYear).map(Number).sort(function(a, b) { return b - a; });
 
     var safeId = 'att_' + name.replace(/[^a-zA-Z0-9가-힣]/g, '_');
-    var SHOW = 5;
-    var visibleEntries = entries.slice(0, SHOW);
-    var hiddenEntries  = entries.slice(SHOW);
-    var hasMore = hiddenEntries.length > 0;
 
     function entryHtml(e) {
       var delBtn = admin
@@ -1905,13 +1923,36 @@ function buildAttendanceHTML(data) {
       return '<div class="attend-entry">• ' + e.label + delBtn + '</div>';
     }
 
-    var visibleHtml = visibleEntries.map(entryHtml).join("");
-    var hiddenHtml  = hiddenEntries.map(entryHtml).join("");
-
-    var moreBlock = hasMore
-      ? '<div id="' + safeId + '_more" style="display:none">' + hiddenHtml + '</div>' +
-        '<button class="attend-more-btn" id="' + safeId + '_btn" onclick="event.stopPropagation();toggleAttendMore(\'' + safeId + '\',' + hiddenEntries.length + ')">▼ ' + hiddenEntries.length + '개 더 보기</button>'
-      : '';
+    var yearBlocksHtml = years.map(function(y) {
+      var yEntries = byYear[y];
+      var yLabel = y ? (y + "년") : "기타";
+      var isCurrent = (y === currentYear);
+      if (isCurrent) {
+        // 올해 기록은 펼친 상태로, 5개까지 보이고 나머지는 더보기
+        var SHOW = 5;
+        var visibleEntries = yEntries.slice(0, SHOW);
+        var hiddenEntries = yEntries.slice(SHOW);
+        var hasMore = hiddenEntries.length > 0;
+        var visibleHtml = visibleEntries.map(entryHtml).join("");
+        var hiddenHtml = hiddenEntries.map(entryHtml).join("");
+        var moreBlock = hasMore
+          ? '<div id="' + safeId + '_more" style="display:none">' + hiddenHtml + '</div>' +
+            '<button class="attend-more-btn" id="' + safeId + '_btn" onclick="event.stopPropagation();toggleAttendMore(\'' + safeId + '\',' + hiddenEntries.length + ')">▼ ' + hiddenEntries.length + '개 더 보기</button>'
+          : '';
+        return '<div class="attend-year-block">' +
+          '<div class="attend-year-label">' + yLabel + ' (' + yEntries.length + '건)</div>' +
+          visibleHtml + moreBlock +
+          '</div>';
+      } else {
+        // 지난 연도는 접어서 표시 — 클릭하면 펼침
+        var yearSafeId = safeId + '_y' + y;
+        var entriesHtml = yEntries.map(entryHtml).join("");
+        return '<div class="attend-year-block attend-year-archived">' +
+          '<div class="attend-year-label attend-year-toggle" id="' + yearSafeId + '_label" onclick="event.stopPropagation();toggleAttendYear(\'' + yearSafeId + '\')">▸ ' + yLabel + ' (' + yEntries.length + '건)</div>' +
+          '<div id="' + yearSafeId + '_body" style="display:none">' + entriesHtml + '</div>' +
+          '</div>';
+      }
+    }).join("");
 
     var delPersonBtn = admin
       ? '<button class="attend-person-del" onclick="event.stopPropagation();deleteAttendPerson(\'' + escStr(name) + '\')">전체삭제</button>'
@@ -1922,15 +1963,14 @@ function buildAttendanceHTML(data) {
         '<div class="attend-info">' +
           '<div class="attend-name-row">' +
             '<span class="attend-name">' + name + '</span>' +
-            '<span class="attend-count-badge">출석 ' + count + '회</span>' +
+            '<span class="attend-count-badge">' + currentYear + '년 출석 ' + count + '회</span>' +
           '</div>' +
         '</div>' +
         '<span class="attend-chevron">▼</span>' +
       '</div>' +
       '<div class="attend-body" id="' + safeId + '_body">' +
         '<div class="attend-history-wrap">' +
-          visibleHtml +
-          moreBlock +
+          yearBlocksHtml +
         '</div>' +
         delPersonBtn +
       '</div>' +
@@ -1938,6 +1978,15 @@ function buildAttendanceHTML(data) {
   });
   if (!html) html = '<div class="empty-state"><div class="big">📋</div><p>출석 데이터가 없습니다.</p></div>';
   return html;
+}
+
+function toggleAttendYear(yearSafeId) {
+  var body = document.getElementById(yearSafeId + '_body');
+  var label = document.getElementById(yearSafeId + '_label');
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (label) label.textContent = (open ? '▸ ' : '▾ ') + label.textContent.replace(/^[▸▾]\s*/, '');
 }
 
 function toggleAttendRow(safeId) {
