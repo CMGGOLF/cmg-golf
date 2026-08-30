@@ -2576,6 +2576,42 @@ function autoAssignTeams(isAuto) {
   var players = Object.values(localData || {});
   if (!players.length) { toast("참가자가 없습니다"); return; }
 
+  // 직전 2게임(가장 최근에 저장된 다른 방들)의 팀편성을 가져와서, 그때 같은 팀이었던 사람 쌍을 파악
+  function getPreviousGameTeamsList(count) {
+    var candidates = Object.keys(allRooms || {}).filter(function(k) {
+      return k !== currentRoom && allRooms[k] && Array.isArray(allRooms[k].teams) && allRooms[k].teams.length
+        && allRooms[k].meta && allRooms[k].meta.created;
+    });
+    if (!candidates.length) return [];
+    candidates.sort(function(a, b) { return (allRooms[b].meta.created || 0) - (allRooms[a].meta.created || 0); });
+    return candidates.slice(0, count).map(function(k) { return allRooms[k].teams; });
+  }
+  function buildPrevPartnerMap(prevTeamsList) {
+    var map = {};
+    (prevTeamsList || []).forEach(function(prevTeams) {
+      if (!prevTeams) return;
+      prevTeams.forEach(function(team) {
+        if (!Array.isArray(team)) return;
+        team.forEach(function(p) {
+          if (!p || !p.name) return;
+          map[p.name] = map[p.name] || {};
+          team.forEach(function(q) {
+            if (q && q.name && q.name !== p.name) map[p.name][q.name] = true;
+          });
+        });
+      });
+    });
+    return map;
+  }
+  var prevPartnerMap = buildPrevPartnerMap(getPreviousGameTeamsList(2));
+  function countPrevPartnersInTeam(player, team) {
+    var s = prevPartnerMap[player.name];
+    if (!s) return 0;
+    var c = 0;
+    team.forEach(function(p) { if (s[p.name]) c++; });
+    return c;
+  }
+
   var females = players.filter(function(p) { return p.gender === 'female'; });
   var males   = players.filter(function(p) { return p.gender !== 'female'; });
   var total   = players.length;
@@ -2668,14 +2704,16 @@ function autoAssignTeams(isAuto) {
   // 1) 나머지 여자: 팀 간 최대한 균등 분배 (여자 수 적은 팀 우선 → 핸디합 낮은 팀)
   var femalesSorted = sortDesc(singles.filter(function(p) { return p.gender === 'female'; }));
   for (var fi = 0; fi < femalesSorted.length; fi++) {
-    var bestIdx = -1, bestFCount = Infinity;
+    var bestIdx = -1, bestPartners = Infinity, bestFCount = Infinity, bestHandi = Infinity;
     for (var ti0 = 0; ti0 < teamCount; ti0++) {
       if (teams[ti0].length >= selectedTeamSize) continue; // 정원이 찬 팀 제외
+      var partners0 = countPrevPartnersInTeam(femalesSorted[fi], teams[ti0]);
       var fCount = countFemales(teams[ti0]);
-      if (fCount < bestFCount ||
-          (fCount === bestFCount && (bestIdx === -1 || teamHandiSum[ti0] < teamHandiSum[bestIdx]))) {
-        bestFCount = fCount; bestIdx = ti0;
-      }
+      var handi0 = teamHandiSum[ti0];
+      var better = (partners0 < bestPartners) ||
+        (partners0 === bestPartners && (fCount < bestFCount ||
+          (fCount === bestFCount && handi0 < bestHandi)));
+      if (bestIdx === -1 || better) { bestIdx = ti0; bestPartners = partners0; bestFCount = fCount; bestHandi = handi0; }
     }
     if (bestIdx === -1) { for (var tf = 0; tf < teamCount; tf++) { if (bestIdx === -1 || teamHandiSum[tf] < teamHandiSum[bestIdx]) bestIdx = tf; } }
     teams[bestIdx].push(femalesSorted[fi]); teamHandiSum[bestIdx] += Number(femalesSorted[fi].handi);
@@ -2684,16 +2722,33 @@ function autoAssignTeams(isAuto) {
   // 2) 나머지 남자: 핸디합 가장 낮은 팀부터 순서대로 채우기
   var malesSorted = sortDesc(singles.filter(function(p) { return p.gender !== 'female'; }));
   for (var mi2 = 0; mi2 < malesSorted.length; mi2++) {
-    var minIdx2 = -1;
+    var minIdx2 = -1, minPartners2 = Infinity, minHandi2 = Infinity;
     for (var ti = 0; ti < teamCount; ti++) {
-      if (teams[ti].length < selectedTeamSize && (minIdx2 === -1 || teamHandiSum[ti] < teamHandiSum[minIdx2])) minIdx2 = ti;
+      if (teams[ti].length >= selectedTeamSize) continue;
+      var partners2 = countPrevPartnersInTeam(malesSorted[mi2], teams[ti]);
+      var handi2 = teamHandiSum[ti];
+      var better2 = (partners2 < minPartners2) || (partners2 === minPartners2 && handi2 < minHandi2);
+      if (minIdx2 === -1 || better2) { minIdx2 = ti; minPartners2 = partners2; minHandi2 = handi2; }
     }
     if (minIdx2 === -1) { for (var tm = 0; tm < teamCount; tm++) { if (minIdx2 === -1 || teamHandiSum[tm] < teamHandiSum[minIdx2]) minIdx2 = tm; } }
     teams[minIdx2].push(malesSorted[mi2]); teamHandiSum[minIdx2] += Number(malesSorted[mi2].handi);
   }
 
-  // 안내 메시지 (여자 부족 / 묶음 / 정원 초과)
+  // 안내 메시지 (여자 부족 / 묶음 / 정원 초과 / 직전 게임 재편성 회피 결과)
   var warnMsgs = [];
+  if (Object.keys(prevPartnerMap).length) {
+    var repeatPairs = 0;
+    teams.forEach(function(team) {
+      for (var i = 0; i < team.length; i++) {
+        for (var j = i + 1; j < team.length; j++) {
+          if (prevPartnerMap[team[i].name] && prevPartnerMap[team[i].name][team[j].name]) repeatPairs++;
+        }
+      }
+    });
+    if (repeatPairs > 0) {
+      warnMsgs.push("직전 2게임과 같은 팀 조합이 " + repeatPairs + "건 남았습니다 (인원 제약상 완전히 피하지 못함).");
+    }
+  }
   if (females.length < teamCount) {
     warnMsgs.push("여자 참가자(" + females.length + "명)가 팀 수(" + teamCount + "팀)보다 적어 일부 팀에 여자가 없을 수 있습니다.");
   }
