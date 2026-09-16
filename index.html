@@ -2972,12 +2972,45 @@ function renderArchivedRooms() {
   if (label) label.textContent = "보관된 방 보기 (" + archived.length + "개)";
   if (!archived.length) { wrap.innerHTML = '<div class="empty-state" style="padding:10px 0"><p>보관된 방이 없습니다</p></div>'; return; }
   wrap.innerHTML = archived.map(function(k) {
-    return '<div style="display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border-1); font-size:13px; gap:8px;">'
+    return '<div style="padding:9px 0; border-bottom:1px solid var(--border-1);">'
+      + '<div style="display:flex; align-items:center; justify-content:space-between; font-size:13px; gap:8px;">'
       + '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📦 ' + k + '</span>'
-      + '<button class="btn btn-gray btn-sm" style="width:auto; padding:6px 10px; font-size:12px; flex-shrink:0;" onclick="unarchiveRoom(\'' + k + '\')">목록에 복원</button>'
-      + '<button class="btn btn-danger btn-sm" style="width:auto; padding:6px 10px; font-size:12px; flex-shrink:0;" onclick="permanentlyDeleteRoom(\'' + k + '\')">영구삭제</button>'
+      + '<button class="btn btn-gray btn-sm" style="width:auto; padding:6px 10px; font-size:12px; flex-shrink:0;" onclick="toggleArchivedRoomDetail(\'' + escStr(k) + '\')">내용보기</button>'
+      + '<button class="btn btn-danger btn-sm" style="width:auto; padding:6px 10px; font-size:12px; flex-shrink:0;" onclick="permanentlyDeleteRoom(\'' + escStr(k) + '\')">영구삭제</button>'
+      + '</div>'
+      + '<div id="archDetail_' + escId(k) + '" style="display:none; margin-top:8px; padding:10px; background:var(--surface-3); border-radius:8px; font-size:12px;"></div>'
       + '</div>';
   }).join("");
+}
+function escId(k) { return String(k).replace(/[^a-zA-Z0-9가-힣]/g, '_'); }
+function toggleArchivedRoomDetail(roomKey) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  var el = document.getElementById("archDetail_" + escId(roomKey));
+  if (!el) return;
+  var open = el.style.display !== "none";
+  if (open) { el.style.display = "none"; return; }
+  var room = allRooms[roomKey];
+  if (!room) { el.innerHTML = "데이터를 찾을 수 없습니다"; el.style.display = "block"; return; }
+  var players = Object.values(room.players || {});
+  players.sort(function(a, b) { return Number(b.handi) - Number(a.handi); });
+  var playersHtml = players.length
+    ? players.map(function(p) {
+        var scoreTxt = (p.score !== "" && p.score != null) ? p.score : "-";
+        return '<div style="padding:3px 0; border-bottom:1px dashed var(--border-1);">'
+          + (p.gender === 'female' ? '🌸 ' : '') + p.name
+          + ' <span style="color:var(--text-3);">(핸디 ' + p.handi + ', 스코어 ' + scoreTxt + ')</span></div>';
+      }).join("")
+    : '<div style="color:var(--text-3);">참가자 기록 없음</div>';
+  var teamsHtml = "";
+  if (Array.isArray(room.teams) && room.teams.length) {
+    teamsHtml = '<div style="margin-top:10px; font-weight:600;">🔀 팀편성</div>' +
+      room.teams.map(function(team, idx) {
+        var names = (team || []).map(function(p) { return p.name; }).join(", ");
+        return '<div style="padding:2px 0;">' + (idx + 1) + '조: ' + names + '</div>';
+      }).join("");
+  }
+  el.innerHTML = '<div style="font-weight:600; margin-bottom:6px;">👥 참가자 (' + players.length + '명)</div>' + playersHtml + teamsHtml;
+  el.style.display = "block";
 }
 function permanentlyDeleteRoom(roomKey) {
   if (!admin) { toast("관리자만 가능합니다"); return; }
@@ -2997,11 +3030,6 @@ function toggleArchivedRoomsList() {
   var open = wrap.style.display !== "none";
   wrap.style.display = open ? "none" : "block";
   if (icon) icon.textContent = open ? "▾" : "▴";
-}
-function unarchiveRoom(roomKey) {
-  if (!admin) { toast("관리자만 가능"); return; }
-  if (useFirebase) db.ref("rooms/" + roomKey + "/meta/archived").remove();
-  toast(roomKey + " 을 목록에 복원했습니다.");
 }
 // 👤 회원 목록 실시간 구독 (경기방과 무관, 관리자 회원 관리 화면용)
 function membersListenGlobal() {
@@ -3032,6 +3060,7 @@ function renderMemberList(showToast) {
         + '<div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span style="font-weight:600; color:var(--text);">' + name + '</span><span style="font-size:10.5px; color:var(--text-3); margin-left:6px;">' + dateStr + ' 가입</span></div>'
         + '<button class="btn btn-gray btn-sm" style="width:auto; padding:6px 10px; font-size:11px; flex-shrink:0;" onclick="adminKickMemberQuiet(this, \'' + escName + '\')">내보내기</button>'
         + '<button class="btn btn-danger btn-sm" style="width:auto; padding:6px 10px; font-size:11px; flex-shrink:0;" onclick="adminResetMemberPasswordDirect(\'' + escName + '\')">초기화</button>'
+        + '<button class="btn btn-danger btn-sm" style="width:auto; padding:6px 10px; font-size:11px; flex-shrink:0;" onclick="adminKickMemberFull(\'' + escName + '\')">강퇴</button>'
         + '</div>'
         + '<div style="display:flex; gap:6px;">'
         + '<input type="tel" class="member-phone-input" value="' + phone.replace(/"/g, "&quot;") + '" placeholder="전화번호 없음 — 입력 후 저장" style="flex:1; padding:8px 10px; border:1px solid var(--border-2); border-radius:6px; background:var(--surface-1); color:var(--text); font-size:12.5px;">'
@@ -3100,6 +3129,35 @@ function adminBackfillMemberPhones() {
     });
   }).catch(function(err) {
     toast("⚠ 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
+  });
+}
+function adminKickMemberFull(name) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  if (!confirm("[" + name + "]님을 강퇴하시겠습니까?\n로그인 정보, 출석기록, 모든 경기방의 참가/점수 기록까지 전부 삭제되며 되돌릴 수 없습니다.")) return;
+  db.ref("members/" + name).once("value").then(function(snap) {
+    var data = snap.val();
+    var phoneDigits = (data && data.phone) ? data.phone.replace(/[^0-9]/g, "") : "";
+    var updates = {};
+    updates["members/" + name] = null;
+    if (phoneDigits) updates["memberPhones/" + phoneDigits] = null;
+    updates["attendance/" + name] = null;
+    return db.ref("rooms").once("value").then(function(roomsSnap) {
+      var rooms = roomsSnap.val() || {};
+      Object.keys(rooms).forEach(function(roomKey) {
+        var players = (rooms[roomKey] && rooms[roomKey].players) || {};
+        Object.keys(players).forEach(function(pName) {
+          if (pName === name || baseName(pName) === name) {
+            updates["rooms/" + roomKey + "/players/" + pName] = null;
+          }
+        });
+      });
+      return db.ref().update(updates);
+    });
+  }).then(function() {
+    toast("🚫 " + name + "님을 강퇴하고 모든 기록을 삭제했습니다.");
+  }).catch(function(err) {
+    toast("⚠ 처리 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
   });
 }
 function adminKickMemberQuiet(btn, name) {
