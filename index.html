@@ -122,35 +122,60 @@ body {
 
 /* ── Tab Nav ── */
 .tab-nav {
+  --tab-gap: 6px;
   display: flex;
-  background: #ffffff;
-  border-bottom: 1px solid var(--border-1);
+  flex-direction: column;
+  gap: 6px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--surface-2) 100%);
+  border-bottom: 1px solid var(--border-2);
   position: sticky;
   top: 84px; z-index: 99;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 9px 10px 8px;
+  box-shadow: 0 3px 14px rgba(13,90,42,0.08);
 }
-.tab-nav::-webkit-scrollbar { display: none; }
+.tab-nav::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold) 80%, transparent);
+  opacity: 0.55;
+}
+.tab-nav-row {
+  display: flex;
+  gap: var(--tab-gap);
+}
+.tab-nav-row.row-2 { justify-content: center; }
 .tab-btn {
-  flex: 0 0 auto;
-  min-width: 62px;
-  padding: 10px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #8aaa8a;
-  background: none; border: none;
-  border-bottom: 2px solid transparent;
+  flex: 0 0 calc((100% - 3 * var(--tab-gap)) / 4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 4px 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.25s;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   white-space: nowrap;
-  letter-spacing: 0.02em;
-  text-align: center;
+  letter-spacing: 0.01em;
 }
-.tab-btn:hover { color: var(--text-2); }
-.tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
-.tab-btn .icon { display: block; font-size: 17px; margin-bottom: 3px; }
+.tab-btn:active { transform: scale(0.95); }
+.tab-btn:hover { color: var(--text-2); background: var(--green-light); }
+.tab-btn.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--green-mid) 0%, var(--green-dark) 100%);
+  box-shadow: 0 3px 10px rgba(13,90,42,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+  border-color: var(--green-dark);
+}
+.tab-btn.active:hover { background: linear-gradient(135deg, var(--green-mid) 0%, var(--green-dark) 100%); }
+.tab-btn .icon { display: block; font-size: 19px; line-height: 1; }
+.tab-btn.active .icon { filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
 
 /* ── Pages ── */
 .page { display: none; padding: 18px 16px; padding-bottom: 110px; }
@@ -850,13 +875,17 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
   </div>
 </div>
 <div class="tab-nav">
-  <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>경기안내</button>
-  <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
-  <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
-  <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
-  <button class="tab-btn" onclick="switchTab('team')" id="tab-team"><span class="icon">🔀</span>팀편성</button>
-  <button class="tab-btn" onclick="switchTab('attendance')" id="tab-attendance"><span class="icon">📋</span>출석</button>
-  <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
+  <div class="tab-nav-row row-1">
+    <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>경기안내</button>
+    <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
+    <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
+    <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
+  </div>
+  <div class="tab-nav-row row-2">
+    <button class="tab-btn" onclick="switchTab('team')" id="tab-team"><span class="icon">🔀</span>팀편성</button>
+    <button class="tab-btn" onclick="switchTab('attendance')" id="tab-attendance"><span class="icon">📋</span>출석</button>
+    <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
+  </div>
 </div>
 <div class="page active" id="page-room">
   <div class="card" id="memberAuthCard" style="border:1.5px solid var(--gold-dim); padding:12px 16px;">
