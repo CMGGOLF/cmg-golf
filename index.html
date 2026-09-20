@@ -73,15 +73,7 @@ body {
     repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.015) 40px);
 }
 
-.bg-watermark {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-repeat: no-repeat;
-  background-position: center 30%;
-  background-size: min(480px, 80vw) auto;
-  pointer-events: none;
-  z-index: -1;
-}
+
 
 /* ── Header ── */
 .app-header {
@@ -108,13 +100,7 @@ body {
   text-align: left;
 }
 .app-header .header-text { flex: 0 1 auto; min-width: 0; }
-.app-header .header-logo {
-  display: block;
-  width: 60px;
-  height: auto;
-  flex: 0 0 auto;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.28));
-}
+
 .app-header h1 {
   font-family: 'Cormorant Garamond', serif;
   font-size: 26px;
@@ -891,7 +877,12 @@ input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 
 </style>
 </head>
 <body>
+
+<div id="toast"></div>
 <div class="app-header">
+  <div class="header-content">
+  
+  <div class="header-text">
   <h1>CMG GOLF CLUB</h1>
   <div class="sub">HANDICAP MANAGEMENT SYSTEM</div>
   <div id="roomBadge" style="display:none">
