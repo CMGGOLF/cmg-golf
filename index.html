@@ -2914,11 +2914,8 @@ function renderNotices() {
   listEl.innerHTML = ids.map(function(id, idx) {
     var n = allNotices[id] || {};
     var title = (n.title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    var dateStr = noticeFormatDate(n.createdAt);
-    var editedTag = (n.updatedAt && n.updatedAt !== n.createdAt) ? " (수정됨)" : "";
     return '<div class="notice-list-item' + (idx === 0 ? ' pinned' : '') + '" onclick="noticeOpenDetail(\'' + id + '\')">' +
       '<div class="notice-list-title">' + (idx === 0 ? '📌 ' : '') + title + '</div>' +
-      '<div class="notice-list-date">' + dateStr + editedTag + '</div>' +
     '</div>';
   }).join("");
 }
