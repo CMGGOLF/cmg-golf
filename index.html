@@ -857,7 +857,7 @@ body {
       1. 현재 운영 중인 방이 자동으로 연결됩니다.<br>
       2. 경기 전 이름과 핸디캡만 입력하여 사전 등록하세요.<br>
       3. 라운드가 끝나면 친타수를 추가로 입력해 주세요.<br>
-      <span style="color:#fca5a5; font-weight:600;">4. 핸디캡은 최대 14까지만 입력 가능합니다.</span><br>
+      <span style="color:#fca5a5; font-weight:600;">4. 핸디캡은 최대 12까지만 입력 가능합니다.</span><br>
       <span style="color:#fca5a5; font-weight:600;">5. 본인 G핸디, 친타수 다를 게 기재 시 무조건 시상에서 제외 됩니다.</span>
     </div>
   </div>
@@ -887,9 +887,9 @@ body {
     </div>
     <div class="field-row">
       <div class="field">
-        <label style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">핸디캡 <span style="color:#b91c1c; font-size:11px; white-space:nowrap;">(최대 14)</span></label>
+        <label style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">핸디캡 <span style="color:#b91c1c; font-size:11px; white-space:nowrap;">(최대 12)</span></label>
         <input id="pHandi" type="text" placeholder="예: 7.6 또는 -4" oninput="validateHandi(this)">
-        <div id="handiError" style="display:none; font-size:11px; color:#fca5a5; margin-top:4px;">⚠ 핸디캡은 최대 14까지만 입력 가능합니다</div>
+        <div id="handiError" style="display:none; font-size:11px; color:#fca5a5; margin-top:4px;">⚠ 핸디캡은 최대 12까지만 입력 가능합니다</div>
       </div>
       <div class="field">
         <label>친타수</label>
@@ -1274,14 +1274,14 @@ function setGender(g) {
   fBtn.className = 'gender-btn' + (g === 'female' ? ' active-female' : '');
   localStorage.setItem("myGolfGender", g);
 }
-// ── 핸디캡 유효성 검사 (최대 14) ──
+// ── 핸디캡 유효성 검사 (최대 12) ──
 function validateHandi(el) {
   var val = el.value.trim();
   var errEl = document.getElementById("handiError");
   if (val === "" || val === "-") { errEl.style.display = "none"; el.classList.remove("input-error"); return; }
   var num = parseFloat(val);
   if (isNaN(num)) { errEl.style.display = "none"; el.classList.remove("input-error"); return; }
-  if (num > 14) {
+  if (num > 12) {
     el.classList.add("input-error");
     errEl.style.display = "block";
   } else {
@@ -1294,8 +1294,8 @@ function checkHandiValid() {
   if (val === "" || val === "-") return true;
   var num = parseFloat(val);
   if (isNaN(num)) return true;
-  if (num > 14) {
-    toast("⚠ 핸디캡은 최대 14까지만 입력 가능합니다");
+  if (num > 12) {
+    toast("⚠ 핸디캡은 최대 12까지만 입력 가능합니다");
     document.getElementById("pHandi").focus();
     return false;
   }
