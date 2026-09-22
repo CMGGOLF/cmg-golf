@@ -73,8 +73,6 @@ body {
     repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.015) 40px);
 }
 
-
-
 /* ── Header ── */
 .app-header {
   background: linear-gradient(160deg, #1a6b30 0%, #1e7a38 60%, #166028 100%);
@@ -85,7 +83,20 @@ body {
   position: sticky; top: 0; z-index: 100;
   border-bottom: 1px solid rgba(255,255,255,0.15);
   box-shadow: 0 1px 0 rgba(255,220,80,0.25), 0 4px 24px rgba(0,0,0,0.15);
+  transition: padding 0.28s ease;
 }
+.app-header.collapsed {
+  padding: 8px 20px 8px;
+  padding-top: calc(8px + env(safe-area-inset-top));
+}
+.app-header.collapsed h1 { font-size: 17px; }
+.app-header.collapsed .sub {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  overflow: hidden;
+}
+.app-header.collapsed #roomBadge { margin-top: 2px; }
 .app-header::before {
   content: '';
   position: absolute;
@@ -94,13 +105,13 @@ body {
 }
 .app-header .header-content {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  text-align: left;
+  gap: 0;
+  text-align: center;
 }
-.app-header .header-text { flex: 0 1 auto; min-width: 0; }
-
+.app-header .header-text {}
 .app-header h1 {
   font-family: 'Cormorant Garamond', serif;
   font-size: 26px;
@@ -108,6 +119,7 @@ body {
   letter-spacing: 0.06em;
   color: #ffffff;
   text-shadow: 0 0 30px rgba(255,220,80,0.4);
+  transition: font-size 0.28s ease;
 }
 .app-header .sub {
   font-size: 18px;
@@ -117,6 +129,8 @@ body {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.85);
+  white-space: nowrap;
+  transition: max-height 0.28s ease, opacity 0.2s ease, margin-top 0.28s ease;
 }
 .room-badge {
   display: inline-block;
@@ -251,24 +265,6 @@ body {
   background: #ffffff;
 }
 .field input.input-error { border-color: #dc4444; box-shadow: 0 0 0 3px rgba(220,68,68,0.15); }
-.field textarea {
-  width: 100%; padding: 13px 16px; font-size: 15px; font-family: 'Noto Sans KR', sans-serif;
-  border: 1px solid var(--border-2); border-radius: var(--radius-sm); background: #f8fbf8; color: var(--text);
-  transition: 0.2s; resize: vertical; min-height: 110px; line-height: 1.7;
-}
-.field textarea::placeholder { color: #adc5ad; }
-.field textarea:focus {
-  outline: none; border-color: rgba(26,138,70,0.5); box-shadow: 0 0 0 3px rgba(26,138,70,0.12); background: #ffffff;
-}
-/* ── 공지사항 ── */
-.notice-board-item { border: 1px solid var(--border-1); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
-.notice-board-item.pinned { border-color: rgba(201,168,76,0.45); background: linear-gradient(135deg, rgba(201,168,76,0.07), rgba(201,168,76,0.02)); }
-.notice-board-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-.notice-board-title { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.5; }
-.notice-board-date { font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; white-space: nowrap; margin-top: 3px; }
-.notice-board-body { font-size: 14px; color: var(--text-2); line-height: 1.85; white-space: pre-wrap; word-break: break-word; }
-.notice-board-actions { display: flex; gap: 8px; margin-top: 12px; }
-.notice-board-actions button { flex: 0 0 auto; width: auto; padding: 7px 14px; font-size: 12px; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
 .field-row .field { min-width: 0; }
 @media (max-width: 360px) { .field-row { grid-template-columns: 1fr; } }
@@ -735,50 +731,159 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
-.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.modal-wait { margin: 0 0 12px; padding: 12px 14px; background: var(--gold-light); border: 1px solid var(--gold-glow); border-radius: 10px; font-size: 13px; color: var(--gold-dim); display: none; }
+/* ── 포썸대회 스코어 팝업 ── */
+.foursome-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1200;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: 0.25s; pointer-events: none; backdrop-filter: blur(4px);
+}
+.foursome-overlay.open { opacity: 1; pointer-events: all; }
+.foursome-sheet {
+  width: 96vw; max-width: 1180px; height: 92vh;
+  background: var(--surface-1); border-radius: var(--radius); border: 1px solid var(--border-2);
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-lg);
+  transform: scale(0.96); transition: 0.25s;
+}
+.foursome-overlay.open .foursome-sheet { transform: scale(1); }
+.foursome-head {
+  padding: 16px 18px; background: linear-gradient(135deg, var(--green-dark), var(--green));
+  color: #fff; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.foursome-head h3 { margin: 0; font-size: 16px; font-weight: 800; flex: 1; }
+.foursome-close {
+  background: rgba(255,255,255,0.15); border: none; color: #fff; width: 32px; height: 32px;
+  border-radius: 8px; font-size: 16px; cursor: pointer; line-height: 1;
+}
+.foursome-toolbar { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--border-2); background: var(--surface-2); }
+.foursome-savestate { margin-left: auto; font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+.foursome-savestate .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.foursome-body { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 12px; }
+.foursome-wait { margin: 0 0 12px; padding: 12px 14px; background: var(--gold-light); border: 1px solid var(--gold-glow); border-radius: 10px; font-size: 13px; color: var(--gold-dim); display: none; }
+.foursome-legend { margin: 12px 2px 0; font-size: 11.5px; color: var(--text-3); line-height: 1.7; }
+.foursome-legend code { font-family: 'DM Mono', monospace; background: var(--surface-3); padding: 1px 6px; border-radius: 5px; color: var(--green-dark); }
 
+.foursome-table-wrap { border: 1px solid var(--border-2); border-radius: 12px; overflow: hidden; }
+.foursome-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.fs-table { border-collapse: collapse; width: 100%; min-width: 760px; }
+.fs-table thead th {
+  background: var(--green-dark); color: #fff; font-size: 11.5px; font-weight: 700;
+  padding: 10px 6px; text-align: center; white-space: nowrap; position: sticky; top: 0; z-index: 3;
+  border-right: 1px solid rgba(255,255,255,0.12);
+}
+.fs-table thead th:last-child { border-right: none; }
+.fs-table tbody td {
+  padding: 4px 5px; text-align: center; font-size: 13px;
+  border-right: 1px solid var(--border-2); border-top: 1px solid var(--border-2); vertical-align: middle;
+}
+.fs-table tbody td:last-child { border-right: none; }
+.fs-room-cell { font-family: 'DM Mono', monospace; font-weight: 800; font-size: 14px; color: var(--green-dark); background: var(--surface-2); border-right: 2px solid var(--border-3) !important; white-space: nowrap; }
+.fs-team-col { min-width: 100px; }
+.fs-player-col { min-width: 84px; }
+.fs-num-col { width: 62px; }
+.fs-calc-col { width: 66px; }
+.fs-rank-col { width: 60px; }
+.fs-calc { background: var(--surface-3); font-family: 'DM Mono', monospace; font-weight: 700; color: var(--green-dark); }
+.fs-calc.empty { color: #b7c3ba; font-weight: 500; }
+tr.fs-first td { background: var(--gold-light); }
+tr.fs-first .fs-calc { background: var(--gold-glow); }
+tr.fs-first .fs-room-cell { background: var(--surface-2); }
+.fs-rank-locked { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-3); background: var(--surface-3); padding: 4px 7px; border-radius: 6px; }
+.fs-del { border: none; background: none; color: #c99; font-size: 14px; cursor: pointer; padding: 3px; line-height: 1; }
+.fs-del:hover { color: #b23b3b; }
+input.fs-cell {
+  width: 100%; min-width: 0; border: 1px solid transparent; background: var(--surface-2);
+  border-radius: 6px; padding: 7px 4px; font-size: 13px; text-align: center;
+  font-family: 'DM Mono', monospace; color: var(--text); outline: none;
+}
+input.fs-cell:focus { border-color: var(--green); background: var(--surface-1); box-shadow: 0 0 0 2px var(--green-light); }
+input.fs-cell.fs-team-name { font-family: inherit; text-align: left; padding-left: 8px; font-weight: 600; }
+input.fs-cell[disabled] { background: transparent; color: var(--text); opacity: 1; cursor: default; }
+
+/* 관리자 페이지 내 포썸대회 관리 카드 */
+.foursome-admin-card { border: 1px dashed var(--border-3); border-radius: var(--radius-sm); padding: 14px; margin-top: 14px; background: var(--surface-2); }
+.foursome-admin-card .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+
+/* 참가자용 진입 버튼 */
+.foursome-entry-card {
+  display: none; margin: 0 0 14px; padding: 16px; border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--green-dark), var(--green)); color: #fff;
+  align-items: center; gap: 12px; cursor: pointer; border: none; width: 100%; text-align: left;
+}
+.foursome-entry-card .big-icon { font-size: 26px; }
+.foursome-entry-card .txt { flex: 1; }
+.foursome-entry-card .txt .t1 { font-weight: 800; font-size: 15px; }
+.foursome-entry-card .txt .t2 { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+/* ── 🤝 파트너 매칭 팝업 ── */
+.pm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1250;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: 0.25s; pointer-events: none; backdrop-filter: blur(4px);
+}
 .pm-overlay.open { opacity: 1; pointer-events: all; }
-
-.pm-overlay.open 
-
+.pm-sheet {
+  width: 94vw; max-width: 480px; max-height: 88vh;
+  background: var(--surface-1); border-radius: var(--radius); border: 1px solid var(--border-2);
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-lg);
+  transform: scale(0.96); transition: 0.25s;
+}
+.pm-overlay.open .pm-sheet { transform: scale(1); }
+.pm-head {
+  padding: 16px 18px; background: linear-gradient(135deg, var(--green-dark), var(--green));
+  color: #fff; display: flex; align-items: center; gap: 10px;
+}
 .pm-head h3 { margin: 0; font-size: 16px; font-weight: 800; flex: 1; }
-
-
-
-
+.pm-close { background: rgba(255,255,255,0.15); border: none; color: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 16px; cursor: pointer; line-height: 1; }
+.pm-body { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 14px 16px; }
+.pm-hint { font-size: 12.5px; color: var(--text-3); margin-bottom: 12px; line-height: 1.6; }
+.pm-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 14px; border: 1px solid var(--border-2); border-radius: 10px; margin-bottom: 8px;
+  background: var(--surface-2);
+}
 .pm-row .nm { font-weight: 700; font-size: 14.5px; color: var(--text); }
-
+.pm-badge { font-size: 11.5px; padding: 5px 10px; border-radius: 7px; font-weight: 700; white-space: nowrap; }
 .pm-badge.wait { background: var(--gold-light); color: var(--gold-dim); }
 .pm-badge.done { background: var(--green-light); color: var(--green-dim); }
-
+.pm-draw-btn { border: none; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 700; cursor: pointer; background: var(--green); color: #fff; }
 .pm-draw-btn:active { transform: scale(0.97); }
-
-
+.pm-check-btn { border: none; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 700; cursor: pointer; background: var(--surface-3); color: var(--text-2); }
+.pm-empty { text-align: center; padding: 30px 10px; color: var(--text-3); font-size: 13px; }
 
 /* 결과 리빌 모달 */
-
+.pm-reveal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1300;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: 0.2s;
+}
 .pm-reveal-overlay.open { opacity: 1; pointer-events: all; }
-
-.pm-reveal-overlay.open 
+.pm-reveal-card {
+  background: linear-gradient(160deg, var(--surface-1), var(--surface-2));
+  border: 1px solid var(--gold-glow); border-radius: 18px; padding: 30px 26px;
+  text-align: center; max-width: 320px; width: 88vw; transform: scale(0.9); transition: 0.2s;
+}
+.pm-reveal-overlay.open .pm-reveal-card { transform: scale(1); }
 .pm-reveal-card .icon { font-size: 34px; margin-bottom: 10px; }
 .pm-reveal-card .who { font-size: 13px; color: var(--text-3); margin-bottom: 4px; }
 .pm-reveal-card .partner { font-size: 22px; font-weight: 800; color: var(--green-dark); margin-bottom: 18px; }
 .pm-reveal-card button { width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--green); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; }
 
 /* 관리자 카드 내부 */
-
+.pm-admin-card { border: 1px dashed var(--border-3); border-radius: var(--radius-sm); padding: 14px; margin-top: 14px; background: var(--surface-2); }
 .pm-admin-card textarea {
   width: 100%; min-height: 90px; border: 1px solid var(--border-2); border-radius: 8px;
   padding: 10px; font-size: 13px; font-family: inherit; resize: vertical; background: var(--surface-1); color: var(--text);
 }
 .pm-admin-card label { display: block; font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; margin: 10px 0 6px; }
-
+.pm-admin-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
 .pm-admin-table th, .pm-admin-table td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--border-2); }
 .pm-admin-table th { color: var(--text-3); font-weight: 600; font-size: 11.5px; }
 
 /* 참가자용 진입 버튼 */
-
+.pm-entry-card {
+  display: none; margin: 0 0 14px; padding: 16px; border-radius: var(--radius);
+  background: linear-gradient(135deg, #7a3fa0, #9b5cc7); color: #fff;
+  align-items: center; gap: 12px; cursor: pointer; border: none; width: 100%; text-align: left;
+}
 .pm-entry-card .big-icon { font-size: 26px; }
 .pm-entry-card .txt { flex: 1; }
 .pm-entry-card .txt .t1 { font-weight: 800; font-size: 15px; }
@@ -786,14 +891,12 @@ body {
 </style>
 </head>
 <body>
-
 <div id="toast"></div>
 <div class="app-header">
   <div class="header-content">
-  
   <div class="header-text">
   <h1>CMG GOLF CLUB</h1>
-  <div class="sub">HANDICAP MANAGEMENT SYSTEM</div>
+  <div class="sub">HANDICAP SYSTEM</div>
   <div id="roomBadge" style="display:none">
     <div class="room-badge" id="roomBadgeText"></div>
   </div>
@@ -802,39 +905,15 @@ body {
 </div>
 <div class="tab-nav">
   <div class="tab-nav-row row-1">
-    <button class="tab-btn" onclick="switchTab('notice')" id="tab-notice"><span class="icon">📢</span>공지</button>
     <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>경기안내</button>
     <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
     <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
+    <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
   </div>
   <div class="tab-nav-row row-2">
-    <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
     <button class="tab-btn" onclick="switchTab('team')" id="tab-team"><span class="icon">🔀</span>팀편성</button>
     <button class="tab-btn" onclick="switchTab('attendance')" id="tab-attendance"><span class="icon">📋</span>출석</button>
     <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
-  </div>
-</div>
-<div class="page" id="page-notice">
-  <div class="card admin-section" id="noticeAdminBox" style="display:none; border-color:rgba(201,168,76,0.3); background:rgba(201,168,76,0.06);">
-    <div class="card-title" style="color:var(--gold);" id="noticeFormTitle">📢 공지 작성</div>
-    <div class="field">
-      <label>제목</label>
-      <input id="noticeTitleInput" placeholder="공지 제목을 입력하세요" autocomplete="off">
-    </div>
-    <div class="field">
-      <label>내용</label>
-      <textarea id="noticeContentInput" placeholder="공지 내용을 입력하세요"></textarea>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-gold btn-sm" id="noticeSubmitBtn" onclick="noticeSubmit()">게시하기</button>
-      <button class="btn btn-gray btn-sm" id="noticeCancelBtn" style="display:none;" onclick="noticeCancelEdit()">취소</button>
-    </div>
-  </div>
-  <div id="noticeList">
-    <div class="empty-state">
-      <div class="big">📢</div>
-      <p>등록된 공지가 없습니다</p>
-    </div>
   </div>
 </div>
 <div class="page active" id="page-room">
@@ -877,9 +956,19 @@ body {
       <div class="empty-state"><p>목록을 불러오는 중...</p></div>
     </div>
   </div>
+  <button class="foursome-entry-card" id="foursomeEntryCard" onclick="openFoursomeModal()">
+    <div class="big-icon">🏆</div>
+    <div class="txt">
+      <div class="t1">포썸대회 스코어</div>
+      <div class="t2">실시간 팀 스코어 확인하기</div>
+    </div>
+    <div style="font-size:20px;">›</div>
+  </button>
   <button class="pm-entry-card" id="pmEntryCard" onclick="pmOpenModal()">
     <div class="big-icon">🤝</div>
     <div class="txt">
+      <div class="t1">파트너 매칭</div>
+      <div class="t2">여성 참가자 파트너 매칭</div>
     </div>
     <div style="font-size:20px;">›</div>
   </button>
@@ -915,7 +1004,8 @@ body {
     <div class="card-title">내 정보</div>
     <div class="field">
       <label>이름</label>
-      <input id="pName" placeholder="먼저 로그인해주세요" autocomplete="off" disabled>
+      <input id="pName" placeholder="먼저 로그인해주세요" autocomplete="off" list="memberNameList" disabled>
+      <datalist id="memberNameList"></datalist>
     </div>
     <div class="field">
       <label>성별</label>
@@ -1157,6 +1247,50 @@ body {
       </div>
     </div>
     <div class="admin-section">
+      <div class="card-title">🏆 포썸대회 스코어 관리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
+        공개 ON으로 켜야 참가자 화면에 "포썸대회 스코어" 버튼이 나타납니다. OFF 상태에서도 관리자는 미리 준비할 수 있습니다.
+      </div>
+      <div class="foursome-admin-card">
+        <button id="foursomePublicBtn" class="btn btn-gray btn-sm" style="width:100%;" onclick="toggleFoursomePublic()">⚫ 공개 OFF (참가자에게 안 보임)</button>
+        <div class="row">
+          <button class="btn btn-green-outline btn-sm" style="flex:1;" onclick="openFoursomeModal()">🏆 포썸 스코어 열기 (관리자 미리보기)</button>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section">
+      <div class="card-title">🤝 파트너 매칭 관리</div>
+      <button class="btn btn-gray btn-sm" style="width:100%; display:flex; justify-content:space-between; align-items:center;" onclick="togglePmAdminPanel()">
+        <span id="pmAdminToggleLabel">파트너 매칭 관리 펼치기</span>
+        <span id="pmAdminToggleIcon">▾</span>
+      </button>
+      <div id="pmAdminPanelWrap" style="display:none; margin-top:10px;">
+        <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
+          여자·남자 명단을 한 번에 입력하세요(한 줄에 한 명). 공개 ON으로 켜야 참가자가 매칭을 시작할 수 있습니다.
+          매칭 결과는 본인 화면에만 보입니다.
+        </div>
+        <div class="pm-admin-card">
+          <label>여자 명단</label>
+          <textarea id="pmFemaleInput" placeholder="이영희&#10;박민지&#10;최수진"></textarea>
+          <label>남자 명단</label>
+          <textarea id="pmMaleInput" placeholder="홍길동&#10;김철수&#10;이순신"></textarea>
+          <div class="row">
+            <button class="btn btn-gold btn-sm" style="flex:1;" onclick="pmSaveLists()">명단 저장</button>
+          </div>
+          <div class="row">
+            <button id="pmPublicBtn" class="btn btn-gray btn-sm" style="flex:1;" onclick="pmTogglePublic()">⚫ 공개 OFF (참가자에게 안 보임)</button>
+          </div>
+          <div class="row">
+            <button class="btn btn-green-outline btn-sm" style="flex:1;" onclick="pmOpenModal()">🤝 매칭 열기 (관리자 미리보기)</button>
+            <button class="btn btn-danger btn-sm" style="flex:1;" onclick="pmResetMatches()">🔄 매칭 초기화</button>
+          </div>
+          <div class="row">
+            <button id="pmMaleRoundBtn" class="btn btn-gray btn-sm" style="flex:1;" onclick="pmToggleMaleRound()">👬 남자끼리 매칭 잠금 (여자 전원 완료 시 자동 열림)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section">
       <div class="card-title">👤 회원 관리</div>
       <button class="btn btn-gray btn-sm" style="width:100%; display:flex; justify-content:space-between; align-items:center;" onclick="toggleMemberList()">
         <span id="memberListToggleLabel">회원 명부 보기 (0명)</span>
@@ -1230,8 +1364,52 @@ body {
     </div>
   </div>
 </div>
-<div class="pm-overlay" id="pmOverlay">
+<div class="foursome-overlay" id="foursomeOverlay">
+  <div class="foursome-sheet">
+    <div class="foursome-head">
+      <h3>🏆 포썸대회 스코어</h3>
+      <button class="foursome-close" onclick="closeFoursomeModal()">✕</button>
+    </div>
+    <div class="foursome-toolbar">
+      <button class="btn btn-gray btn-sm" onclick="foursomeAddTeamAll()" id="foursomeAddTeamBtn" style="display:none;">＋ 모든 방에 팀 추가</button>
+      <button class="btn btn-gray btn-sm" onclick="foursomeToggleRankPublish()" id="foursomeRankPublishBtn" style="display:none;">🔒 순위 비공개</button>
+      <span class="foursome-savestate"><span class="dot"></span><span id="foursomeSaveState">연결 확인 중…</span></span>
+    </div>
+    <div class="foursome-body">
+      <div class="foursome-wait" id="foursomeWaitBanner">⏳ 데이터를 불러오는 중입니다. 잠시만 기다려 주세요.</div>
+      <div class="foursome-table-wrap">
+        <div class="foursome-scroll">
+          <table class="fs-table">
+            <thead>
+              <tr>
+                <th>방</th><th>팀</th><th>선수 이름</th><th>개인핸디</th><th>팀핸디</th>
+                <th>1경기</th><th>2경기</th><th>1,2경기합산</th><th>스코어</th><th>순위</th>
+              </tr>
+            </thead>
+            <tbody id="foursomeTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="foursome-legend">
+        <b>계산</b> · <code>팀핸디 = 선수1+선수2 핸디</code>(자동), <code>스코어 = 합산 − 팀핸디</code>. 팀명·선수 이름·개인핸디·1,2경기는 누구나 입력 가능합니다. 팀 추가/삭제, 순위 전체공개는 관리자만 가능합니다.<br>🔒 한 번 어떤 팀의 칸을 입력하면 이 휴대폰에서는 그 팀만 계속 입력할 수 있습니다. 실수로 다른 팀을 눌러서 잠기셨다면 아래 버튼으로 푸실 수 있습니다.
+        <div id="fsUnlockWrap" style="display:none; margin-top:8px;">
+          <button type="button" class="btn btn-gray btn-sm" style="width:100%;" onclick="fsUnlockTeam()">🔓 이 휴대폰의 팀 잠금 풀기</button>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
+<div class="pm-overlay" id="pmOverlay">
+  <div class="pm-sheet">
+    <div class="pm-head">
+      <h3>🤝 파트너 매칭</h3>
+      <button class="pm-close" onclick="pmCloseModal()">✕</button>
+    </div>
+    <div class="pm-body">
+      <div class="pm-hint">본인 이름 옆 <b>매칭</b> 버튼을 누르면 무작위로 남성 파트너가 배정됩니다. 다른 사람의 매칭 결과는 보이지 않습니다.<br>🔒 한 번 이름을 누르면 이 휴대폰에서는 그 이름으로만 계속 확인할 수 있고, 다른 이름은 눌러지지 않습니다.</div>
+      <div id="pmWaitBanner" class="foursome-wait" style="display:none;">⏳ 데이터를 불러오는 중입니다. 잠시만 기다려 주세요.</div>
+      <div id="pmList"></div>
+    </div>
   </div>
 </div>
 <div class="pm-reveal-overlay" id="pmRevealOverlay">
@@ -1257,7 +1435,20 @@ const firebaseConfig = {
 let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room", allRooms = {}, autoPublishEnabled = false, localAttendance = {};
 let autoTeamEnabled = false, autoTeamTarget = 20; // 자동 팀공개: 목표 인원 도달 시 자동 편성·공개
 let selectedGender = 'male'; // 성별 선택 상태
+// 🏆 포썸대회 상태 (스크립트 최상단에서 선언 — 초기 로드 시 자동 방입장으로 곧바로
+//  참조될 수 있으므로, 하단에 두면 아직 초기화 전에 접근되어 오류가 날 수 있음)
+var FOURSOME_ROOM_NUMBERS = [1, 2, 3, 5, 6, 7, 8, 9, 10, 11]; // 4방 제외
+var foursomeRooms = [];
+var foursomePublic = false;        // 관리자가 "공개 ON" 해야 참가자에게 버튼/팝업 노출
+var foursomeRankPublished = false; // 포썸 내부: 순위만 비공개→전체공개
+var foursomeEverReceived = false;  // 정식 데이터(관리자가 만든 방 구조) 수신 여부
+var foursomeModalOpen = false;
+var foursomeRenderPending = false; // 타이핑(특히 한글 조합) 중이라 미뤄둔 재렌더링이 있는지
+var foursomePushTimers = {};
+var FOURSOME_PATH = "foursomeGlobal"; // 경기방과 무관하게 항상 같은 고정 경로 (독립 운영)
 
+// 🤝 파트너 매칭 상태 (역시 스크립트 최상단에서 선언 — hoisting 문제 방지)
+var PM_PATH = "partnerMatch"; // 경기방과 무관한 고정 경로
 var teamGrouped = {}; // { 이름: true } = 체크됨(팀편성 시 강제로 한 팀으로 묶임). 없으면 기본값(일반 자동배정).
 var loggedInMemberName = null; // 로그인된 회원 이름(null이면 로그인 안 됨). 관리자는 이 로그인과 무관하게 항상 자유 입력 가능.
 var allMembers = {}; // { 이름: {passwordHash, createdAt} } — 관리자 회원 목록 표시용
@@ -1270,21 +1461,37 @@ var stablefordCapAmount = 10;     // 필드 평균 넷스코어보다 이 타수
 var pmFemales = [];
 var pmMales = [];
 var pmMatches = {};  // { 여자이름: { male: 남자이름, ts: timestamp } }
+var pmPublic = false;
 var pmEverReceived = false;
 var pmModalOpen = false;
 var pmMyReveal = null; // 마지막으로 매칭/확인한 이름 (결과 재표시용)
 var pmMaleRoundOpen = false;   // 여자 매칭 후 남은 남자끼리 매칭 허용 여부
 var pmMaleMatches = {};        // { 남자이름: 짝지어진 다른 남자이름 } (양방향 저장)
-
-// 📢 공지사항 (경기방과 무관한 고정 경로 — 관리자만 작성/수정/삭제, 전 회원 열람 가능)
-var NOTICE_PATH = "notices";
-var allNotices = {};
-var noticeEditingId = null;
 try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.database();
   useFirebase = true;
   listenAllRooms();
+  foursomeListenGlobal(); // 🏆 포썸대회: 경기방과 무관하게 독립적으로 동작
+  pmListenGlobal();       // 🤝 파트너 매칭: 역시 경기방과 무관하게 독립적으로 동작
+  membersListenGlobal();  // 👤 회원 목록: 관리자 회원 관리 화면에 사용
+} catch(e) {
+  console.error("Firebase 오류:", e.message);
+  document.getElementById("roomNotice").style.display = "block";
+  document.getElementById("roomNotice").textContent = "⚠ Firebase 연결 오류 (데이터베이스 규칙을 확인하세요)";
+}
+// 포썸 입력칸에서 포커스가 빠지면(다른 칸으로 이동/탭 전환 등), 타이핑 중이라 미뤄뒀던 재렌더링을 그제서야 적용
+document.addEventListener("focusout", function(e) {
+  if (foursomeRenderPending && e.target && e.target.id && e.target.id.indexOf("fscell-") === 0) {
+    foursomeRenderPending = false;
+    setTimeout(function() {
+      // 바로 다른 fscell로 포커스가 옮겨간 경우(예: 다음 칸으로 탭 이동)까지 다시 미룸
+      var active = document.activeElement;
+      if (active && active.id && active.id.indexOf("fscell-") === 0) { foursomeRenderPending = true; return; }
+      foursomeRender();
+    }, 30);
+  }
+});
 // 관리자 참가자 목록: 체크박스를 누르는 도중(mousedown~mouseup 사이) 실시간 재렌더링이 끼어들어
 // 클릭이 씹히는 문제 방지 — 누르기 시작하면 잠깐 렌더링을 잠그고, 손을 떼면 풀어서 반영한다.
 function adminListInteractStart(e) {
@@ -1345,7 +1552,7 @@ function checkHandiValid() {
   return true;
 }
 function switchTab(tab) {
-  if (!admin && !loggedInMemberName && tab !== "room" && tab !== "admin" && tab !== "notice") {
+  if (!admin && !loggedInMemberName && tab !== "room" && tab !== "admin") {
     toast("🔒 먼저 회원가입/로그인해주세요");
     tab = "room";
     memberAuthExpanded = true;
@@ -1357,6 +1564,8 @@ function switchTab(tab) {
   document.getElementById("tab-" + tab).classList.add("active");
   currentTab = tab;
   document.getElementById("stickyScore").style.display = (tab === "score") ? "block" : "none";
+  var appHeaderEl = document.querySelector(".app-header");
+  if (appHeaderEl) appHeaderEl.classList.toggle("collapsed", tab !== "room");
   if (tab === "attendance") renderAttendance();
 }
 function toast(msg) {
@@ -1597,7 +1806,7 @@ function updateMemberAuthUI() {
   if (admin) {
     // 관리자는 회원 로그인과 무관하게 항상 자유롭게 이름을 입력할 수 있음
     if (card) card.style.display = "none";
-    if (pNameInput) { pNameInput.disabled = false; pNameInput.placeholder = "이름을 입력하세요"; }
+    if (pNameInput) { pNameInput.disabled = false; pNameInput.placeholder = "회원명부에 등록된 이름"; }
     return;
   }
   if (card) card.style.display = "";
@@ -1652,6 +1861,13 @@ function saveMyScore() {
   var notice = document.getElementById("scoreNotice");
   if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
   if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
+  // ── 회원명부 이름 검증: 관리자 포함 반드시 회원명부에 등록된 이름만 허용 ──
+  // 이름 뒤 숫자 허용 (예: 한정헌2 → baseName으로 한정헌을 추출해 검증)
+  var basedName = baseName(name) || name;
+  if (!allMembers[name] && !allMembers[basedName]) {
+    showNotice(notice, "error", "⛔ 회원명부에 없는 이름입니다.\n정확한 이름으로 입력해주세요.\n(예: 한정헌 → 정헌 불가)");
+    return;
+  }
   if (!checkHandiValid()) return;
   localStorage.setItem("myGolfName", name);
   localStorage.setItem("myGolfGender", selectedGender);
@@ -2194,13 +2410,12 @@ function enterAdminMode() {
   updateTeamSizeButtons(); updateTeamSizeInfo();
   var tIn0 = document.getElementById("autoTeamTargetInput"); if (tIn0) tIn0.value = autoTeamTarget;
   updateAutoTeamButton(); updateAutoTeamInfo();
+  updateFoursomePublicButton(); foursomeUpdateEntryVisibility(); if (foursomeModalOpen) foursomeRender();
+  updatePmPublicButton(); updatePmMaleRoundButton(); pmUpdateEntryVisibility(); pmRenderAdminTable(); if (pmModalOpen) pmRender();
   renderMemberHandiStats();
   renderArchivedRooms();
   renderMemberList();
   updateMemberAuthUI();
-  var noticeBox = document.getElementById("noticeAdminBox");
-  if (noticeBox) noticeBox.style.display = "block";
-  renderNotices();
 }
 function logoutAdmin() {
   if (!confirm("관리자 로그아웃하시겠습니까?\n(이 기기에서 자동 로그인이 해제됩니다)")) return;
@@ -2213,11 +2428,9 @@ function logoutAdmin() {
   if (teamAdmin) teamAdmin.style.display = "none";
   renderRank(); renderParticipantList();
   toast("관리자 로그아웃되었습니다");
+  updateFoursomePublicButton(); foursomeUpdateEntryVisibility(); if (foursomeModalOpen) foursomeRender();
+  updatePmPublicButton(); updatePmMaleRoundButton(); pmUpdateEntryVisibility(); pmRenderAdminTable(); if (pmModalOpen) pmRender();
   updateMemberAuthUI();
-  var noticeBox2 = document.getElementById("noticeAdminBox");
-  if (noticeBox2) noticeBox2.style.display = "none";
-  noticeCancelEdit();
-  renderNotices();
 }
 function refreshAdminRoomStatus() {
   var el = document.getElementById("adminRoomStatus");
@@ -2887,103 +3100,23 @@ function toggleArchivedRoomsList() {
   if (icon) icon.textContent = open ? "▾" : "▴";
 }
 // 👤 회원 목록 실시간 구독 (경기방과 무관, 관리자 회원 관리 화면용)
-// ── 📢 공지사항 ──
-function noticesListenGlobal() {
-  if (!useFirebase) return;
-  db.ref(NOTICE_PATH).on("value", function(snap) {
-    allNotices = snap.val() || {};
-    renderNotices();
-  });
-}
-function noticeFormatDate(ts) {
-  if (!ts) return "";
-  var d = new Date(ts);
-  return d.toLocaleDateString("ko-KR") + " " + d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
-}
-function renderNotices() {
-  var listEl = document.getElementById("noticeList");
-  if (!listEl) return;
-  var ids = Object.keys(allNotices).sort(function(a, b) {
-    return (allNotices[b].createdAt || 0) - (allNotices[a].createdAt || 0);
-  });
-  if (!ids.length) {
-    listEl.innerHTML = '<div class="empty-state"><div class="big">📢</div><p>등록된 공지가 없습니다</p></div>';
-    return;
-  }
-  listEl.innerHTML = ids.map(function(id, idx) {
-    var n = allNotices[id] || {};
-    var title = (n.title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    var content = (n.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    var dateStr = noticeFormatDate(n.createdAt);
-    var editedTag = (n.updatedAt && n.updatedAt !== n.createdAt) ? " (수정됨)" : "";
-    var adminBtns = admin ? (
-      '<div class="notice-board-actions">' +
-        '<button class="btn btn-gray btn-sm" onclick="noticeStartEdit(\'' + id + '\')">✏️ 수정</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="noticeDelete(\'' + id + '\')">🗑 삭제</button>' +
-      '</div>'
-    ) : "";
-    return '<div class="notice-board-item' + (idx === 0 ? ' pinned' : '') + '">' +
-      '<div class="notice-board-head">' +
-        '<div class="notice-board-title">' + (idx === 0 ? '📌 ' : '') + title + '</div>' +
-        '<div class="notice-board-date">' + dateStr + editedTag + '</div>' +
-      '</div>' +
-      '<div class="notice-board-body">' + content + '</div>' +
-      adminBtns +
-    '</div>';
-  }).join("");
-}
-function noticeSubmit() {
-  if (!admin) { toast("관리자만 작성할 수 있습니다"); return; }
-  var titleEl = document.getElementById("noticeTitleInput");
-  var contentEl = document.getElementById("noticeContentInput");
-  var title = titleEl.value.trim();
-  var content = contentEl.value.trim();
-  if (!title || !content) { toast("제목과 내용을 모두 입력해주세요"); return; }
-  if (noticeEditingId) {
-    db.ref(NOTICE_PATH + "/" + noticeEditingId).update({ title: title, content: content, updatedAt: Date.now() }).then(function() {
-      toast("✅ 공지가 수정되었습니다");
-      noticeCancelEdit();
-    });
-  } else {
-    db.ref(NOTICE_PATH).push({ title: title, content: content, createdAt: Date.now() }).then(function() {
-      toast("✅ 공지가 등록되었습니다");
-      titleEl.value = ""; contentEl.value = "";
-    });
-  }
-}
-function noticeStartEdit(id) {
-  if (!admin) { toast("관리자만 가능합니다"); return; }
-  var n = allNotices[id];
-  if (!n) return;
-  noticeEditingId = id;
-  document.getElementById("noticeTitleInput").value = n.title || "";
-  document.getElementById("noticeContentInput").value = n.content || "";
-  document.getElementById("noticeFormTitle").textContent = "✏️ 공지 수정";
-  document.getElementById("noticeSubmitBtn").textContent = "수정 완료";
-  document.getElementById("noticeCancelBtn").style.display = "block";
-  document.getElementById("noticeTitleInput").scrollIntoView({ behavior: "smooth", block: "center" });
-}
-function noticeCancelEdit() {
-  noticeEditingId = null;
-  document.getElementById("noticeTitleInput").value = "";
-  document.getElementById("noticeContentInput").value = "";
-  document.getElementById("noticeFormTitle").textContent = "📢 공지 작성";
-  document.getElementById("noticeSubmitBtn").textContent = "게시하기";
-  document.getElementById("noticeCancelBtn").style.display = "none";
-}
-function noticeDelete(id) {
-  if (!admin) { toast("관리자만 가능합니다"); return; }
-  if (!confirm("이 공지를 삭제하시겠습니까?")) return;
-  db.ref(NOTICE_PATH + "/" + id).remove().then(function() {
-    toast("🗑 공지가 삭제되었습니다");
-    if (noticeEditingId === id) noticeCancelEdit();
-  });
-}
 function membersListenGlobal() {
   if (!useFirebase) return;
   db.ref("members").on("value", function(snap) {
     allMembers = snap.val() || {};
     if (admin) renderMemberList();
+    updateMemberNameDatalist(); // 관리자 이름 입력 자동완성 갱신
+  });
+}
+// ── 회원명부 이름 → pName datalist 갱신 (관리자 자동완성용) ──
+function updateMemberNameDatalist() {
+  var dl = document.getElementById("memberNameList");
+  if (!dl) return;
+  dl.innerHTML = "";
+  Object.keys(allMembers).sort().forEach(function(name) {
+    var opt = document.createElement("option");
+    opt.value = name;
+    dl.appendChild(opt);
   });
 }
 function renderMemberList(showToast) {
@@ -3033,7 +3166,7 @@ function togglePmAdminPanel() {
   var open = wrap.style.display !== "none";
   wrap.style.display = open ? "none" : "block";
   if (icon) icon.textContent = open ? "▾" : "▴";
-  
+  if (label) label.textContent = open ? "파트너 매칭 관리 펼치기" : "파트너 매칭 관리 접기";
 }
 // 목록에서 바로 초기화(이름을 직접 입력할 필요 없음)
 function adminBackfillMemberPhones() {
@@ -3145,21 +3278,489 @@ if (urlRoom) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// 🏆 포썸대회 스코어 팝업 (기존 Firebase/currentRoom/admin 재사용)
+// ══════════════════════════════════════════════════════════════
+// (포썸대회 상태 변수는 스크립트 상단에서 미리 선언됨 — 초기 로드 시 자동 방입장으로도
+//  안전하게 참조될 수 있도록 var hoisting 순서 문제 방지)
 
+function foursomeBlankTeam() { return { team: "", playerName: ["", ""], indHandi: ["", ""], g1: "", g2: "" }; }
+function foursomeMigrateTeam(t) {
+  if (!Array.isArray(t.playerName)) t.playerName = ["", ""];
+  else if (t.playerName.length < 2) t.playerName = [t.playerName[0] || "", ""];
+  if (!Array.isArray(t.indHandi)) t.indHandi = [(t.indHandi === undefined || t.indHandi === null) ? "" : t.indHandi, ""];
+  else if (t.indHandi.length < 2) t.indHandi = [t.indHandi[0] || "", ""];
+  return t;
+}
+function foursomeSeedRooms() {
+  foursomeRooms = FOURSOME_ROOM_NUMBERS.map(function(no) {
+    return { no: no, teams: [foursomeBlankTeam(), foursomeBlankTeam()] };
+  });
+}
+function foursomeNum(v) {
+  if (v === "" || v === null || v === undefined) return null;
+  var n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+function foursomeTeamHandiOf(t) {
+  var h1 = foursomeNum(t.indHandi[0]), h2 = foursomeNum(t.indHandi[1]);
+  if (h1 === null || h2 === null) return null;
+  return Math.round((h1 + h2) * 10) / 10;
+}
+function foursomeDerive(t) {
+  var g1 = foursomeNum(t.g1), g2 = foursomeNum(t.g2);
+  var th = foursomeTeamHandiOf(t);
+  var anyGame = (g1 !== null || g2 !== null);
+  var sum = anyGame ? (g1 || 0) + (g2 || 0) : null;
+  var score = (sum !== null) ? sum - (th || 0) : null;
+  var complete = (g1 !== null && g2 !== null);
+  return { sum: sum, score: score, complete: complete, teamHandi: th };
+}
+function foursomeComputeRanks() {
+  var arr = [];
+  foursomeRooms.forEach(function(room, ri) {
+    room.teams.forEach(function(t, ti) {
+      var d = foursomeDerive(t);
+      if (d.complete && d.score !== null) arr.push({ ri: ri, ti: ti, score: d.score });
+    });
+  });
+  arr.sort(function(a, b) { return a.score - b.score; });
+  var rankMap = {}, lastScore = null, lastRank = 0;
+  arr.forEach(function(item, idx) {
+    var rank;
+    if (lastScore !== null && item.score === lastScore) rank = lastRank;
+    else { rank = idx + 1; lastRank = rank; lastScore = item.score; }
+    rankMap[item.ri + "-" + item.ti] = rank;
+  });
+  return rankMap;
+}
+function foursomeMedal(rank) { return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : ""; }
+function foursomeRankVisible() { return admin || foursomeRankPublished; }
+function foursomeRankHTML(rank) {
+  if (!rank) return '<span class="fs-calc empty" style="background:none;">–</span>';
+  if (!foursomeRankVisible()) return '<span class="fs-rank-locked">🔒 비공개</span>';
+  var m = foursomeMedal(rank);
+  var html = '<span>' + (m ? m + ' ' : "") + rank + '위</span>';
+  if (admin && !foursomeRankPublished) html += '<div style="font-size:9px;color:var(--gold-dim);">관리자만 보임</div>';
+  return html;
+}
+function foursomeFmt(n) { return (Math.round(n * 10) / 10).toString(); }
+function foursomeDataReady() { return !useFirebase || foursomeEverReceived; }
+
+// 🔒 기기 잠금 — 이 휴대폰에서 한 번 어떤 팀의 칸을 건드리면, 그 팀에만 계속 입력 가능 (관리자는 예외)
+var FS_CLAIM_KEY = "fsClaimedTeam";
+function fsGetClaim() {
+  if (admin) return null;
+  try { return localStorage.getItem(FS_CLAIM_KEY); } catch (e) { return null; }
+}
+function fsUnlockTeam() {
+  if (!confirm("이 휴대폰에서 지금까지 참여했던 팀 잠금을 풀까요?\n(다음에 아무 팀이나 다시 누를 수 있게 됩니다)")) return;
+  try { localStorage.removeItem(FS_CLAIM_KEY); } catch (e) {}
+  toast("🔓 팀 잠금을 풀었습니다. 이제 원하는 팀에 다시 입력하실 수 있습니다.");
+  foursomeRender();
+}
+function fsDeviceGuard(ri, ti) {
+  if (admin) return true;
+  var key = ri + "-" + ti;
+  var claimed = fsGetClaim();
+  if (claimed && claimed !== key) {
+    toast("🔒 이미 다른 팀에 참여하셨습니다. 이 휴대폰에서는 그 팀만 입력할 수 있습니다.");
+    return false;
+  }
+  if (!claimed) {
+    try { localStorage.setItem(FS_CLAIM_KEY, key); } catch (e) {}
+    updateFsUnlockVisibility(); // 표 전체를 다시 그리지 않고 이 버튼만 즉시 갱신(타이핑 중 한글 조합 안 끊기게)
+  }
+  return true;
+}
+function updateFsUnlockVisibility() {
+  var unlockWrap = document.getElementById("fsUnlockWrap");
+  if (unlockWrap) unlockWrap.style.display = fsGetClaim() ? "block" : "none";
+}
+
+function foursomeInp(ri, ti, field, val, extra, ph, idx, forceEditable) {
+  var v = (val === null || val === undefined) ? "" : String(val).replace(/"/g, "&quot;");
+  var hasIdx = (idx !== undefined && idx !== null);
+  var idxArg = hasIdx ? idx : "null";
+  var editable = (forceEditable !== undefined) ? forceEditable : true;
+  var disabledAttr = editable ? "" : "disabled";
+  var handler = editable ? (' oninput="foursomeOnInput(' + ri + ',' + ti + ',\'' + field + '\',this.value,' + idxArg + ')"') : "";
+  var autoId = "fscell-" + ri + "-" + ti + "-" + field + (hasIdx ? ("-" + idx) : "");
+  // 팀명·선수 이름은 한글 입력이 필요하므로 일반 텍스트 자판, 개인핸디·점수만 숫자(소수) 자판으로 제한
+  // 팀명·선수 이름·개인핸디는 일반 자판(개인핸디는 마이너스 부호가 필요해서 숫자 전용 자판 대신 일반 자판 사용)
+  // 팀명·선수 이름·개인핸디·1경기·2경기 전부 일반 자판(마이너스 부호 입력 가능)
+  var typeAttr = 'type="text"';
+  return '<input class="fs-cell ' + extra + '" ' + typeAttr + ' id="' + autoId + '"'
+       + ' value="' + v + '"' + (ph ? ' placeholder="' + ph + '"' : "") + ' ' + disabledAttr + handler + '>';
+}
+
+function foursomeRender() {
+  var tbody = document.getElementById("foursomeTbody");
+  if (!tbody) return;
+  // 누군가 이 표의 입력칸에 타이핑 중이면(특히 한글 조합 중) 지금 통째로 다시 그리면
+  // IME 조합이 끊겨 글자가 이상하게 써지는 문제가 있어, 포커스를 벗어날 때까지 렌더링을 미룬다.
+  var activeNow = document.activeElement;
+  if (activeNow && activeNow.id && activeNow.id.indexOf("fscell-") === 0) {
+    foursomeRenderPending = true;
+    return;
+  }
+  var ranks = foursomeComputeRanks();
+  var reveal = foursomeRankVisible();
+  var ready = foursomeDataReady();
+  var html = "";
+
+  var active = document.activeElement;
+  var focusId = null, selStart = null, selEnd = null;
+  if (active && active.tagName === "INPUT" && active.id) {
+    focusId = active.id;
+    try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch (e) {}
+  }
+
+  var myFsClaim = fsGetClaim(); // 관리자는 항상 null(모든 팀 편집 가능)
+  var unlockWrap = document.getElementById("fsUnlockWrap");
+  if (unlockWrap) unlockWrap.style.display = myFsClaim ? "block" : "none";
+
+  foursomeRooms.forEach(function(room, ri) {
+    var roomRowSpan = room.teams.length * 2;
+    room.teams.forEach(function(t, ti) {
+      var d = foursomeDerive(t);
+      var rank = ranks[ri + "-" + ti];
+      var isFirst = (reveal && rank === 1) ? "fs-first" : "";
+      var delBtn = (admin && room.teams.length > 1)
+        ? '<button class="fs-del" onclick="foursomeDelTeam(' + ri + ',' + ti + ')">✕</button>' : "";
+      var teamKey = ri + "-" + ti;
+      var teamEditable = ready && (!myFsClaim || myFsClaim === teamKey);
+
+      html += '<tr class="' + isFirst + '">';
+      if (ti === 0) html += '<td class="fs-room-cell" rowspan="' + roomRowSpan + '">' + room.no + '방</td>';
+      html += '<td class="fs-team-col" rowspan="2"><div style="display:flex;align-items:center;gap:2px;">'
+            + foursomeInp(ri, ti, "team", t.team, "fs-team-name", "팀 이름", null, teamEditable) + delBtn + '</div></td>';
+      html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[0], "", "선수1 이름", 0, teamEditable) + '</td>';
+      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[0], "", "선수1", 0, teamEditable) + '</td>';
+      html += '<td class="fs-calc fs-calc-col ' + (d.teamHandi === null ? "empty" : "") + '" rowspan="2" id="fsth-' + ri + '-' + ti + '">' + (d.teamHandi === null ? "–" : foursomeFmt(d.teamHandi)) + '</td>';
+      html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g1", t.g1, "", "", null, teamEditable) + '</td>';
+      html += '<td class="fs-num-col" rowspan="2">' + foursomeInp(ri, ti, "g2", t.g2, "", "", null, teamEditable) + '</td>';
+      html += '<td class="fs-calc fs-calc-col ' + (d.sum === null ? "empty" : "") + '" rowspan="2" id="fssum-' + ri + '-' + ti + '">' + (d.sum === null ? "–" : foursomeFmt(d.sum)) + '</td>';
+      html += '<td class="fs-calc fs-calc-col ' + (d.score === null ? "empty" : "") + '" rowspan="2" id="fssc-' + ri + '-' + ti + '">' + (d.score === null ? "–" : foursomeFmt(d.score)) + '</td>';
+      html += '<td class="fs-rank-col" rowspan="2" id="fsrk-' + ri + '-' + ti + '">' + foursomeRankHTML(rank) + '</td>';
+      html += '</tr>';
+      html += '<tr class="' + isFirst + '">';
+      html += '<td class="fs-player-col">' + foursomeInp(ri, ti, "playerName", t.playerName[1], "", "선수2 이름", 1, teamEditable) + '</td>';
+      html += '<td class="fs-num-col">' + foursomeInp(ri, ti, "indHandi", t.indHandi[1], "", "선수2", 1, teamEditable) + '</td>';
+      html += '</tr>';
+    });
+  });
+  tbody.innerHTML = html;
+  document.getElementById("foursomeWaitBanner").style.display = (!ready) ? "block" : "none";
+  document.getElementById("foursomeAddTeamBtn").style.display = admin ? "" : "none";
+  document.getElementById("foursomeRankPublishBtn").style.display = admin ? "" : "none";
+  if (admin) {
+    var btn = document.getElementById("foursomeRankPublishBtn");
+    btn.textContent = foursomeRankPublished ? "🌐 순위 전체공개 중 (끄려면 클릭)" : "🔒 순위 비공개 (전체공개하려면 클릭)";
+    btn.className = "btn btn-sm " + (foursomeRankPublished ? "btn-gold" : "btn-gray");
+  }
+
+  if (focusId) {
+    var el = document.getElementById(focusId);
+    if (el) { el.focus(); if (selStart !== null) { try { el.setSelectionRange(selStart, selEnd); } catch (e) {} } }
+  }
+}
+
+function foursomeUpdateDerivedCell(ri, ti) {
+  var room = foursomeRooms[ri];
+  var t = room && room.teams[ti];
+  if (!t) return; // 이미 삭제된 팀이면 조용히 무시(에러 방지)
+  var d = foursomeDerive(t);
+  var thEl = document.getElementById("fsth-" + ri + "-" + ti);
+  var sumEl = document.getElementById("fssum-" + ri + "-" + ti);
+  var scEl = document.getElementById("fssc-" + ri + "-" + ti);
+  if (thEl) { thEl.textContent = d.teamHandi === null ? "–" : foursomeFmt(d.teamHandi); thEl.classList.toggle("empty", d.teamHandi === null); }
+  if (sumEl) { sumEl.textContent = d.sum === null ? "–" : foursomeFmt(d.sum); sumEl.classList.toggle("empty", d.sum === null); }
+  if (scEl) { scEl.textContent = d.score === null ? "–" : foursomeFmt(d.score); scEl.classList.toggle("empty", d.score === null); }
+}
+function foursomeUpdateAllRanks() {
+  var ranks = foursomeComputeRanks();
+  var reveal = foursomeRankVisible();
+  foursomeRooms.forEach(function(room, ri) {
+    room.teams.forEach(function(t, ti) {
+      var rEl = document.getElementById("fsrk-" + ri + "-" + ti);
+      if (rEl) rEl.innerHTML = foursomeRankHTML(ranks[ri + "-" + ti]);
+      var tr = rEl ? rEl.closest("tr") : null;
+      if (tr) {
+        var isFirst = reveal && ranks[ri + "-" + ti] === 1;
+        tr.classList.toggle("fs-first", isFirst);
+        var tr2 = tr.nextElementSibling;
+        if (tr2) tr2.classList.toggle("fs-first", isFirst);
+      }
+    });
+  });
+}
+
+function foursomeOnInput(ri, ti, field, value, idx) {
+  if (!foursomeDataReady()) return; // 정식 데이터 수신 전에는 입력 차단(구조 손상 방지)
+  if (!fsDeviceGuard(ri, ti)) return; // 다른 팀에는 손 못 대도록(기기 잠금)
+  var room = foursomeRooms[ri];
+  var t = room && room.teams[ti];
+  if (!t) return; // 이미 삭제된 팀이면 조용히 무시(에러 방지)
+  if ((field === "indHandi" || field === "playerName") && idx !== undefined && idx !== null) t[field][idx] = value;
+  else t[field] = value;
+  foursomeUpdateDerivedCell(ri, ti);
+  foursomeUpdateAllRanks();
+  foursomePushField(ri, ti, field, idx);
+  // 🏆 선수 이름이 입력되면 출석에도 자동으로 기록 (현재 연결된 경기방 기준, 타이핑 도중 부분입력은 무시)
+  if (field === "playerName") foursomeRecordAttendanceDebounced(ri, ti, idx, value);
+}
+
+var foursomeAttendTimers = {};
+function foursomeRecordAttendanceDebounced(ri, ti, idx, value) {
+  var key = ri + "-" + ti + "-" + idx;
+  if (foursomeAttendTimers[key]) clearTimeout(foursomeAttendTimers[key]);
+  foursomeAttendTimers[key] = setTimeout(function() {
+    delete foursomeAttendTimers[key];
+    foursomeRecordAttendance(value);
+  }, 800);
+}
+
+// 포썸대회에서 이름을 입력하면 그 사람도 출석 명단에 잡히도록 처리.
+// 연결된 경기방이 있으면 그 방으로, 없으면(포썸 단독 운영일) 오늘 날짜 기반 키로 자동 기록.
+function foursomeAttendanceRoomKey() {
+  if (currentRoom) return currentRoom;
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = ("0" + (d.getMonth() + 1)).slice(-2);
+  var day = ("0" + d.getDate()).slice(-2);
+  return y + "-" + m + "-" + day + "-포썸";
+}
+function foursomeRecordAttendance(rawName) {
+  if (!useFirebase) return;
+  var name = baseName(rawName);
+  if (!name) return;
+  if (!allMembers[name]) return; // 회원가입된 이름이 아니면(오타 등) 출석에 기록하지 않음
+  var room = foursomeAttendanceRoomKey();
+  var attendRef = db.ref("attendance/" + name + "/" + room);
+  attendRef.once("value", function(snap) {
+    if (!snap.exists()) attendRef.set({ room: room, timestamp: Date.now() });
+  });
+}
+
+function foursomeApplyIncomingRooms(newRooms) {
+  var oldRooms = foursomeRooms;
+  foursomeRooms = newRooms;
+  foursomeRooms.forEach(function(r) { r.teams.forEach(foursomeMigrateTeam); });
+  Object.keys(foursomePushTimers).forEach(function(path) {
+    var m = path.match(/\/rooms\/(\d+)\/teams\/(\d+)\/([^\/]+)(?:\/(\d+))?$/);
+    if (!m) return;
+    var ri = Number(m[1]), ti = Number(m[2]), field = m[3];
+    var idx = (m[4] !== undefined) ? Number(m[4]) : null;
+    if (!foursomeRooms[ri] || !foursomeRooms[ri].teams[ti] || !oldRooms[ri] || !oldRooms[ri].teams[ti]) return;
+    var oldVal = (idx !== null) ? oldRooms[ri].teams[ti][field][idx] : oldRooms[ri].teams[ti][field];
+    if (idx !== null) foursomeRooms[ri].teams[ti][field][idx] = oldVal;
+    else foursomeRooms[ri].teams[ti][field] = oldVal;
+  });
+}
+
+// 🏆 경기방(currentRoom)과 무관하게 항상 같은 고정 경로 사용 — 방 선택 없이 바로 켜고 쓸 수 있음
+// (FOURSOME_PATH 값은 스크립트 상단에서 미리 선언됨 — hoisting 문제 방지)
+
+function foursomeListenGlobal() {
+  if (!useFirebase) return;
+  db.ref(FOURSOME_PATH).on("value", function(snap) {
+    var data = snap.val();
+    foursomePublic = data ? !!data.public : false;
+    updateFoursomePublicButton();
+    foursomeUpdateEntryVisibility();
+    if (data && Array.isArray(data.rooms) && data.rooms.length) {
+      foursomeApplyIncomingRooms(data.rooms);
+      foursomeRankPublished = !!data.published;
+      foursomeEverReceived = true;
+    } else {
+      // 서버에 아직 포썸 데이터가 없음 → 관리자든 아니든 누구나 빈 틀을 만들어 업로드한다.
+      // (예전에는 관리자만 이 초기화를 할 수 있어서, 관리자가 포썸 화면을 열기 전에 회원이 먼저 열면
+      //  그 회원의 입력창이 전부 비활성화된 채로 멈춰있는 문제가 있었음)
+      foursomeSeedRooms();
+      foursomeRankPublished = false;
+      db.ref(FOURSOME_PATH).update({ rooms: foursomeRooms, published: false, public: foursomePublic }).then(function() {
+        foursomeEverReceived = true;
+        if (foursomeModalOpen) foursomeRender();
+      }).catch(function() {
+        toast("⚠ 포썸 초기 데이터 저장 실패 — 새로고침 후 다시 시도해주세요.");
+      });
+    }
+    if (foursomeModalOpen) foursomeRender();
+  }, function() {
+    var stateEl = document.getElementById("foursomeSaveState");
+    if (stateEl) stateEl.textContent = "⚠ 연결 오류(오프라인)";
+  });
+}
+
+function foursomePushField(ri, ti, field, idx) {
+  if (!useFirebase) return;
+  var hasIdx = (idx !== undefined && idx !== null);
+  var path = FOURSOME_PATH + "/rooms/" + ri + "/teams/" + ti + "/" + field + (hasIdx ? ("/" + idx) : "");
+  var stateEl = document.getElementById("foursomeSaveState");
+  if (stateEl) stateEl.textContent = "저장 중…";
+  if (foursomePushTimers[path]) clearTimeout(foursomePushTimers[path]);
+  foursomePushTimers[path] = setTimeout(function() {
+    delete foursomePushTimers[path];
+    var room = foursomeRooms[ri];
+    var t = room && room.teams[ti];
+    if (!t) return; // 그 사이 팀이 삭제/이동되었으면 엉뚱한 자리에 덮어쓰지 않도록 조용히 취소
+    var value = hasIdx ? t[field][idx] : t[field];
+    db.ref(path).set(value).then(function() {
+      if (stateEl) stateEl.textContent = "🌐 실시간 동기화됨";
+    }).catch(function() {
+      if (stateEl) stateEl.textContent = "⚠ 저장 실패(연결 확인)";
+    });
+  }, 350);
+}
+
+// 팀 구조가 바뀌면(추가/삭제) 이미 예약된 디바운스 전송들은 이제 위치가 어긋날 수 있으므로 전부 취소.
+// (foursomePushAllRooms가 곧바로 현재 상태 전체를 저장하므로, 취소해도 데이터 유실은 없음)
+function foursomeCancelPendingPushes(ri) {
+  var prefix = FOURSOME_PATH + "/rooms/" + (ri === undefined ? "" : ri + "/");
+  Object.keys(foursomePushTimers).forEach(function(path) {
+    if (path.indexOf(prefix) === 0) { clearTimeout(foursomePushTimers[path]); delete foursomePushTimers[path]; }
+  });
+}
+
+function foursomeAddTeamAll() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  foursomeCancelPendingPushes(); // 구조가 바뀌므로 예약된 개별 전송은 전부 취소(전체 저장으로 대체)
+  foursomeRooms.forEach(function(r) { r.teams.push(foursomeBlankTeam()); });
+  foursomeRender();
+  foursomePushAllRooms(function(ok) {
+    toast(ok ? "모든 방에 팀 한 줄씩 추가했습니다" : "⚠ 저장 실패! 서버에 반영되지 않았습니다.");
+  });
+}
+function foursomeDelTeam(ri, ti) {
+  if (!admin) return;
+  var room = foursomeRooms[ri];
+  if (!room || room.teams.length <= 1) { toast("방에는 최소 1팀이 필요합니다"); return; }
+  foursomeCancelPendingPushes(ri); // 이 방의 팀 위치가 바뀌므로 예약된 개별 전송 취소
+  room.teams.splice(ti, 1);
+  foursomeRender();
+  foursomePushAllRooms(function(ok) {
+    if (!ok) toast("⚠ 저장 실패! 서버에 반영되지 않았습니다.");
+  });
+}
+function foursomePushAllRooms(cb) {
+  if (!useFirebase) { if (cb) cb(true); return; }
+  db.ref(FOURSOME_PATH + "/rooms").set(foursomeRooms).then(function() {
+    if (cb) cb(true);
+  }).catch(function() {
+    if (cb) cb(false);
+  });
+}
+function foursomeToggleRankPublish() {
+  if (!admin) return;
+  var next = !foursomeRankPublished;
+  if (!useFirebase) {
+    foursomeRankPublished = next; foursomeRender();
+    toast(foursomeRankPublished ? "🌐 포썸 순위를 전체 공개했습니다" : "🔒 포썸 순위를 비공개로 전환했습니다");
+    return;
+  }
+  db.ref(FOURSOME_PATH + "/published").set(next).then(function() {
+    foursomeRankPublished = next; foursomeRender();
+    toast(foursomeRankPublished ? "🌐 포썸 순위를 전체 공개했습니다" : "🔒 포썸 순위를 비공개로 전환했습니다");
+  }).catch(function() {
+    toast("⚠ 저장 실패! 순위 공개 상태가 바뀌지 않았습니다.");
+  });
+}
+
+function toggleFoursomePublic() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  var next = !foursomePublic;
+  if (!useFirebase) {
+    foursomePublic = next; updateFoursomePublicButton(); foursomeUpdateEntryVisibility();
+    toast(foursomePublic ? "🏆 포썸대회 스코어를 참가자에게 공개했습니다" : "포썸대회 스코어를 참가자 화면에서 숨겼습니다");
+    return;
+  }
+  db.ref(FOURSOME_PATH + "/public").set(next).then(function() {
+    foursomePublic = next; updateFoursomePublicButton(); foursomeUpdateEntryVisibility();
+    toast(foursomePublic ? "🏆 포썸대회 스코어를 참가자에게 공개했습니다" : "포썸대회 스코어를 참가자 화면에서 숨겼습니다");
+  }).catch(function() {
+    toast("⚠ 저장 실패! 공개 상태가 바뀌지 않았습니다.");
+  });
+}
+function updateFoursomePublicButton() {
+  var b = document.getElementById("foursomePublicBtn");
+  if (!b) return;
+  b.textContent = foursomePublic ? "🟢 공개 ON (참가자에게 보임)" : "⚫ 공개 OFF (참가자에게 안 보임)";
+  b.className = "btn btn-sm " + (foursomePublic ? "btn-gold" : "btn-gray");
+}
+function foursomeUpdateEntryVisibility() {
+  var card = document.getElementById("foursomeEntryCard");
+  if (!card) return;
+  card.style.display = (foursomePublic || admin) ? "flex" : "none";
+}
+
+function openFoursomeModal() {
+  if (!foursomePublic && !admin) { toast("아직 공개되지 않았습니다"); return; }
+  foursomeModalOpen = true;
+  document.getElementById("foursomeOverlay").classList.add("open");
+  if (!foursomeRooms.length) foursomeSeedRooms();
+  foursomeRender();
+}
+function closeFoursomeModal() {
+  foursomeModalOpen = false;
+  document.getElementById("foursomeOverlay").classList.remove("open");
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🤝 파트너 매칭 (여자가 매칭 버튼을 누르면 무작위 남자 배정, 중복 방지, 본인 결과만 공개)
+// ══════════════════════════════════════════════════════════════
 // 🔒 기기 잠금 — 이 휴대폰(브라우저)에서 한 번 이름을 누르면, 그 이름으로만 계속 진행 가능
 // (관리자는 예외 — 확인·테스트 목적으로 모든 이름을 눌러볼 수 있어야 함)
+var PM_CLAIM_KEY = "pmClaimedName";
+function pmGetClaim() {
+  if (admin) return null;
+  try { return localStorage.getItem(PM_CLAIM_KEY); } catch (e) { return null; }
+}
 function pmDeviceGuard(name) {
   if (admin) return true;
+  var claimed = pmGetClaim();
   if (claimed && claimed !== name) {
     toast('🔒 이미 "' + claimed + '"님으로 진행하셨습니다. 이 휴대폰에서는 다른 이름을 누를 수 없습니다.');
     return false;
   }
   if (!claimed) {
+    try { localStorage.setItem(PM_CLAIM_KEY, name); } catch (e) {}
   }
   return true;
 }
 
 var pmListsLoadedOnce = false; // 최초 1회만 명단 입력칸을 서버 값으로 채움 (이후엔 절대 건드리지 않음)
+function pmListenGlobal() {
+  if (!useFirebase) return;
+  db.ref(PM_PATH).on("value", function(snap) {
+    var data = snap.val();
+    pmPublic = data ? !!data.public : false;
+    pmFemales = (data && Array.isArray(data.females)) ? data.females : [];
+    pmMales = (data && Array.isArray(data.males)) ? data.males : [];
+    pmMatches = (data && data.matches && typeof data.matches === "object") ? data.matches : {};
+    pmMaleRoundOpen = data ? !!data.maleRoundOpen : false;
+    var mr = (data && data.maleRound && typeof data.maleRound === "object") ? data.maleRound : {};
+    pmMaleMatches = mr;
+    pmEverReceived = !!data;
+    updatePmPublicButton();
+    updatePmMaleRoundButton();
+    pmUpdateEntryVisibility();
+    pmRenderAdminTable();
+    if (pmModalOpen) pmRender();
+    // ⚠ 관리자 명단 입력칸은 페이지를 새로 열었을 때 딱 한 번만 서버 값으로 채운다.
+    // (참가자가 실시간으로 매칭 버튼을 누를 때마다 이 리스너가 다시 실행되는데, 그때마다
+    //  칸을 건드리면 관리자가 한창 이름을 지우는 도중 도로 채워져 버리는 문제가 있었음)
+    if (!pmListsLoadedOnce) {
+      var fEl = document.getElementById("pmFemaleInput");
+      var mEl = document.getElementById("pmMaleInput");
+      if (fEl) fEl.value = pmFemales.join("\n");
+      if (mEl) mEl.value = pmMales.join("\n");
+      pmListsLoadedOnce = true;
+    }
+  }, function() {
+    var el = document.getElementById("pmWaitBanner");
+    if (el) { el.style.display = "block"; el.textContent = "⚠ 연결 오류(오프라인)"; }
+  });
+}
 
 function pmParseLines(text) {
   return text.split("\n").map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
@@ -3195,6 +3796,7 @@ function pmSaveLists() {
   if (!useFirebase) { toast(summary); return; }
   toast("저장 중…");
   // ⚠ 실패해도 조용히 넘어가지 않도록 반드시 결과를 확인해서 안내 (서버 저장 실패 시 "저장됨"이라고 잘못 표시되는 일 방지)
+  db.ref(PM_PATH).update({ females: females, males: males, matches: newMatches, maleRound: newMaleMatches }).then(function() {
     toast("✅ " + summary);
   }).catch(function(err) {
     toast("⚠ 저장 실패! 서버에 반영되지 않았습니다 — 다시 시도해주세요. (" + (err && err.message ? err.message : "연결 확인") + ")");
@@ -3203,9 +3805,15 @@ function pmSaveLists() {
 
 function pmTogglePublic() {
   if (!admin) { toast("관리자만 가능합니다"); return; }
+  var next = !pmPublic;
   if (!useFirebase) {
+    pmPublic = next; updatePmPublicButton(); pmUpdateEntryVisibility();
+    toast(pmPublic ? "🤝 파트너 매칭을 참가자에게 공개했습니다" : "파트너 매칭을 참가자 화면에서 숨겼습니다");
     return;
   }
+  db.ref(PM_PATH + "/public").set(next).then(function() {
+    pmPublic = next; updatePmPublicButton(); pmUpdateEntryVisibility();
+    toast(pmPublic ? "🤝 파트너 매칭을 참가자에게 공개했습니다" : "파트너 매칭을 참가자 화면에서 숨겼습니다");
   }).catch(function(err) {
     toast("⚠ 저장 실패! 공개 상태가 바뀌지 않았습니다. (" + (err && err.message ? err.message : "연결 확인") + ")");
   });
@@ -3220,6 +3828,7 @@ function pmToggleMaleRound() {
     toast(pmMaleRoundOpen ? "👬 남자끼리 매칭을 열었습니다" : "👬 남자끼리 매칭을 잠갔습니다");
     return;
   }
+  db.ref(PM_PATH + "/maleRoundOpen").set(next).then(function() {
     pmMaleRoundOpen = next; updatePmMaleRoundButton(); pmRenderAdminTable(); if (pmModalOpen) pmRender();
     toast(pmMaleRoundOpen ? "👬 남자끼리 매칭을 열었습니다" : "👬 남자끼리 매칭을 잠갔습니다");
   }).catch(function(err) {
@@ -3236,6 +3845,7 @@ function pmResetMatches() {
     return;
   }
   toast("초기화 중…");
+  db.ref(PM_PATH).update({ matches: {}, maleRound: {}, maleRoundOpen: false }).then(function() {
     pmMatches = {}; pmMaleMatches = {}; pmMaleRoundOpen = false;
     pmRenderAdminTable(); if (pmModalOpen) pmRender();
     toast("✅ 매칭 결과가 초기화되었습니다");
@@ -3244,12 +3854,24 @@ function pmResetMatches() {
   });
 }
 
+function updatePmPublicButton() {
+  var b = document.getElementById("pmPublicBtn");
+  if (!b) return;
+  b.textContent = pmPublic ? "🟢 공개 ON (참가자에게 보임)" : "⚫ 공개 OFF (참가자에게 안 보임)";
+  b.className = "btn btn-sm " + (pmPublic ? "btn-gold" : "btn-gray");
+}
 function updatePmMaleRoundButton() {
   var b = document.getElementById("pmMaleRoundBtn");
   if (!b) return;
   b.textContent = pmMaleRoundOpen ? "🟢 남자끼리 매칭 열림 (끄려면 클릭)" : "👬 남자끼리 매칭 잠금 (여자 전원 완료 시 자동 열림)";
   b.className = "btn btn-sm " + (pmMaleRoundOpen ? "btn-gold" : "btn-gray");
 }
+function pmUpdateEntryVisibility() {
+  var card = document.getElementById("pmEntryCard");
+  if (!card) return;
+  card.style.display = (pmPublic || admin) ? "flex" : "none";
+}
+
 function pmRenderAdminTable() {
   var wrap = document.getElementById("pmAdminTableWrap");
   if (!wrap || !admin) return;
@@ -3290,6 +3912,7 @@ function pmRender() {
     listEl.innerHTML = '<div class="pm-empty">아직 관리자가 명단을 등록하지 않았습니다</div>';
     return;
   }
+  var myClaim = pmGetClaim(); // 관리자는 항상 null(모든 이름 확인 가능)
   var lockedBtn = '<button class="pm-check-btn" disabled style="opacity:0.4; cursor:default;">🔒 잠김</button>';
 
   var html = pmFemales.map(function(f) {
@@ -3316,6 +3939,7 @@ function pmRender() {
     } else if (matched) {
       badge = '<span class="pm-badge done">✅ 매칭완료</span>';
       var partnerName = femalePartner || malePartner;
+      btn = '<button class="pm-check-btn" onclick="pmMaleCheck(\'' + m.replace(/'/g, "\\'") + '\', \'' + partnerName.replace(/'/g, "\\'") + '\')">내 결과 확인</button>';
     } else if (pmMaleRoundOpen) {
       badge = '<span class="pm-badge wait">🎲 매칭 가능</span>';
       btn = '<button class="pm-draw-btn" onclick="pmMaleDraw(\'' + m.replace(/'/g, "\\'") + '\')">매칭</button>';
@@ -3331,6 +3955,10 @@ function pmRender() {
 }
 
 // 여자쪽에서 이미 배정된 남자가 "내 결과 확인"을 누를 때 (기기 잠금 체크 후 결과 표시)
+function pmMaleCheck(maleName, partnerName) {
+  if (!pmDeviceGuard(maleName)) return;
+  pmShowResult(maleName, partnerName);
+}
 
 // 이 남자가 어떤 여자와 매칭됐는지 찾기 (여자쪽에서 뽑기로 배정된 경우)
 function pmFindFemalePartnerOf(maleName) {
@@ -3361,6 +3989,7 @@ function pmDraw(femaleName) {
   if (!pmDeviceGuard(femaleName)) return;
   if (!useFirebase) {
     // 오프라인(로컬) 모드 — 트랜잭션 없이 그 자리에서 처리
+    if (pmMatches[femaleName]) { pmShowResult(femaleName, pmMatches[femaleName].male); return; }
     var usedLocal = {};
     Object.keys(pmMatches).forEach(function(k) { usedLocal[pmMatches[k].male] = true; });
     var poolLocal = pmMales.filter(function(m) { return !usedLocal[m]; });
@@ -3376,8 +4005,10 @@ function pmDraw(femaleName) {
     pmCheckAutoOpenMaleRound();
     pmRenderAdminTable();
     if (pmModalOpen) pmRender();
+    pmShowResult(femaleName, pickedLocal);
     return;
   }
+  db.ref(PM_PATH + "/matches").transaction(function(current) {
     current = current || {};
     if (current[femaleName]) return current; // 이미 매칭됨 → 그대로 반환(변경 없음)
     var used = {};
@@ -3402,6 +4033,7 @@ function pmDraw(femaleName) {
     if (mine) {
       pmMatches = data; // 최신 매칭 현황 반영 (자동 오픈 판단에 필요)
       pmCheckAutoOpenMaleRound();
+      pmShowResult(femaleName, mine.male);
     }
   });
 }
@@ -3412,6 +4044,7 @@ function pmCheckAutoOpenMaleRound() {
   var matchedCount = Object.keys(pmMatches).length;
   if (matchedCount >= pmFemales.length && !pmMaleRoundOpen) {
     pmMaleRoundOpen = true;
+    if (useFirebase) db.ref(PM_PATH + "/maleRoundOpen").set(true);
   }
 }
 
@@ -3430,7 +4063,9 @@ function pmRemainingMales() {
 // 남자끼리 매칭 — 버튼을 누르면 그 순간 "남는 남자" 풀에서 무작위로 한 명을 뽑아 즉시 매칭 (여자쪽 매칭과 동일한 방식)
 function pmMaleDraw(maleName) {
   if (!pmDeviceGuard(maleName)) return;
+  if (pmMaleMatches[maleName]) { pmShowResult(maleName, pmMaleMatches[maleName]); return; }
   var existingFemalePartner = pmFindFemalePartnerOf(maleName);
+  if (existingFemalePartner) { pmShowResult(maleName, existingFemalePartner); return; } // 이미 여자와 매칭됨 → 안전장치
   if (!useFirebase) {
     var usedByFemaleLocal = pmUsedByFemale();
     var poolLocal = pmMales.filter(function(m) { return m !== maleName && !usedByFemaleLocal[m] && !pmMaleMatches[m]; });
@@ -3441,8 +4076,10 @@ function pmMaleDraw(maleName) {
     pmMaleMatches[pickedLocal] = maleName;
     pmRenderAdminTable();
     if (pmModalOpen) pmRender();
+    pmShowResult(maleName, pickedLocal);
     return;
   }
+  db.ref(PM_PATH + "/maleRound").transaction(function(current) {
     current = current || {};
     if (current[maleName]) return current; // 이미 매칭됨 → 그대로
     var usedByFemale = pmUsedByFemale();
@@ -3457,17 +4094,29 @@ function pmMaleDraw(maleName) {
     if (err) { toast("매칭 중 오류가 발생했습니다"); return; }
     if (!committed) { toast("매칭 가능한 상대가 없습니다"); return; }
     var data = snap.val() || {};
+    if (data[maleName]) pmShowResult(maleName, data[maleName]);
   });
 }
 
+function pmShowResult(femaleName, maleName) {
+  pmMyReveal = femaleName;
+  document.getElementById("pmRevealWho").textContent = femaleName + "님의 파트너는";
+  document.getElementById("pmRevealPartner").textContent = maleName + " 님";
+  document.getElementById("pmRevealOverlay").classList.add("open");
+}
 function pmCloseReveal() {
   document.getElementById("pmRevealOverlay").classList.remove("open");
 }
 
 function pmOpenModal() {
+  if (!pmPublic && !admin) { toast("아직 공개되지 않았습니다"); return; }
   pmModalOpen = true;
   document.getElementById("pmOverlay").classList.add("open");
   pmRender();
+}
+function pmCloseModal() {
+  pmModalOpen = false;
+  document.getElementById("pmOverlay").classList.remove("open");
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3530,7 +4179,7 @@ function renderMemberHandiStats(showToast) {
     wrap.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>아직 핸디·친타수가 모두 입력된 기록이 없습니다</p></div>';
   } else {
     wrap.innerHTML = '<div style="font-size:11px; color:var(--text-3); margin-bottom:8px;">게임수 ' + MEMBER_HANDI_MIN_GAMES + '회 미만은 아직 데이터가 부족해 제안핸디를 적용하지 않습니다. 현재 퍼센트 핸디: <strong>' + handiPercent + '%</strong></div>'
-      + '<div class="table-scroll"><table class="pm-admin-table"><thead><tr>'
+      + '<div class="foursome-scroll"><table class="pm-admin-table"><thead><tr>'
       + '<th>이름</th><th>게임수</th><th>평균친타수</th><th>평균넷</th><th>최근핸디</th><th>제안핸디</th><th></th>'
       + '</tr></thead><tbody>' + stats.map(function(s) {
         var enough = s.gamesCount >= MEMBER_HANDI_MIN_GAMES;
