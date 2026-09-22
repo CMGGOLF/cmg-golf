@@ -100,13 +100,9 @@ body {
   background: linear-gradient(90deg, transparent, rgba(255,220,80,0.6), transparent);
 }
 .app-header .header-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  text-align: left;
+  text-align: center;
 }
-.app-header .header-text { flex: 0 1 auto; min-width: 0; }
+.app-header .header-text { }
 .app-header h1 {
   font-family: 'Cormorant Garamond', serif;
   font-size: 26px;
@@ -116,13 +112,17 @@ body {
   text-shadow: 0 0 30px rgba(255,220,80,0.4);
 }
 .app-header .sub {
-  font-size: 18px;
+  font-size: 14px;
   opacity: 0.7;
   margin-top: 3px;
   font-family: 'DM Mono', monospace;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.85);
+  white-space: nowrap;
+}
+@media (max-width: 340px) {
+  .app-header .sub { font-size: 12px; letter-spacing: 0.03em; }
 }
 .room-badge {
   display: inline-block;
@@ -269,9 +269,9 @@ body {
 /* ── 공지사항 ── */
 .notice-board-item { border: 1px solid var(--border-1); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
 .notice-board-item.pinned { border-color: rgba(201,168,76,0.45); background: linear-gradient(135deg, rgba(201,168,76,0.07), rgba(201,168,76,0.02)); }
-.notice-board-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.notice-board-head { margin-bottom: 6px; }
 .notice-board-title { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.5; }
-.notice-board-date { font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; white-space: nowrap; margin-top: 3px; }
+.notice-board-date { font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; margin-top: 4px; }
 .notice-board-body { font-size: 14px; color: var(--text-2); line-height: 1.85; white-space: pre-wrap; word-break: break-word; }
 .notice-board-actions { display: flex; gap: 8px; margin-top: 12px; }
 .notice-board-actions button { flex: 0 0 auto; width: auto; padding: 7px 14px; font-size: 12px; }
@@ -760,7 +760,7 @@ body {
   <div class="header-content">
   <div class="header-text">
   <h1>CMG GOLF CLUB</h1>
-  <div class="sub">HANDICAP MANAGEMENT SYSTEM</div>
+  <div class="sub">CLUB MANAGEMENT SYSTEM</div>
   <div id="roomBadge" style="display:none">
     <div class="room-badge" id="roomBadgeText"></div>
   </div>
