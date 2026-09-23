@@ -1136,7 +1136,7 @@ body {
         <strong>게임수 5회 미만</strong>인 회원은 아직 데이터가 부족하다고 보고 제안핸디를 적용하지 않습니다.<br>
         "핸디 반영"을 누르면 그 회원의 <strong>기본 핸디</strong>로 저장되어, 다음에 새 방에서 그 이름으로 등록할 때(불러오기) 자동으로 채워집니다.
       </div>
-      <button class="btn btn-gold btn-sm" style="width:100%; margin-bottom:10px;" onclick="adminRunNameCleanupBatch()">🧹 이름 정리 실행 (영민→고영민, 이수카→이형순, 우석(빅스비)→우석, 이철주·지영·이서현 삭제)</button>
+      <button class="btn btn-gold btn-sm" style="width:100%; margin-bottom:10px;" onclick="adminRunNameCleanupBatch()">🧹 이름 정리 실행 (영민→고영민, 이수카→이형순, 우석(빅스비)→우석, 정기철 병합, 이철주·지영·이서현 삭제)</button>
       <button class="btn btn-gray btn-sm" style="width:100%; margin-bottom:10px;" onclick="renderMemberHandiStats(true)">🔄 통계 새로고침</button>
       <div id="memberHandiStatsWrap"><div class="empty-state" style="padding:12px 0"><p>통계 새로고침을 눌러주세요</p></div></div>
     </div>
@@ -1598,11 +1598,14 @@ function baseName(name) {
   var s = String(name == null ? "" : name).trim();
   // 기기별로 한글이 다른 유니코드 형태(NFC/NFD)로 저장되어 화면엔 똑같이 보여도 다른 문자열로 취급되는 문제 방지
   if (s.normalize) s = s.normalize("NFC");
+  // 눈에 안 보이는 문자(키보드 자동완성 등으로 섞여 들어가는 한글 채움 문자, 폭 없는 공백 등) 제거 — 화면엔 똑같아 보여도 다른 이름으로 취급되는 문제 방지
+  s = s.replace(/[\u200B\u200C\u200D\uFEFF\u115F\u1160\u3164\uFFA0]/g, "");
+  // 이름 중간에 섞여 들어간 공백도 전부 제거 (한글 이름엔 원래 공백이 없음)
+  s = s.replace(/\s+/g, "");
   // 중복 구분/메모용으로 뒤에 붙는 표시들을 제거해 원래 이름으로 정규화
-  // 예: "홍길동(2)", "홍길동(빅스비)", "홍길동-2", "홍길동_2", "홍길동 2" 모두 "홍길동"
-  s = s.replace(/[\s\-_]*[\(（][^()（）]*[\)）]\s*$/, "");
-  s = s.replace(/[\s\-_]+\d+\s*$/, "");
-  s = s.replace(/\s*\d+\s*$/, "");
+  // 예: "홍길동(2)", "홍길동(빅스비)", "홍길동-2", "홍길동_2" 모두 "홍길동"
+  s = s.replace(/[\-_]*[\(（][^()（）]*[\)）]$/, "");
+  s = s.replace(/[\-_]*\d+$/, "");
   return s.trim();
 }
 function saveMyScore() {
@@ -3100,13 +3103,15 @@ function adminBackfillMemberPhones() {
 function adminRunNameCleanupBatch() {
   if (!admin) { toast("관리자만 가능합니다"); return; }
   if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
-  var renameMap = { "영민": "고영민", "이수카": "이형순", "우석(빅스비)": "우석" };
+  // 이름이 같아도(화면엔 똑같이 보여도) 기기별로 다른 문자로 저장되어 갈라진 경우도 자기 자신으로 병합
+  var renameMap = { "영민": "고영민", "이수카": "이형순", "우석(빅스비)": "우석", "정기철": "정기철" };
   var deleteNames = ["이철주", "지영", "이서현"];
   if (!confirm(
     "다음 작업을 한 번에 실행합니다 (되돌릴 수 없습니다):\n\n" +
     "· 영민 → 고영민 (동일인물, 병합)\n" +
     "· 이수카 → 이형순 (동일인물, 병합)\n" +
     "· 우석(빅스비) → 우석 (동일인물, 병합)\n" +
+    "· 정기철 — 기기별로 다르게 저장된 기록 하나로 병합\n" +
     "· 이철주 / 지영 / 이서현 기록 완전 삭제\n" +
     "· 조영일은 그대로 유지\n\n계속하시겠습니까?"
   )) return;
@@ -3116,30 +3121,41 @@ function adminRunNameCleanupBatch() {
     Object.keys(rooms).forEach(function(roomKey) {
       var players = (rooms[roomKey] && rooms[roomKey].players) || {};
       var playerKeys = Object.keys(players);
+      // 1. 삭제 대상 먼저 처리
+      playerKeys.forEach(function(pName) {
+        if (deleteNames.indexOf(baseName(pName)) !== -1) {
+          updates["rooms/" + roomKey + "/players/" + pName] = null;
+        }
+      });
+      // 2. 병합 대상을 최종이름(newBase) 기준으로 그룹핑 — 같은 방 안에서 한 사람은 한 줄만 남긴다
+      var groups = {};
       playerKeys.forEach(function(pName) {
         var bn = baseName(pName);
-        if (deleteNames.indexOf(bn) !== -1) {
-          updates["rooms/" + roomKey + "/players/" + pName] = null;
-        } else if (renameMap[bn]) {
-          var newBase = renameMap[bn];
-          var alreadyHasNew = playerKeys.some(function(other) {
-            return other !== pName && baseName(other) === newBase;
-          });
-          var pdata = players[pName];
-          updates["rooms/" + roomKey + "/players/" + pName] = null;
-          if (!alreadyHasNew) {
-            var newData = {};
-            for (var k in pdata) { newData[k] = pdata[k]; }
-            newData.name = newBase;
-            updates["rooms/" + roomKey + "/players/" + newBase] = newData;
-          }
-        }
+        if (deleteNames.indexOf(bn) !== -1) return;
+        var newBase = renameMap[bn];
+        if (!newBase) return;
+        (groups[newBase] = groups[newBase] || []).push(pName);
+      });
+      Object.keys(groups).forEach(function(newBase) {
+        var keys = groups[newBase];
+        // 대표로 남길 항목: 점수가 채워져 있는 것 우선, 없으면 첫 번째
+        var survivor = keys.filter(function(k) {
+          var v = players[k];
+          return v && v.score !== "" && v.score !== undefined && v.score !== null;
+        })[0] || keys[0];
+        var survivorData = players[survivor];
+        keys.forEach(function(k) { updates["rooms/" + roomKey + "/players/" + k] = null; });
+        var newData = {};
+        for (var f in survivorData) { newData[f] = survivorData[f]; }
+        newData.name = newBase;
+        updates["rooms/" + roomKey + "/players/" + newBase] = newData;
       });
     });
     return db.ref("attendance").once("value").then(function(attSnap) {
       var att = attSnap.val() || {};
       Object.keys(renameMap).forEach(function(oldB) {
         var newB = renameMap[oldB];
+        if (oldB === newB) return; // 자기 자신 병합은 출석 경로가 이미 같으므로 손댈 필요 없음
         if (att[oldB]) {
           Object.keys(att[oldB]).forEach(function(roomKey) {
             updates["attendance/" + newB + "/" + roomKey] = att[oldB][roomKey];
@@ -3296,7 +3312,7 @@ function renderMemberHandiStats(showToast) {
   } else {
     wrap.innerHTML = '<div style="font-size:11px; color:var(--text-3); margin-bottom:8px;">게임수 ' + MEMBER_HANDI_MIN_GAMES + '회 미만은 아직 데이터가 부족해 제안핸디를 적용하지 않습니다. 현재 퍼센트 핸디: <strong>' + handiPercent + '%</strong></div>'
       + '<div class="table-scroll"><table class="data-table"><thead><tr>'
-      + '<th>이름</th><th>게임수</th><th>평균친타수</th><th>평균넷</th><th>최근핸디</th><th>제안핸디</th><th></th>'
+      + '<th>이름</th><th>게임수</th><th>평균친타수</th><th>평균넷</th><th>최근핸디</th><th>제안핸디</th><th></th><th></th>'
       + '</tr></thead><tbody>' + stats.map(function(s) {
         var enough = s.gamesCount >= MEMBER_HANDI_MIN_GAMES;
         var pctNote = (handiPercent !== 100 && enough) ? '<div style="font-size:9.5px; color:var(--text-3);">(100%: ' + s.rawSuggestedHandi + ' → ' + handiPercent + '%: ' + s.suggestedHandi + ')</div>' : '';
@@ -3306,10 +3322,11 @@ function renderMemberHandiStats(showToast) {
         var btnCell = enough
           ? '<button class="btn btn-gold btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" onclick="applyMemberHandi(\'' + s.name.replace(/'/g, "\\'") + '\', ' + s.suggestedHandi + ')">핸디 반영</button>'
           : '<button class="btn btn-gray btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" disabled>핸디 반영</button>';
+        var delCell = '<button class="btn btn-danger btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" onclick="adminDeleteHandiName(\'' + s.name.replace(/'/g, "\\'") + '\')">🗑 삭제</button>';
         return '<tr' + (enough ? '' : ' style="opacity:0.6;"') + '><td>' + s.name + '</td><td>' + s.gamesCount + '</td><td>' + s.avgScore.toFixed(1) + '</td>'
           + '<td>' + (s.avgNet >= 0 ? "+" : "") + s.avgNet.toFixed(1) + '</td><td>' + s.latestHandi + '</td>'
           + '<td>' + suggestedCell + '</td>'
-          + '<td>' + btnCell + '</td></tr>';
+          + '<td>' + btnCell + '</td><td>' + delCell + '</td></tr>';
       }).join("") + '</tbody></table></div>';
   }
   if (showToast) toast("통계를 새로고침했습니다");
@@ -3328,6 +3345,35 @@ function applyMemberHandi(name, handi) {
     toast("✅ " + name + "님의 기본 핸디를 " + handi + "로 저장했습니다. 다음 방부터 자동 적용됩니다.");
   }).catch(function() {
     toast("저장 실패(연결 확인)");
+  });
+}
+
+// ── 핸디관리 목록에서 특정 이름의 기록을 전부 삭제 (모든 방의 참가/점수 기록 + 출석 기록) ──
+function adminDeleteHandiName(name) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  if (!confirm("[" + name + "]의 모든 경기방 참가/점수 기록과 출석 기록을 완전히 삭제하시겠습니까?\n(회원 명부 자체에는 영향 없습니다 — 이 이름이 정식 회원이라면 회원 정보는 그대로 남습니다)\n되돌릴 수 없습니다.")) return;
+  db.ref("rooms").once("value").then(function(roomsSnap) {
+    var rooms = roomsSnap.val() || {};
+    var updates = {};
+    Object.keys(rooms).forEach(function(roomKey) {
+      var players = (rooms[roomKey] && rooms[roomKey].players) || {};
+      Object.keys(players).forEach(function(pName) {
+        if (baseName(pName) === name) {
+          updates["rooms/" + roomKey + "/players/" + pName] = null;
+        }
+      });
+    });
+    updates["attendance/" + name] = null;
+    return db.ref().update(updates);
+  }).then(function() {
+    toast("🗑 [" + name + "]의 기록을 삭제했습니다.");
+    renderMemberHandiStats();
+    refreshAdminPlayerList();
+    renderRank();
+    renderParticipantList();
+  }).catch(function(err) {
+    toast("⚠ 처리 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
   });
 }
 
