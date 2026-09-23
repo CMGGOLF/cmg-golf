@@ -1136,7 +1136,6 @@ body {
         <strong>게임수 5회 미만</strong>인 회원은 아직 데이터가 부족하다고 보고 제안핸디를 적용하지 않습니다.<br>
         "핸디 반영"을 누르면 그 회원의 <strong>기본 핸디</strong>로 저장되어, 다음에 새 방에서 그 이름으로 등록할 때(불러오기) 자동으로 채워집니다.
       </div>
-      <button class="btn btn-gold btn-sm" style="width:100%; margin-bottom:10px;" onclick="adminRunNameCleanupBatch()">🧹 이름 정리 실행 (영민→고영민, 이수카→이형순, 우석(빅스비)→우석, 정기철 병합, 이철주·지영·이서현 삭제)</button>
       <button class="btn btn-gray btn-sm" style="width:100%; margin-bottom:10px;" onclick="renderMemberHandiStats(true)">🔄 통계 새로고침</button>
       <div id="memberHandiStatsWrap"><div class="empty-state" style="padding:12px 0"><p>통계 새로고침을 눌러주세요</p></div></div>
     </div>
@@ -3097,85 +3096,6 @@ function adminBackfillMemberPhones() {
     });
   }).catch(function(err) {
     toast("⚠ 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
-  });
-}
-// ── 이름 정리 일괄 작업 (2026-09-23 요청: 동일인물 이름 통일 + 불명확한 이름 삭제) ──
-function adminRunNameCleanupBatch() {
-  if (!admin) { toast("관리자만 가능합니다"); return; }
-  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
-  // 이름이 같아도(화면엔 똑같이 보여도) 기기별로 다른 문자로 저장되어 갈라진 경우도 자기 자신으로 병합
-  var renameMap = { "영민": "고영민", "이수카": "이형순", "우석(빅스비)": "우석", "정기철": "정기철" };
-  var deleteNames = ["이철주", "지영", "이서현"];
-  if (!confirm(
-    "다음 작업을 한 번에 실행합니다 (되돌릴 수 없습니다):\n\n" +
-    "· 영민 → 고영민 (동일인물, 병합)\n" +
-    "· 이수카 → 이형순 (동일인물, 병합)\n" +
-    "· 우석(빅스비) → 우석 (동일인물, 병합)\n" +
-    "· 정기철 — 기기별로 다르게 저장된 기록 하나로 병합\n" +
-    "· 이철주 / 지영 / 이서현 기록 완전 삭제\n" +
-    "· 조영일은 그대로 유지\n\n계속하시겠습니까?"
-  )) return;
-  db.ref("rooms").once("value").then(function(roomsSnap) {
-    var rooms = roomsSnap.val() || {};
-    var updates = {};
-    Object.keys(rooms).forEach(function(roomKey) {
-      var players = (rooms[roomKey] && rooms[roomKey].players) || {};
-      var playerKeys = Object.keys(players);
-      // 1. 삭제 대상 먼저 처리
-      playerKeys.forEach(function(pName) {
-        if (deleteNames.indexOf(baseName(pName)) !== -1) {
-          updates["rooms/" + roomKey + "/players/" + pName] = null;
-        }
-      });
-      // 2. 병합 대상을 최종이름(newBase) 기준으로 그룹핑 — 같은 방 안에서 한 사람은 한 줄만 남긴다
-      var groups = {};
-      playerKeys.forEach(function(pName) {
-        var bn = baseName(pName);
-        if (deleteNames.indexOf(bn) !== -1) return;
-        var newBase = renameMap[bn];
-        if (!newBase) return;
-        (groups[newBase] = groups[newBase] || []).push(pName);
-      });
-      Object.keys(groups).forEach(function(newBase) {
-        var keys = groups[newBase];
-        // 대표로 남길 항목: 점수가 채워져 있는 것 우선, 없으면 첫 번째
-        var survivor = keys.filter(function(k) {
-          var v = players[k];
-          return v && v.score !== "" && v.score !== undefined && v.score !== null;
-        })[0] || keys[0];
-        var survivorData = players[survivor];
-        keys.forEach(function(k) { updates["rooms/" + roomKey + "/players/" + k] = null; });
-        var newData = {};
-        for (var f in survivorData) { newData[f] = survivorData[f]; }
-        newData.name = newBase;
-        updates["rooms/" + roomKey + "/players/" + newBase] = newData;
-      });
-    });
-    return db.ref("attendance").once("value").then(function(attSnap) {
-      var att = attSnap.val() || {};
-      Object.keys(renameMap).forEach(function(oldB) {
-        var newB = renameMap[oldB];
-        if (oldB === newB) return; // 자기 자신 병합은 출석 경로가 이미 같으므로 손댈 필요 없음
-        if (att[oldB]) {
-          Object.keys(att[oldB]).forEach(function(roomKey) {
-            updates["attendance/" + newB + "/" + roomKey] = att[oldB][roomKey];
-          });
-          updates["attendance/" + oldB] = null;
-        }
-      });
-      deleteNames.forEach(function(dn) {
-        if (att[dn]) updates["attendance/" + dn] = null;
-      });
-      return db.ref().update(updates);
-    });
-  }).then(function() {
-    toast("✅ 이름 정리를 완료했습니다.");
-    renderMemberHandiStats();
-    refreshAdminPlayerList();
-    renderRank();
-    renderParticipantList();
-  }).catch(function(err) {
-    toast("⚠ 처리 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
   });
 }
 function adminKickMemberFull(name) {
