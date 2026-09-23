@@ -1138,6 +1138,14 @@ body {
       </div>
       <button class="btn btn-gray btn-sm" style="width:100%; margin-bottom:10px;" onclick="renderMemberHandiStats(true)">🔄 통계 새로고침</button>
       <div id="memberHandiStatsWrap"><div class="empty-state" style="padding:12px 0"><p>통계 새로고침을 눌러주세요</p></div></div>
+      <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border-2);">
+        <div style="font-size:12px; color:var(--text-3); margin-bottom:6px;">🔍 특정 이름의 원본 기록을 방별로 직접 확인 (집계에서 왜 빠지는지 확인할 때)</div>
+        <div style="display:flex; gap:8px;">
+          <input id="nameDiagInput" placeholder="이름 입력 (예: 윤인서)" style="flex:1;">
+          <button class="btn btn-gray btn-sm" style="width:auto; padding:9px 14px; flex-shrink:0;" onclick="adminDiagnoseName()">진단</button>
+        </div>
+        <div id="nameDiagResult"></div>
+      </div>
     </div>
     <div class="admin-section" id="handiPolicyAdminSection">
       <div class="card-title">⚙️ 핸디 관리 정책 (3가지 방법 조합)</div>
@@ -3174,6 +3182,40 @@ if (urlRoom) {
 // ══════════════════════════════════════════════════════════════
 // 📊 회원별 평균 핸디 관리 (모든 방의 핸디+친타수 기록을 모아 계산)
 // ══════════════════════════════════════════════════════════════
+// ── 특정 이름의 원본 기록을 방별로 그대로 보여주는 진단 도구 (표기가 갈려서 집계에서 빠지는 경우 확인용) ──
+function adminDiagnoseName() {
+  if (!admin) return;
+  var qEl = document.getElementById("nameDiagInput");
+  var resEl = document.getElementById("nameDiagResult");
+  var q = (qEl && qEl.value ? qEl.value : "").trim();
+  if (!q) { resEl.innerHTML = ""; return; }
+  var qBase = baseName(q) || q;
+  var rows = [];
+  Object.keys(allRooms || {}).forEach(function(roomKey) {
+    var room = allRooms[roomKey];
+    if (!room || !room.players) return;
+    Object.keys(room.players).forEach(function(pName) {
+      if (pName.indexOf(q) !== -1 || baseName(pName) === qBase) {
+        var p = room.players[pName] || {};
+        rows.push({
+          room: roomKey, raw: pName, len: String(pName).length, base: baseName(pName),
+          score: (p.score === "" || p.score === undefined || p.score === null) ? "(없음)" : p.score,
+          handi: (p.handi === undefined || p.handi === null) ? "(없음)" : p.handi
+        });
+      }
+    });
+  });
+  if (!rows.length) {
+    resEl.innerHTML = '<div class="empty-state" style="padding:10px 0;"><p>일치하는 원본 기록이 없습니다</p></div>';
+    return;
+  }
+  resEl.innerHTML = '<div style="font-size:11px; color:var(--text-3); margin:8px 0;">총 ' + rows.length + '건 — 글자수(자)가 이름 길이와 다르면 눈에 안 보이는 문자가 섞여 있다는 뜻입니다. "스코어/핸디"가 (없음)인 방은 게임수 집계에서 빠집니다.</div>'
+    + '<div class="table-scroll"><table class="data-table"><thead><tr><th>방</th><th>원본 이름</th><th>글자수</th><th>정규화</th><th>스코어</th><th>핸디</th></tr></thead><tbody>'
+    + rows.map(function(r) {
+        var incomplete = (r.score === "(없음)" || r.handi === "(없음)");
+        return '<tr' + (incomplete ? ' style="opacity:0.55;"' : '') + '><td>' + r.room + '</td><td>' + r.raw + '</td><td>' + r.len + '</td><td>' + r.base + '</td><td>' + r.score + '</td><td>' + r.handi + '</td></tr>';
+      }).join("") + '</tbody></table></div>';
+}
 function computeMemberHandiStats() {
   var perRoomAvgNet = {}; // roomKey -> 그 방 전체 참가자 평균 넷스코어
   var records = {};       // baseName -> [{net, handi, score, ts, room}]
