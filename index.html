@@ -163,28 +163,6 @@ body {
   gap: var(--tab-gap);
 }
 .tab-nav-row.row-2 { justify-content: center; }
-/* 관리자 진입점을 아주 작은 점으로 숨김 — 화면 우측 하단 구석 */
-.hidden-admin-dot {
-  position: fixed !important;
-  right: 6px;
-  bottom: 6px;
-  width: 13px !important;
-  height: 13px !important;
-  min-width: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border: none !important;
-  border-radius: 50% !important;
-  background: rgba(120,120,120,0.18) !important;
-  z-index: 999;
-  overflow: hidden;
-  font-size: 0 !important;
-  line-height: 0 !important;
-  flex: none !important;
-  box-shadow: none !important;
-}
-.hidden-admin-dot .icon { display: none; }
-.hidden-admin-dot.active { background: rgba(26,138,70,0.5) !important; }
 .tab-btn {
   flex: 0 0 calc((100% - 3 * var(--tab-gap)) / 4);
   display: flex;
@@ -800,9 +778,9 @@ body {
     <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
     <button class="tab-btn" onclick="switchTab('team')" id="tab-team"><span class="icon">🔀</span>팀편성</button>
     <button class="tab-btn" onclick="switchTab('attendance')" id="tab-attendance"><span class="icon">📋</span>출석</button>
+    <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
   </div>
 </div>
-<button class="tab-btn hidden-admin-dot" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
 <div class="page" id="page-notice">
   <div class="card admin-section" id="noticeAdminBox" style="display:none; border-color:rgba(201,168,76,0.3); background:rgba(201,168,76,0.06);">
     <div class="card-title" style="color:var(--gold);" id="noticeFormTitle">📢 공지 작성</div>
@@ -1023,7 +1001,7 @@ body {
 </div>
 <div class="page" id="page-admin">
   <div id="adminLocked">
-    <div class="card">
+    <div class="card" id="adminLoginCard">
       <div class="card-title">관리자 인증</div>
       <div class="field">
         <label>비밀번호</label>
