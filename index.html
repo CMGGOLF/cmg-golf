@@ -1594,7 +1594,12 @@ function editMyScore(name) {
 }
 // 이름 뒤 '팀편성용 숫자'를 떼어낸 기본 이름 — 출석은 항상 기본 이름으로 기록
 function baseName(name) {
-  return String(name == null ? "" : name).replace(/\s*\d+\s*$/, "").trim();
+  var s = String(name == null ? "" : name).trim();
+  // 중복 구분을 위해 뒤에 붙이는 표시들을 제거해 원래 이름으로 정규화 (예: "홍길동(2)", "홍길동-2", "홍길동_2", "홍길동 2" 모두 "홍길동")
+  s = s.replace(/[\s\-_]*[\(（]\s*\d+\s*[\)）]\s*$/, "");
+  s = s.replace(/[\s\-_]+\d+\s*$/, "");
+  s = s.replace(/\s*\d+\s*$/, "");
+  return s.trim();
 }
 function saveMyScore() {
   if (!admin && !loggedInMemberName) { showNotice(document.getElementById("scoreNotice"), "error", "🔒 먼저 로그인해주세요"); return; }
@@ -3112,6 +3117,11 @@ function adminKickMemberFull(name) {
     });
   }).then(function() {
     toast("🚫 " + name + "님을 강퇴하고 모든 기록을 삭제했습니다.");
+    renderMemberHandiStats();
+    refreshAdminPlayerList();
+    renderMemberList();
+    renderRank();
+    renderParticipantList();
   }).catch(function(err) {
     toast("⚠ 처리 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
   });
