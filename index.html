@@ -1141,6 +1141,10 @@ body {
         </div>
         <div id="nameDiagResult"></div>
       </div>
+      <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border-2);">
+        <div style="font-size:12px; color:var(--text-3); margin-bottom:6px;">🛠 과거에 출석 체크가 누락된 기록 복구 (이름 뒤에 숫자가 붙어 회원으로 인식되지 않아 출석이 기록되지 않았던 경우)</div>
+        <button class="btn btn-gray btn-sm" style="width:100%;" onclick="adminBackfillAttendance()">📋 출석 기록 소급 생성</button>
+      </div>
     </div>
     <div class="admin-section" id="handiPolicyAdminSection">
       <div class="card-title">⚙️ 핸디 관리 정책 (3가지 방법 조합)</div>
@@ -1632,7 +1636,15 @@ function saveMyScore() {
     db.ref("rooms/" + currentRoom + "/players/" + name).set({ name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender });
     // 출석은 기존 이름(숫자 제거)으로 기록 → "홍길동1"도 "홍길동" 출석으로 집계 (회원가입된 이름일 때만)
     var attName = baseName(name) || name;
-    if (allMembers[attName]) {
+    // 회원 등록 여부 확인: 입력한 이름 그대로, 숫자 제거한 기본 이름, 또는 회원DB에 "이름2"처럼
+    // 숫자가 붙은 키로 등록되어 있어도(baseName이 같으면) 모두 동일 회원으로 인식 → 출석 미기록 버그 방지
+    var isRegisteredMember = !!allMembers[name] || !!allMembers[attName];
+    if (!isRegisteredMember) {
+      for (var __mk in allMembers) {
+        if (baseName(__mk) === attName) { isRegisteredMember = true; break; }
+      }
+    }
+    if (isRegisteredMember) {
       var attendRef = db.ref("attendance/" + attName + "/" + currentRoom);
       attendRef.once("value", function(snap) {
         if (!snap.exists()) {
@@ -3190,6 +3202,45 @@ function adminDiagnoseName() {
         var incomplete = (r.score === "(없음)" || r.handi === "(없음)");
         return '<tr' + (incomplete ? ' style="opacity:0.55;"' : '') + '><td>' + r.room + '</td><td>' + r.raw + '</td><td>' + r.len + '</td><td>' + r.base + '</td><td>' + r.score + '</td><td>' + r.handi + '</td></tr>';
       }).join("") + '</tbody></table></div>';
+}
+// ── 과거에 출석이 누락된 기록을 지금 저장된 모든 방 기록을 기준으로 다시 생성 ──
+// (이름 뒤에 숫자가 붙은 키로 회원가입되어 baseName이 일치하지 않아 출석이 기록되지 않았던 경우 등을 복구)
+function adminBackfillAttendance() {
+  if (!admin) return;
+  if (!confirm("모든 방의 기록을 기준으로 누락된 출석 기록을 다시 만듭니다. 계속할까요?")) return;
+  var toCreate = []; // {attName, room, timestamp}
+  Object.keys(allRooms || {}).forEach(function(roomKey) {
+    var room = allRooms[roomKey];
+    if (!room || !room.players) return;
+    Object.keys(room.players).forEach(function(pName) {
+      var p = room.players[pName] || {};
+      var attName = baseName(pName) || pName;
+      var isRegisteredMember = !!allMembers[pName] || !!allMembers[attName];
+      if (!isRegisteredMember) {
+        for (var mk in allMembers) {
+          if (baseName(mk) === attName) { isRegisteredMember = true; break; }
+        }
+      }
+      if (!isRegisteredMember) return;
+      toCreate.push({ attName: attName, room: roomKey, timestamp: p.timestamp || Date.now() });
+    });
+  });
+  if (!toCreate.length) { toast("대상 기록이 없습니다"); return; }
+  var pending = toCreate.length, created = 0;
+  toCreate.forEach(function(item) {
+    var ref = db.ref("attendance/" + item.attName + "/" + item.room);
+    ref.once("value", function(snap) {
+      if (!snap.exists()) {
+        created++;
+        ref.set({ room: item.room, timestamp: item.timestamp });
+      }
+      pending--;
+      if (pending === 0) {
+        toast("✅ 출석 기록 " + created + "건 생성 완료");
+        renderAttendance();
+      }
+    });
+  });
 }
 function computeMemberHandiStats() {
   var perRoomAvgNet = {}; // roomKey -> 그 방 전체 참가자 평균 넷스코어
