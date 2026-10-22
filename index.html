@@ -752,6 +752,51 @@ body {
 .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
 .data-table th, .data-table td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--border-2); }
 .data-table th { color: var(--text-3); font-weight: 600; font-size: 11.5px; }
+
+/* ── 💰 운영비 관리 ── */
+.fund-summary { background: linear-gradient(135deg,#1a8a46,#0f6b38); color:#fff; border-radius:14px; padding:14px 16px; margin-bottom:12px; }
+.fund-summary small { display:block; font-size:12px; opacity:0.85; }
+.fund-bal b { display:block; font-size:28px; font-weight:800; margin-top:2px; letter-spacing:-0.01em; }
+.fund-sub { display:flex; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.25); }
+.fund-sub > div { flex:1; }
+.fund-sub b { display:block; font-size:15px; margin-top:1px; }
+.fund-type { display:flex; gap:8px; margin-bottom:10px; }
+.fund-type button { flex:1; padding:11px 0; font-size:15px; font-weight:800; font-family:inherit; border-radius:10px; border:1px solid var(--border-2); background:#f4f7f4; color:var(--text-3); cursor:pointer; }
+.fund-type button.active.in { background:rgba(26,138,70,0.12); border-color:#1a8a46; color:#0f6b38; }
+.fund-type button.active.out { background:rgba(214,69,69,0.1); border-color:#d64545; color:#b73030; }
+.fund-row2 { display:flex; gap:10px; }
+.fund-row2 .field { flex:1; min-width:0; }
+.fund-receipt-box { margin-bottom:12px; }
+.fund-receipt-box .rc-btn { display:block; width:100%; padding:12px; font-size:14px; font-weight:700; font-family:inherit; border:1.5px dashed var(--border-3,#b9c6b9); background:#f7faf7; color:var(--text-2); border-radius:10px; cursor:pointer; }
+.fund-thumb { display:flex; align-items:center; gap:10px; margin-top:8px; }
+.fund-thumb img { width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid var(--border-2); }
+.fund-table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:6px; }
+.fund-table th { background:#f0f5f0; color:var(--text-3); font-size:11px; padding:7px 4px; text-align:right; white-space:nowrap; }
+.fund-table th:first-child, .fund-table th:nth-child(2) { text-align:left; }
+.fund-table td { padding:9px 4px; border-bottom:1px solid var(--border-2); text-align:right; vertical-align:top; white-space:nowrap; }
+.fund-table td.d { text-align:left; color:var(--text-3); font-size:11.5px; }
+.fund-table td.m { text-align:left; white-space:normal; word-break:break-all; min-width:96px; }
+.fund-table td.m .memo { font-weight:600; color:var(--text); }
+.fund-table td.in { color:#0f6b38; font-weight:700; }
+.fund-table td.out { color:#c43a3a; font-weight:700; }
+.fund-table td.bal { font-weight:800; color:var(--text); }
+.fund-acts { display:flex; gap:4px; margin-top:5px; flex-wrap:wrap; }
+.fund-acts button { font-family:inherit; font-size:11px; font-weight:700; padding:4px 8px; border-radius:7px; border:1px solid var(--border-2); background:#fff; color:var(--text-2); cursor:pointer; }
+.fund-acts button.rc { background:#e8f5ec; border-color:#bfe6cd; color:#0f6b38; }
+.fund-acts button.del { color:#c43a3a; }
+#receiptViewer { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:1200; display:none; flex-direction:column; align-items:center; justify-content:center; padding:16px; }
+#receiptViewer.open { display:flex; }
+#receiptViewer img { max-width:100%; max-height:80vh; border-radius:8px; background:#fff; }
+#receiptViewer .rv-close { margin-top:14px; padding:12px 28px; font-size:15px; font-weight:800; font-family:inherit; border:0; border-radius:24px; background:#fff; color:#14233a; cursor:pointer; }
+#receiptViewer .rv-msg { color:#fff; font-size:14px; }
+
+.nseg { display:flex; background:#e6ede6; border-radius:12px; padding:3px; margin-bottom:12px; }
+.nseg button { flex:1; padding:11px 0; font-size:15px; font-weight:800; font-family:inherit; border:0; border-radius:10px; background:transparent; color:var(--text-3); cursor:pointer; }
+.nseg button.active { background:#fff; color:var(--green-dark, #0f6b38); box-shadow:0 1px 5px rgba(0,0,0,0.15); }
+.fund-gate { text-align:center; padding:26px 12px; color:var(--text-2); font-size:14px; line-height:1.7; background:#fff; border:1px solid var(--border-2); border-radius:14px; }
+.fund-tbar { display:flex; justify-content:flex-end; margin-bottom:8px; }
+.fund-tbar button { font-family:inherit; font-size:12px; font-weight:700; padding:7px 12px; border-radius:20px; border:1px solid var(--border-2); background:#fff; color:var(--text-3); cursor:pointer; }
+.fund-formcard { background:#fff; border:1px solid var(--border-2); border-radius:14px; padding:14px; margin-bottom:12px; }
 </style>
 </head>
 <body>
@@ -782,6 +827,11 @@ body {
   </div>
 </div>
 <div class="page" id="page-notice">
+  <div class="nseg">
+    <button id="nsegNotice" class="active" onclick="noticeSeg('notice')">📢 공지</button>
+    <button id="nsegFund" onclick="noticeSeg('fund')">💰 운영비</button>
+  </div>
+  <div id="noticePane">
   <div class="card admin-section" id="noticeAdminBox" style="display:none; border-color:rgba(201,168,76,0.3); background:rgba(201,168,76,0.06);">
     <div class="card-title" style="color:var(--gold);" id="noticeFormTitle">📢 공지 작성</div>
     <div class="field">
@@ -801,6 +851,50 @@ body {
     <div class="empty-state">
       <div class="big">📢</div>
       <p>등록된 공지가 없습니다</p>
+    </div>
+  </div>
+  </div>
+  <!-- 💰 운영비: 회원 누구나 열람 / 총무만 작성·수정 -->
+  <div id="fundPane" style="display:none;">
+    <div class="fund-gate" id="fundGate" style="display:none;">🔒 운영비 내역은 회원만 볼 수 있습니다.<br>먼저 <b>경기안내</b> 탭에서 회원 로그인을 해주세요.</div>
+    <div id="fundBody">
+      <div class="fund-summary">
+        <div class="fund-bal"><small>현재 잔액</small><b id="fundBalance">0원</b></div>
+        <div class="fund-sub">
+          <div><small>총 입금</small><b id="fundTotalIn">0원</b></div>
+          <div><small>총 출금</small><b id="fundTotalOut">0원</b></div>
+        </div>
+      </div>
+      <div class="fund-tbar">
+        <button id="fundTLogin" onclick="fundTreasurerLogin()">🔑 총무 인증</button>
+        <button id="fundTLogout" style="display:none;" onclick="fundTreasurerLogout()">총무 로그아웃</button>
+      </div>
+      <div class="fund-formcard" id="fundForm" style="display:none;">
+        <div class="card-title" style="margin-bottom:10px; font-size:14px;">✏️ 내역 입력 (총무 전용)</div>
+        <div class="fund-type">
+          <button id="fundTypeIn" class="active in" onclick="fundSetType('in')">➕ 입금</button>
+          <button id="fundTypeOut" onclick="fundSetType('out')">➖ 출금</button>
+        </div>
+        <div class="fund-row2">
+          <div class="field"><label>날짜</label><input id="fundDate" type="date"></div>
+          <div class="field"><label>금액(원)</label><input id="fundAmount" type="number" inputmode="numeric" placeholder="예: 50000"></div>
+        </div>
+        <div class="field"><label>내역</label><input id="fundMemo" placeholder="예: 10월 월회비 / 스크린 대관료"></div>
+        <div class="fund-receipt-box" id="fundReceiptBox" style="display:none;">
+          <button type="button" class="rc-btn" onclick="document.getElementById('fundReceiptInput').click()">📷 영수증 사진 첨부 (촬영 또는 갤러리)</button>
+          <input type="file" id="fundReceiptInput" accept="image/*" style="display:none" onchange="fundPickReceipt(this)">
+          <div class="fund-thumb" id="fundThumb" style="display:none;">
+            <img id="fundThumbImg" alt="영수증 미리보기">
+            <button type="button" class="btn btn-gray btn-sm" style="width:auto; padding:8px 12px; font-size:12px;" onclick="fundClearReceipt()">✕ 사진 삭제</button>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-green" id="fundSaveBtn" onclick="fundSave()">저장</button>
+          <button class="btn btn-gray" id="fundCancelBtn" style="display:none;" onclick="fundResetForm()">수정 취소</button>
+        </div>
+        <div class="notice notice-info" style="margin:10px 0 0; font-size:11.5px;">처음에는 현재 통장 잔액을 "입금 · 이월잔액"으로 한 번 넣어두면 이후 잔액이 정확히 맞습니다. 내역을 고치거나 지우면 잔액은 자동으로 다시 계산됩니다.</div>
+      </div>
+      <div class="table-scroll" id="fundListWrap"><div class="empty-state" style="padding:16px 0"><p>등록된 내역이 없습니다</p></div></div>
     </div>
   </div>
 </div>
@@ -893,7 +987,7 @@ body {
       </div>
       <div class="field">
         <label>친타수</label>
-        <input id="pScore" type="text" placeholder="예: 7 또는 -2">
+        <input id="pScore" type="text" placeholder="예: 77">
       </div>
     </div>
     <div class="btn-row" style="margin-top:4px">
@@ -1201,6 +1295,7 @@ body {
     </div>
   </div>
 </div>
+<div id="receiptViewer" onclick="if(event.target===this||event.target.className==='rv-close')fundCloseReceipt()"><div id="receiptViewerBody"></div><button class="rv-close" onclick="fundCloseReceipt()">닫기</button></div>
 <script>
 
 const firebaseConfig = {
@@ -1321,6 +1416,7 @@ function switchTab(tab) {
   currentTab = tab;
   document.getElementById("stickyScore").style.display = (tab === "score") ? "block" : "none";
   if (tab === "attendance") renderAttendance();
+  if (tab === "notice" && document.getElementById("fundPane").style.display !== "none") fundRefreshView();
 }
 function toast(msg) {
   var el = document.getElementById("toast");
@@ -3004,6 +3100,221 @@ function noticeDelete(id) {
     toast("🗑 공지가 삭제되었습니다");
     if (noticeEditingId === id) noticeCancelEdit();
   });
+}
+
+// ══════════════════════════════════════════════════════════════
+// 💰 운영비 관리 (입금/출금/잔액 + 출금 영수증 사진) — 전체 관리자 전용
+//   Firebase: fund/entries/{id} = 내역(가벼운 데이터), fund/receipts/{id} = 영수증 사진(눌러볼 때만 불러옴)
+// ══════════════════════════════════════════════════════════════
+var fundEntries = {}, fundListening = false, fundType = "in";
+var fundEditId = null, fundReceiptData = null, fundReceiptRemove = false;
+var FUND_TREASURER_PW = "5252";   // ← 총무 비밀번호 (여기 숫자만 바꾸면 됩니다)
+var fundTreasurer = false;
+try { fundTreasurer = (localStorage.getItem("cmgTreasurer") === "1"); } catch (e) {}
+function fundEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function fundFmt(n) { return Number(n).toLocaleString("ko-KR"); }
+function fundToday() {
+  var d = new Date(), m = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
+  return d.getFullYear() + "-" + m + "-" + dd;
+}
+function fundListenGlobal() {
+  if (!useFirebase || fundListening) return;
+  fundListening = true;
+  db.ref("fund/entries").on("value", function(snap) {
+    fundEntries = snap.val() || {};
+    renderFund();
+  }, function(err) {
+    fundListening = false;
+    toast("⚠ 운영비 데이터를 불러오지 못했습니다 (DB 규칙 확인)");
+  });
+}
+function fundSetType(t) {
+  fundType = t;
+  document.getElementById("fundTypeIn").className = (t === "in" ? "active in" : "");
+  document.getElementById("fundTypeOut").className = (t === "out" ? "active out" : "");
+  document.getElementById("fundReceiptBox").style.display = (t === "out") ? "block" : "none";
+}
+function fundCompressImage(file, cb) {
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() {
+      var max = 1200, r = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement("canvas");
+      c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      var ctx = c.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      var q = 0.72, out = c.toDataURL("image/jpeg", q);
+      while (out.length > 900000 && q > 0.35) { q -= 0.1; out = c.toDataURL("image/jpeg", q); }
+      cb(out);
+    };
+    img.onerror = function() { toast("이미지를 읽을 수 없습니다. 다른 사진으로 시도해주세요"); };
+    img.src = ev.target.result;
+  };
+  reader.onerror = function() { toast("사진을 불러오지 못했습니다"); };
+  reader.readAsDataURL(file);
+}
+function fundPickReceipt(input) {
+  var f = input.files && input.files[0];
+  input.value = "";
+  if (!f) return;
+  if (!/^image\//.test(f.type) && !/\.(jpe?g|png|gif|webp|heic|heif)$/i.test(f.name)) { toast("이미지 파일만 첨부할 수 있습니다"); return; }
+  toast("사진 처리 중...");
+  fundCompressImage(f, function(dataUrl) {
+    fundReceiptData = dataUrl; fundReceiptRemove = false;
+    fundShowThumb(dataUrl);
+    toast("📷 영수증 사진이 첨부되었습니다 — 저장을 눌러주세요");
+  });
+}
+function fundShowThumb(src) {
+  var box = document.getElementById("fundThumb"), img = document.getElementById("fundThumbImg");
+  if (src) { img.src = src; box.style.display = "flex"; } else { img.removeAttribute("src"); box.style.display = "none"; }
+}
+function fundClearReceipt() {
+  fundReceiptData = null;
+  fundReceiptRemove = true;   // 수정 중이면 기존 사진도 삭제
+  fundShowThumb(null);
+}
+function fundResetForm() {
+  fundEditId = null; fundReceiptData = null; fundReceiptRemove = false;
+  document.getElementById("fundDate").value = fundToday();
+  document.getElementById("fundAmount").value = "";
+  document.getElementById("fundMemo").value = "";
+  fundShowThumb(null);
+  fundSetType("in");
+  document.getElementById("fundSaveBtn").textContent = "저장";
+  document.getElementById("fundCancelBtn").style.display = "none";
+}
+function fundSave() {
+  if (!fundTreasurer) { toast("총무만 작성할 수 있습니다"); return; }
+  var date = document.getElementById("fundDate").value;
+  var amount = Math.round(Number(document.getElementById("fundAmount").value));
+  var memo = document.getElementById("fundMemo").value.trim();
+  if (!date) { toast("날짜를 선택하세요"); return; }
+  if (!amount || amount <= 0) { toast("금액을 입력하세요"); return; }
+  if (!memo) { toast("내역을 입력하세요"); return; }
+  if (!useFirebase) { toast("서버 연결이 필요합니다"); return; }
+  var id = fundEditId || db.ref("fund/entries").push().key;
+  var prev = fundEditId ? fundEntries[fundEditId] : null;
+  var hasReceipt = (fundType === "out") && (!!fundReceiptData || !!(prev && prev.hasReceipt && !fundReceiptRemove));
+  var updates = {};
+  updates["fund/entries/" + id] = { date: date, type: fundType, amount: amount, memo: memo, hasReceipt: hasReceipt, ts: (prev && prev.ts) || Date.now() };
+  if (fundType === "out" && fundReceiptData) updates["fund/receipts/" + id] = fundReceiptData;
+  else if (!hasReceipt) updates["fund/receipts/" + id] = null;
+  var wasEdit = !!fundEditId;
+  db.ref().update(updates, function(err) {
+    if (err) { console.error(err); toast("⚠ 저장 실패 — 연결 또는 DB 규칙을 확인하세요"); return; }
+    toast(wasEdit ? "✅ 수정되었습니다" : (fundType === "in" ? "✅ 입금 내역 저장" : "✅ 출금 내역 저장"));
+    fundResetForm();
+  });
+}
+function fundEdit(id) {
+  if (!fundTreasurer) return;
+  var e = fundEntries[id]; if (!e) return;
+  fundEditId = id; fundReceiptData = null; fundReceiptRemove = false;
+  fundSetType(e.type === "out" ? "out" : "in");
+  document.getElementById("fundDate").value = e.date || fundToday();
+  document.getElementById("fundAmount").value = e.amount;
+  document.getElementById("fundMemo").value = e.memo || "";
+  fundShowThumb(null);
+  if (e.type === "out" && e.hasReceipt) {
+    db.ref("fund/receipts/" + id).once("value", function(s) { if (fundEditId === id && !fundReceiptData && !fundReceiptRemove && s.val()) fundShowThumb(s.val()); });
+  }
+  document.getElementById("fundSaveBtn").textContent = "수정 저장";
+  document.getElementById("fundCancelBtn").style.display = "";
+  var sec = document.getElementById("fundAdminSection");
+  if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function fundDelete(id) {
+  if (!fundTreasurer) return;
+  var e = fundEntries[id]; if (!e) return;
+  if (!confirm("[" + (e.memo || "") + "] " + fundFmt(e.amount) + "원 내역을 삭제할까요?\n(영수증 사진도 함께 삭제되고, 잔액이 다시 계산됩니다)")) return;
+  var u = {}; u["fund/entries/" + id] = null; u["fund/receipts/" + id] = null;
+  db.ref().update(u, function(err) {
+    if (err) { toast("⚠ 삭제 실패"); return; }
+    if (fundEditId === id) fundResetForm();
+    toast("삭제되었습니다");
+  });
+}
+function fundViewReceipt(id) {
+  var v = document.getElementById("receiptViewer"), body = document.getElementById("receiptViewerBody");
+  body.innerHTML = '<div class="rv-msg">불러오는 중...</div>';
+  v.classList.add("open");
+  db.ref("fund/receipts/" + id).once("value", function(s) {
+    var d = s.val();
+    body.innerHTML = d ? '<img alt="영수증" src="' + d + '">' : '<div class="rv-msg">영수증 사진이 없습니다</div>';
+  }, function() { body.innerHTML = '<div class="rv-msg">불러오지 못했습니다</div>'; });
+}
+function fundCloseReceipt() { document.getElementById("receiptViewer").classList.remove("open"); }
+function renderFund() {
+  var wrap = document.getElementById("fundListWrap");
+  if (!wrap) return;
+  var list = Object.keys(fundEntries).map(function(id) {
+    var e = fundEntries[id] || {};
+    return { id: id, date: e.date || "", type: e.type === "out" ? "out" : "in", amount: Number(e.amount) || 0, memo: e.memo || "", has: !!e.hasReceipt, ts: e.ts || 0 };
+  });
+  list.sort(function(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.ts - b.ts); });
+  var bal = 0, tin = 0, tout = 0, years = {};
+  list.forEach(function(e) {
+    if (e.type === "in") { bal += e.amount; tin += e.amount; } else { bal -= e.amount; tout += e.amount; }
+    e.bal = bal; years[e.date.slice(0, 4)] = true;
+  });
+  var multiYear = Object.keys(years).length > 1;
+  var balEl = document.getElementById("fundBalance");
+  if (balEl) balEl.textContent = (bal < 0 ? "-" : "") + fundFmt(Math.abs(bal)) + "원";
+  document.getElementById("fundTotalIn").textContent = fundFmt(tin) + "원";
+  document.getElementById("fundTotalOut").textContent = fundFmt(tout) + "원";
+  if (!list.length) { wrap.innerHTML = '<div class="empty-state" style="padding:16px 0"><p>등록된 내역이 없습니다</p></div>'; return; }
+  list.reverse(); // 최근 내역이 위로
+  wrap.innerHTML = '<table class="fund-table"><thead><tr><th>날짜</th><th>내역</th><th>입금</th><th>출금</th><th>잔액</th></tr></thead><tbody>'
+    + list.map(function(e) {
+        var d = e.date ? (multiYear ? e.date.slice(2).replace(/-/g, "/") : e.date.slice(5).replace("-", "/")) : "-";
+        var acts = '<div class="fund-acts">' + (e.has ? '<button class="rc" onclick="fundViewReceipt(\'' + e.id + '\')">📎 영수증</button>' : '')
+          + (fundTreasurer ? '<button onclick="fundEdit(\'' + e.id + '\')">수정</button><button class="del" onclick="fundDelete(\'' + e.id + '\')">삭제</button>' : '') + '</div>';
+        return '<tr><td class="d">' + d + '</td><td class="m"><div class="memo">' + fundEsc(e.memo) + '</div>' + acts + '</td>'
+          + '<td class="in">' + (e.type === "in" ? fundFmt(e.amount) : '') + '</td>'
+          + '<td class="out">' + (e.type === "out" ? fundFmt(e.amount) : '') + '</td>'
+          + '<td class="bal">' + (e.bal < 0 ? "-" : "") + fundFmt(Math.abs(e.bal)) + '</td></tr>';
+      }).join("") + '</tbody></table>';
+}
+
+// ── 공지 ↔ 운영비 전환 / 열람 권한 / 총무 인증 ──
+function fundCanView() { return !!(admin || loggedInMemberName); }
+function noticeSeg(which) {
+  var isFund = (which === "fund");
+  document.getElementById("nsegNotice").className = isFund ? "" : "active";
+  document.getElementById("nsegFund").className = isFund ? "active" : "";
+  document.getElementById("noticePane").style.display = isFund ? "none" : "";
+  document.getElementById("fundPane").style.display = isFund ? "" : "none";
+  if (isFund) fundRefreshView();
+}
+function fundRefreshView() {
+  var ok = fundCanView();
+  document.getElementById("fundGate").style.display = ok ? "none" : "block";
+  document.getElementById("fundBody").style.display = ok ? "" : "none";
+  if (!ok) return;
+  fundListenGlobal();
+  document.getElementById("fundForm").style.display = fundTreasurer ? "" : "none";
+  document.getElementById("fundTLogin").style.display = fundTreasurer ? "none" : "";
+  document.getElementById("fundTLogout").style.display = fundTreasurer ? "" : "none";
+  if (fundTreasurer && !fundEditId) fundResetForm();
+  renderFund();
+}
+function fundTreasurerLogin() {
+  var pw = prompt("총무 비밀번호를 입력하세요");
+  if (pw === null) return;
+  if (pw.trim() !== FUND_TREASURER_PW) { toast("비밀번호가 틀렸습니다"); return; }
+  fundTreasurer = true;
+  try { localStorage.setItem("cmgTreasurer", "1"); } catch (e) {}
+  toast("✅ 총무 인증 완료 — 작성·수정할 수 있습니다");
+  fundRefreshView();
+}
+function fundTreasurerLogout() {
+  fundTreasurer = false; fundEditId = null;
+  try { localStorage.removeItem("cmgTreasurer"); } catch (e) {}
+  toast("총무 로그아웃");
+  fundRefreshView();
 }
 function membersListenGlobal() {
   if (!useFirebase) return;
