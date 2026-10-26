@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -1237,8 +1236,9 @@ body {
         <div id="nameDiagResult"></div>
       </div>
       <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border-2);">
-        <div style="font-size:12px; color:var(--text-3); margin-bottom:6px;">🛠 과거에 출석 체크가 누락된 기록 복구 (이름 뒤에 숫자가 붙어 회원으로 인식되지 않아 출석이 기록되지 않았던 경우)</div>
-        <button class="btn btn-gray btn-sm" style="width:100%;" onclick="adminBackfillAttendance()">📋 출석 기록 소급 생성</button>
+        <div style="font-size:12px; color:var(--text-3); margin-bottom:6px;">🛠 과거에 출석 체크가 누락된 기록 복구 — 저장된 모든 경기방을 훑어 전체 회원의 빠진 출석을 한번에 만듭니다 (이미 있는 기록은 그대로)</div>
+        <button class="btn btn-gray btn-sm" style="width:100%;" onclick="adminBackfillAttendance()">📋 출석 기록 소급 생성 (전체 회원 한번에)</button>
+        <div id="attendBackfillResult"></div>
       </div>
     </div>
     <div class="admin-section" id="handiPolicyAdminSection">
@@ -3523,15 +3523,18 @@ function adminDiagnoseName() {
         return '<tr' + (incomplete ? ' style="opacity:0.55;"' : '') + '><td>' + r.room + '</td><td>' + r.raw + '</td><td>' + r.len + '</td><td>' + r.base + '</td><td>' + r.score + '</td><td>' + r.handi + '</td></tr>';
       }).join("") + '</tbody></table></div>';
 }
-// ── 과거에 출석이 누락된 기록을 지금 저장된 모든 방 기록을 기준으로 다시 생성 ──
+// ── 과거에 출석이 누락된 기록을 지금 저장된 모든 방 기록을 기준으로 전체 회원 일괄 재생성 ──
 // (이름 뒤에 숫자가 붙은 키로 회원가입되어 baseName이 일치하지 않아 출석이 기록되지 않았던 경우 등을 복구)
 function adminBackfillAttendance() {
   if (!admin) return;
-  if (!confirm("모든 방의 기록을 기준으로 누락된 출석 기록을 다시 만듭니다. 계속할까요?")) return;
-  var toCreate = []; // {attName, room, timestamp}
+  if (!confirm("저장된 모든 경기방의 참가 기록을 기준으로, 누락된 출석 기록을 '전체 회원 일괄'로 다시 만듭니다.\n(이미 있는 출석 기록은 건드리지 않습니다) 계속할까요?")) return;
+  var includeNon = confirm("회원가입하지 않은 이름(참가 기록만 있는 사람)도 출석에 포함할까요?\n\n[확인] 포함   /   [취소] 가입한 회원만");
+  var resEl = document.getElementById("attendBackfillResult");
+  var seen = {}, toCreate = [], skippedNon = {}, roomCount = 0;
   Object.keys(allRooms || {}).forEach(function(roomKey) {
     var room = allRooms[roomKey];
     if (!room || !room.players) return;
+    roomCount++;
     Object.keys(room.players).forEach(function(pName) {
       var p = room.players[pName] || {};
       var attName = baseName(pName) || pName;
@@ -3541,23 +3544,36 @@ function adminBackfillAttendance() {
           if (baseName(mk) === attName) { isRegisteredMember = true; break; }
         }
       }
-      if (!isRegisteredMember) return;
+      if (!isRegisteredMember && !includeNon) { skippedNon[attName] = true; return; }
+      var key = attName + "\u0001" + roomKey;
+      if (seen[key]) return;   // 같은 방에서 "홍길동"/"홍길동2" 처럼 같은 사람이 두 번 잡히는 경우 1회만
+      seen[key] = true;
       toCreate.push({ attName: attName, room: roomKey, timestamp: p.timestamp || Date.now() });
     });
   });
-  if (!toCreate.length) { toast("대상 기록이 없습니다"); return; }
-  var pending = toCreate.length, created = 0;
+  if (!toCreate.length) { toast("대상 기록이 없습니다"); if (resEl) resEl.innerHTML = ""; return; }
+  toast("출석 기록 확인 중... (" + toCreate.length + "건)");
+  var pending = toCreate.length, created = 0, existed = 0, createdBy = {};
   toCreate.forEach(function(item) {
     var ref = db.ref("attendance/" + item.attName + "/" + item.room);
     ref.once("value", function(snap) {
       if (!snap.exists()) {
-        created++;
+        created++; createdBy[item.attName] = (createdBy[item.attName] || 0) + 1;
         ref.set({ room: item.room, timestamp: item.timestamp });
-      }
+      } else { existed++; }
       pending--;
       if (pending === 0) {
         toast("✅ 출석 기록 " + created + "건 생성 완료");
         renderAttendance();
+        if (resEl) {
+          var names = Object.keys(createdBy).sort(function(x, y) { return createdBy[y] - createdBy[x] || x.localeCompare(y, "ko"); });
+          var skipNames = Object.keys(skippedNon).sort();
+          resEl.innerHTML = '<div class="notice notice-info" style="margin-top:10px; font-size:12px; line-height:1.7;">'
+            + '<b>결과</b> — 경기방 ' + roomCount + '개 · 확인 ' + toCreate.length + '건 중 <b>새로 생성 ' + created + '건</b>(' + names.length + '명), 이미 있던 기록 ' + existed + '건'
+            + (names.length ? '<br>생성된 회원: ' + names.map(function(n) { return n + ' +' + createdBy[n]; }).join(", ") : '')
+            + (skipNames.length ? '<br>회원이 아니라서 건너뜀: ' + skipNames.join(", ") : '')
+            + '</div>';
+        }
       }
     });
   });
