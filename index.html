@@ -1313,6 +1313,23 @@ let useFirebase = false, db = null, admin = false, currentRoom = "", localData =
 let adminRole = "full"; // "full" = 관리자(전체), "sub" = 부관리자(경기방 생성·순위관리·팀편성관리만)
 let autoTeamEnabled = false, autoTeamTarget = 20; // 자동 팀공개: 목표 인원 도달 시 자동 편성·공개
 let selectedGender = 'male'; // 성별 선택 상태
+// 같은 팀으로 편성하지 않을 사람들 (필요하면 [["이름1","이름2"], ...] 형태로 추가)
+var NEVER_TOGETHER = [["박희정", "안동인"]];
+function isConflictPair(p, q) {
+  if (!p || !q) return false;
+  var a = baseName(p.name) || p.name, b = baseName(q.name) || q.name;
+  for (var i = 0; i < NEVER_TOGETHER.length; i++) {
+    var x = NEVER_TOGETHER[i][0], y = NEVER_TOGETHER[i][1];
+    if ((a === x && b === y) || (a === y && b === x)) return true;
+  }
+  return false;
+}
+function conflictsWithTeam(p, team) {
+  for (var i = 0; i < team.length; i++) if (isConflictPair(p, team[i])) return true;
+  return false;
+}
+var APP_VER = "2026-11-01-a"; // 팀편성을 만든 화면 버전 기록용 (오래된 캐시 화면이 만든 팀편성을 구분)
+function teamSig(teams) { try { return (teams || []).map(function(t) { return (t || []).map(function(p) { return p && p.name; }).join(","); }).join("|"); } catch (e) { return ""; } }
 var teamGrouped = {}; // { 이름: true } = 체크됨(팀편성 시 강제로 한 팀으로 묶임). 없으면 기본값(일반 자동배정).
 var loggedInMemberName = null; // 로그인된 회원 이름(null이면 로그인 안 됨). 관리자는 이 로그인과 무관하게 항상 자유 입력 가능.
 var allMembers = {}; // { 이름: {passwordHash, createdAt} } — 관리자 회원 목록 표시용
@@ -2133,7 +2150,17 @@ function listenRoom() {
     if (savedTeams) {
       currentTeams = savedTeams;
       renderTeams(savedTeams);
-      document.getElementById("teamWarning").style.display = "none";
+      var twEl = document.getElementById("teamWarning");
+      if (admin) {
+        var tn = room.teamNote, msg;
+        if (!tn || tn.sig !== teamSig(savedTeams)) {
+          msg = "⚠ 이 팀편성은 체크 기능이 없는 이전 버전 화면(오래된 캐시)에서 만들어졌습니다. 체크가 반영되지 않았을 수 있습니다. 팀편성을 다시 실행해 주세요.";
+        } else {
+          msg = "ℹ 편성 버전 " + tn.ver + (tn.auto ? " (자동 편성)" : " (수동 편성)") + " · " +
+            (tn.checked && tn.checked.length ? ("체크 " + tn.checked.length + "명(" + tn.checked.join(", ") + ") → " + tn.teamNo + "조") : "체크한 사람 없음(또는 1명)");
+        }
+        twEl.style.display = "block"; twEl.innerHTML = msg;
+      } else { twEl.style.display = "none"; }
     } else {
       currentTeams = [];
       if (!admin) {
@@ -2529,6 +2556,18 @@ function autoAssignTeams(isAuto) {
   var players = Object.values(localData || {});
   if (!players.length) { toast("참가자가 없습니다"); return; }
 
+  // 수동 실행 전 확인: 체크된 사람이 몇 명인지 보여주고, 1명만 체크했거나 기존 팀이 있으면 실수를 막는다.
+  if (!isAuto) {
+    var chkNames = players.filter(function(p) { return teamGrouped[p.name]; }).map(function(p) { return p.name; });
+    if (teamGroupedDirty) { toast("체크 저장 중입니다. 잠시 후 다시 눌러주세요."); return; }
+    if (chkNames.length === 1) {
+      if (!confirm("체크된 사람이 1명(" + chkNames[0] + ")뿐입니다.\n2명 이상 체크해야 한 팀으로 묶입니다.\n그대로 팀편성을 할까요?")) return;
+    } else if (chkNames.length >= 2) {
+      if (!confirm("체크된 " + chkNames.length + "명(" + chkNames.join(", ") + ")을 한 팀으로 묶어 첫·마지막 조를 제외한 조에 배정합니다.\n진행할까요?")) return;
+    }
+    if (currentTeams && currentTeams.length && !confirm("이미 편성된 팀이 있습니다. 새로 편성하면 기존 팀편성이 바뀝니다.\n계속할까요?")) return;
+  }
+
   // 직전 2게임(가장 최근에 저장된 다른 방들)의 팀편성을 가져와서, 그때 같은 팀이었던 사람 쌍을 파악
   function getPreviousGameTeamsList(count) {
     var candidates = Object.keys(allRooms || {}).filter(function(k) {
@@ -2668,6 +2707,7 @@ function autoAssignTeams(isAuto) {
     var bestIdx = -1, bestPartners = Infinity, bestFCount = Infinity, bestHandi = Infinity;
     for (var ti0 = 0; ti0 < teamCount; ti0++) {
       if (teams[ti0].length >= selectedTeamSize) continue; // 정원이 찬 팀 제외
+      if (conflictsWithTeam(femalesSorted[fi], teams[ti0])) continue; // 같은 팀 금지 조합 제외
       var partners0 = countPrevPartnersInTeam(femalesSorted[fi], teams[ti0]);
       var fCount = countFemales(teams[ti0]);
       var handi0 = teamHandiSum[ti0];
@@ -2686,6 +2726,7 @@ function autoAssignTeams(isAuto) {
     var minIdx2 = -1, minPartners2 = Infinity, minHandi2 = Infinity;
     for (var ti = 0; ti < teamCount; ti++) {
       if (teams[ti].length >= selectedTeamSize) continue;
+      if (conflictsWithTeam(malesSorted[mi2], teams[ti])) continue; // 같은 팀 금지 조합 제외
       var partners2 = countPrevPartnersInTeam(malesSorted[mi2], teams[ti]);
       var handi2 = teamHandiSum[ti];
       var better2 = (partners2 < minPartners2) || (partners2 === minPartners2 && handi2 < minHandi2);
@@ -2693,6 +2734,40 @@ function autoAssignTeams(isAuto) {
     }
     if (minIdx2 === -1) { for (var tm = 0; tm < teamCount; tm++) { if (minIdx2 === -1 || teamHandiSum[tm] < teamHandiSum[minIdx2]) minIdx2 = tm; } }
     teams[minIdx2].push(malesSorted[mi2]); teamHandiSum[minIdx2] += Number(malesSorted[mi2].handi);
+  }
+
+  // 같은 팀 금지 조합 최종 보정: 한 팀에 같이 들어갔다면 한 명을 다른 팀 사람과 맞바꾼다 (묶음 조에 속한 사람은 제외)
+  var sepMsgs = [];
+  for (var sp = 0; sp < teams.length; sp++) {
+    var guard = 0;
+    while (guard++ < 10) {
+      var pa = null, pb = null;
+      for (var x1 = 0; x1 < teams[sp].length && !pa; x1++) for (var x2 = x1 + 1; x2 < teams[sp].length; x2++) {
+        if (isConflictPair(teams[sp][x1], teams[sp][x2])) { pa = teams[sp][x1]; pb = teams[sp][x2]; break; }
+      }
+      if (!pa) break;
+      var movers = [pa, pb].filter(function(m) { return !groupedNames[m.name]; });
+      var best = null;
+      movers.forEach(function(m) {
+        for (var ot = 0; ot < teams.length; ot++) {
+          if (ot === sp) continue;
+          for (var oi = 0; oi < teams[ot].length; oi++) {
+            var c = teams[ot][oi];
+            if (groupedNames[c.name]) continue;
+            var restA = teams[sp].filter(function(z) { return z !== m; });
+            var restB = teams[ot].filter(function(z) { return z !== c; });
+            if (conflictsWithTeam(c, restA) || conflictsWithTeam(m, restB)) continue;
+            var diff = Math.abs(Number(m.handi) - Number(c.handi));
+            var score = (m.gender === c.gender ? 0 : 1000) + diff;
+            if (!best || score < best.score) best = { m: m, c: c, ot: ot, oi: oi, score: score };
+          }
+        }
+      });
+      if (!best) { sepMsgs.push("⚠ " + pa.name + " · " + pb.name + " 님을 서로 다른 팀으로 나누지 못했습니다 (묶음 조 때문). 수동으로 조정해 주세요."); break; }
+      var mi = teams[sp].indexOf(best.m);
+      teams[sp][mi] = best.c; teams[best.ot][best.oi] = best.m;
+      sepMsgs.push(pa.name + " · " + pb.name + " 님은 같은 팀이 되지 않도록 " + best.m.name + " ↔ " + best.c.name + " 자리를 바꿨습니다.");
+    }
   }
 
   // 안내 메시지 (여자 부족 / 묶음 / 정원 초과 / 직전 게임 재편성 회피 결과)
@@ -2719,6 +2794,7 @@ function autoAssignTeams(isAuto) {
   if (hasCheckedGroup) {
     warnMsgs.push("체크 표시한 " + checkedGroup.length + "명(" + checkedGroup.map(function(p){return p.name;}).join(", ") + ")은 " + (checkedGroupCenterIndex + 1) + "조로 묶었습니다 (첫 조·마지막 조를 제외하고 무작위 배정)." + (checkedGroupNoMiddle ? " ※ 조가 2개 이하라 첫·마지막 조 제외가 불가능해 일반 무작위로 배정했습니다." : ""));
   }
+  sepMsgs.forEach(function(m) { warnMsgs.push(m); });
   if (overflow) {
     warnMsgs.push("묶음 인원이 많아 일부 조가 선택한 팀당 인원(" + selectedTeamSize + "명)을 초과했습니다.");
   }
@@ -2730,6 +2806,7 @@ function autoAssignTeams(isAuto) {
 
   // Firebase에 팀편성 결과 저장 → 일반 사용자 팀편성 탭에도 공개
   if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teamNote").set({ ver: APP_VER, sig: teamSig(teams), auto: !!isAuto, checked: hasCheckedGroup ? checkedGroup.map(function(p) { return p.name; }) : [], teamNo: hasCheckedGroup ? (checkedGroupCenterIndex + 1) : 0, at: Date.now() });
     db.ref("rooms/" + currentRoom + "/teams").set(teams).then(function() {
       toast(isAuto ? ("🤖 목표 인원 도달! 자동 팀편성이 공개되었습니다.") : "⚡ 팀편성 완료! 팀편성 탭에 공개되었습니다.");
     }).catch(function() {
