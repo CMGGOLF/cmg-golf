@@ -14,6 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════
    CMG GOLF CLUB — FRESH LIGHT DESIGN
@@ -1342,6 +1343,8 @@ var stablefordCapAmount = 10;     // 필드 평균 넷스코어보다 이 타수
 
 // 📢 공지사항 (경기방과 무관한 고정 경로 — 관리자만 작성/수정/삭제, 전 회원 열람 가능)
 var NOTICE_PATH = "notices";
+var authReady = Promise.resolve(false);
+function myUid() { var u = firebase.auth().currentUser; return u ? u.uid : null; }
 var allNotices = {};
 var noticeEditingId = null;
 var noticeViewingId = null;
@@ -1349,9 +1352,17 @@ try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.database();
   useFirebase = true;
-  listenAllRooms();
-  membersListenGlobal();  // 👤 회원 목록: 관리자 회원 관리 화면에 사용
-  noticesListenGlobal();  // 📢 공지사항: 역시 경기방과 무관하게 독립적으로 동작
+  // 🔐 보이지 않는 익명 로그인 — 이게 되어야 서버(보안 규칙)가 이 앱을 통과시켜 줌
+  authReady = firebase.auth().signInAnonymously().then(function() { return true; });
+  authReady.then(function() {
+    listenAllRooms();
+    membersListenGlobal();  // 👤 회원 이름 목록(이름만)
+    noticesListenGlobal();  // 📢 공지사항
+  }).catch(function(e) {
+    console.error("익명 로그인 오류:", e && e.message);
+    var rn = document.getElementById("roomNotice");
+    if (rn) { rn.style.display = "block"; rn.textContent = "⚠ 서버 인증 실패 — 잠시 후 새로고침 해주세요"; }
+  });
 } catch(e) {
   console.error("Firebase 오류:", e.message);
   document.getElementById("roomNotice").style.display = "block";
@@ -1380,8 +1391,16 @@ window.addEventListener("DOMContentLoaded", function() {
   // 저장된 관리자 세션 자동 복원 (모바일에서 매번 재로그인 방지)
   try {
     var savedAdmin = localStorage.getItem("cmgAdmin");
-    if (savedAdmin === "1") { adminRole = "full"; enterAdminMode(); }
-    else if (savedAdmin === "sub") { adminRole = "sub"; enterAdminMode(); }
+    if (savedAdmin === "1" || savedAdmin === "sub") {
+      // 서버에 이 기기의 관리자 인증이 실제로 남아 있는지 확인 후 복원
+      authReady.then(function() {
+        var node = (savedAdmin === "1") ? "adminKeys/" : "subKeys/";
+        return db.ref(node + myUid()).once("value").then(function(snap) {
+          if (snap.exists()) { adminRole = (savedAdmin === "1") ? "full" : "sub"; enterAdminMode(); }
+          else { try { localStorage.removeItem("cmgAdmin"); } catch(e) {} }
+        });
+      }).catch(function() {});
+    }
   } catch(e) {}
 });
 // ── 성별 선택 ──
@@ -1600,7 +1619,7 @@ function memberSignUp() {
   if (phoneDigits.length < 9) { memberAuthNotice("error", "전화번호를 정확히 입력하세요 (예: 010-1234-5678)"); return; }
   if (!pw || pw.length < 4) { memberAuthNotice("error", "비밀번호는 4자리 이상 입력하세요"); return; }
   if (!useFirebase) { memberAuthNotice("error", "온라인 상태에서만 가입할 수 있습니다"); return; }
-  db.ref("members/" + name).once("value").then(function(snap) {
+  db.ref("members/" + name + "/passwordHash").once("value").then(function(snap) {
     if (snap.exists()) { memberAuthNotice("error", "이미 가입된 이름입니다. 로그인해주세요."); return; }
     db.ref("memberPhones/" + phoneDigits).once("value").then(function(phoneSnap) {
       if (phoneSnap.exists()) {
@@ -1611,6 +1630,8 @@ function memberSignUp() {
       hashPassword(pw).then(function(hash) {
         return db.ref("members/" + name).set({ passwordHash: hash, phone: phone, createdAt: Date.now() }).then(function() {
           return db.ref("memberPhones/" + phoneDigits).set(name);
+        }).then(function() {
+          return db.ref("memberNames/" + name).set(true);
         });
       }).then(function() {
         completeMemberLogin(name);
@@ -1626,11 +1647,12 @@ function memberLogin() {
   var pw = document.getElementById("memberAuthPw").value;
   if (!name || !pw) { memberAuthNotice("error", "이름과 비밀번호를 입력하세요"); return; }
   if (!useFirebase) { memberAuthNotice("error", "온라인 상태에서만 로그인할 수 있습니다"); return; }
-  db.ref("members/" + name).once("value").then(function(snap) {
-    var data = snap.val();
-    if (!data) { memberAuthNotice("error", "가입되지 않은 이름입니다. 회원가입을 먼저 해주세요."); return; }
+  db.ref("members/" + name + "/passwordHash").once("value").then(function(snap) {
+    var savedHash = snap.val();
+    if (!savedHash) { memberAuthNotice("error", "가입되지 않은 이름입니다. 회원가입을 먼저 해주세요."); return; }
     return hashPassword(pw).then(function(hash) {
-      if (hash !== data.passwordHash) { memberAuthNotice("error", "비밀번호가 일치하지 않습니다"); return; }
+      if (hash !== savedHash) { memberAuthNotice("error", "비밀번호가 일치하지 않습니다"); return; }
+      if (!memberNamesData[name]) db.ref("memberNames/" + name).set(true).catch(function() {});
       completeMemberLogin(name);
       toast("✅ " + name + "님, 로그인되었습니다.");
     });
@@ -2275,20 +2297,26 @@ function renderRank() {
   listEl.innerHTML = '<div class="rank-list">' + buildRankHTML(arr) + '</div>';
 }
 function unlockAdmin() {
-  var pw = document.getElementById("adminPw").value;
-  if (pw === "9080") {
-    adminRole = "full";
-    try { localStorage.setItem("cmgAdmin", "1"); } catch(e) {}
-    enterAdminMode();
-    toast("관리자 모드 활성화 — 다음부터 자동 로그인됩니다");
-  } else if (pw === "9903") {
-    adminRole = "sub";
-    try { localStorage.setItem("cmgAdmin", "sub"); } catch(e) {}
-    enterAdminMode();
-    toast("부관리자 모드 활성화 — 다음부터 자동 로그인됩니다");
-  } else {
-    toast("비밀번호가 틀렸습니다");
-  }
+  var pw = document.getElementById("adminPw").value.trim();
+  if (!pw) { toast("비밀번호를 입력하세요"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  // 비밀번호는 앱이 아니라 서버 규칙이 확인함(앱 코드에는 비밀번호가 없음)
+  authReady.then(function() {
+    var uid = myUid();
+    return db.ref("adminKeys/" + uid).set(pw).then(function() {
+      adminRole = "full";
+      try { localStorage.setItem("cmgAdmin", "1"); } catch(e) {}
+      enterAdminMode();
+      toast("관리자 모드 활성화 — 다음부터 자동 로그인됩니다");
+    }, function() {
+      return db.ref("subKeys/" + uid).set(pw).then(function() {
+        adminRole = "sub";
+        try { localStorage.setItem("cmgAdmin", "sub"); } catch(e) {}
+        enterAdminMode();
+        toast("부관리자 모드 활성화 — 다음부터 자동 로그인됩니다");
+      }, function() { toast("비밀번호가 틀렸습니다"); });
+    });
+  }).catch(function() { toast("서버 연결을 확인해주세요"); });
 }
 function applyAdminRoleVisibility() {
   // 부관리자는 경기방 생성 · 순위 관리 · 팀편성 관리만 볼 수 있음
@@ -2320,6 +2348,7 @@ function enterAdminMode() {
   updateAutoTeamButton(); updateAutoTeamInfo();
   renderMemberHandiStats();
   renderArchivedRooms();
+  adminMembersListen();
   renderMemberList();
   updateMemberAuthUI();
   renderNotices();
@@ -2328,6 +2357,7 @@ function enterAdminMode() {
 function logoutAdmin() {
   if (!confirm("관리자 로그아웃하시겠습니까?\n(이 기기에서 자동 로그인이 해제됩니다)")) return;
   try { localStorage.removeItem("cmgAdmin"); } catch(e) {}
+  try { var __u = myUid(); if (__u) { db.ref("adminKeys/" + __u).remove(); db.ref("subKeys/" + __u).remove(); } } catch(e) {}
   admin = false;
   adminRole = "full";
   var pwIn = document.getElementById("adminPw"); if (pwIn) pwIn.value = "";
@@ -3194,9 +3224,16 @@ function noticeDelete(id) {
 // ══════════════════════════════════════════════════════════════
 var fundEntries = {}, fundListening = false, fundType = "in";
 var fundEditId = null, fundReceiptData = null, fundReceiptRemove = false;
-var FUND_TREASURER_PW = "5252";   // ← 총무 비밀번호 (여기 숫자만 바꾸면 됩니다)
+// 총무 비밀번호는 앱이 아니라 서버 보안 규칙(treasKeys)에서 확인합니다
 var fundTreasurer = false;
 try { fundTreasurer = (localStorage.getItem("cmgTreasurer") === "1"); } catch (e) {}
+// 서버에 이 기기의 총무 인증이 실제로 남아 있는지 확인 (없으면 해제)
+authReady.then(function() {
+  if (!fundTreasurer) return;
+  return db.ref("treasKeys/" + myUid()).once("value").then(function(snap) {
+    if (!snap.exists()) { fundTreasurer = false; try { localStorage.removeItem("cmgTreasurer"); } catch (e) {} if (typeof fundRefreshView === "function") fundRefreshView(); }
+  });
+}).catch(function() {});
 function fundEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
 function fundFmt(n) { return Number(n).toLocaleString("ko-KR"); }
 function fundToday() {
@@ -3380,7 +3417,7 @@ function fundRefreshView() {
   document.getElementById("fundGate").style.display = ok ? "none" : "block";
   document.getElementById("fundBody").style.display = ok ? "" : "none";
   if (!ok) return;
-  fundListenGlobal();
+  authReady.then(function() { fundListenGlobal(); });
   document.getElementById("fundForm").style.display = fundTreasurer ? "" : "none";
   document.getElementById("fundTLogin").style.display = fundTreasurer ? "none" : "";
   document.getElementById("fundTLogout").style.display = fundTreasurer ? "" : "none";
@@ -3390,24 +3427,53 @@ function fundRefreshView() {
 function fundTreasurerLogin() {
   var pw = prompt("총무 비밀번호를 입력하세요");
   if (pw === null) return;
-  if (pw.trim() !== FUND_TREASURER_PW) { toast("비밀번호가 틀렸습니다"); return; }
-  fundTreasurer = true;
-  try { localStorage.setItem("cmgTreasurer", "1"); } catch (e) {}
-  toast("✅ 총무 인증 완료 — 작성·수정할 수 있습니다");
-  fundRefreshView();
+  pw = pw.trim();
+  if (!pw) { toast("비밀번호를 입력하세요"); return; }
+  authReady.then(function() {
+    return db.ref("treasKeys/" + myUid()).set(pw).then(function() {
+      fundTreasurer = true;
+      try { localStorage.setItem("cmgTreasurer", "1"); } catch (e) {}
+      toast("✅ 총무 인증 완료 — 작성·수정할 수 있습니다");
+      fundRefreshView();
+    }, function() { toast("비밀번호가 틀렸습니다"); });
+  }).catch(function() { toast("서버 연결을 확인해주세요"); });
 }
 function fundTreasurerLogout() {
   fundTreasurer = false; fundEditId = null;
   try { localStorage.removeItem("cmgTreasurer"); } catch (e) {}
+  try { var __t = myUid(); if (__t) db.ref("treasKeys/" + __t).remove(); } catch (e) {}
   toast("총무 로그아웃");
   fundRefreshView();
 }
+var memberNamesData = {}, adminMembersData = {}, adminMembersListening = false;
+function rebuildAllMembers() {
+  var m = {};
+  Object.keys(memberNamesData).forEach(function(n) { m[n] = {}; });
+  Object.keys(adminMembersData).forEach(function(n) { m[n] = adminMembersData[n] || {}; });
+  allMembers = m;
+}
+// 모든 사용자: 회원 "이름"만 구독(전화번호·비밀번호 암호값은 못 읽음)
 function membersListenGlobal() {
   if (!useFirebase) return;
-  db.ref("members").on("value", function(snap) {
-    allMembers = snap.val() || {};
+  db.ref("memberNames").on("value", function(snap) {
+    memberNamesData = snap.val() || {};
+    rebuildAllMembers();
     if (admin) renderMemberList();
   });
+}
+// 관리자만: 전체 회원 정보 구독 (서버 규칙이 관리자에게만 허용)
+function adminMembersListen() {
+  if (!useFirebase || adminMembersListening) return;
+  adminMembersListening = true;
+  db.ref("members").on("value", function(snap) {
+    adminMembersData = snap.val() || {};
+    rebuildAllMembers();
+    // 이름 목록(memberNames)에 빠진 기존 회원을 자동으로 채워 넣음
+    var missing = {};
+    Object.keys(adminMembersData).forEach(function(n) { if (!memberNamesData[n]) missing["memberNames/" + n] = true; });
+    if (Object.keys(missing).length) db.ref().update(missing).catch(function() {});
+    renderMemberList();
+  }, function() { adminMembersListening = false; });
 }
 function renderMemberList(showToast) {
   var wrap = document.getElementById("memberListWrap");
@@ -3499,6 +3565,7 @@ function adminKickMemberFull(name) {
     var phoneDigits = (data && data.phone) ? data.phone.replace(/[^0-9]/g, "") : "";
     var updates = {};
     updates["members/" + name] = null;
+    updates["memberNames/" + name] = null;
     if (phoneDigits) updates["memberPhones/" + phoneDigits] = null;
     updates["attendance/" + name] = null;
     return db.ref("rooms").once("value").then(function(roomsSnap) {
@@ -3532,6 +3599,8 @@ function adminResetMemberPasswordDirect(name) {
     var data = snap.val();
     var phoneDigits = (data && data.phone) ? data.phone.replace(/[^0-9]/g, "") : "";
     return db.ref("members/" + name).remove().then(function() {
+      return db.ref("memberNames/" + name).remove();
+    }).then(function() {
       if (phoneDigits) return db.ref("memberPhones/" + phoneDigits).remove();
     });
   }).then(function() {
