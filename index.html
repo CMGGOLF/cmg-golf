@@ -1384,7 +1384,31 @@ document.addEventListener("mousedown", adminListInteractStart);
 document.addEventListener("touchstart", adminListInteractStart, { passive: true });
 document.addEventListener("mouseup", adminListInteractEnd);
 document.addEventListener("touchend", adminListInteractEnd);
+// 📂 핸디 관리 구역 접기/펼치기 (기본: 접힘)
+function makeCollapsible(id) {
+  var sec = document.getElementById(id);
+  if (!sec || sec.getAttribute("data-collapsible")) return;
+  var title = sec.querySelector(".card-title");
+  if (!title) return;
+  var body = document.createElement("div");
+  while (title.nextSibling) body.appendChild(title.nextSibling);
+  sec.appendChild(body);
+  body.style.display = "none";
+  var arrow = document.createElement("span");
+  arrow.textContent = "▾";
+  arrow.style.cssText = "float:right; font-size:13px; color:var(--text-3);";
+  title.appendChild(arrow);
+  title.style.cursor = "pointer";
+  title.addEventListener("click", function() {
+    var open = body.style.display !== "none";
+    body.style.display = open ? "none" : "block";
+    arrow.textContent = open ? "▾" : "▴";
+  });
+  sec.setAttribute("data-collapsible", "1");
+}
 window.addEventListener("DOMContentLoaded", function() {
+  makeCollapsible("handiStatsAdminSection");
+  makeCollapsible("handiPolicyAdminSection");
   var savedGender = localStorage.getItem("myGolfGender");
   if (savedGender) setGender(savedGender);
   restoreMemberSession(); // 저장된 회원 로그인 자동 복원
