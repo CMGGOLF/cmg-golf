@@ -1,0 +1,3884 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>CMG 골프참가자등록 시스템</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="CMG 골프참가자등록 시스템">
+<meta property="og:description" content="게임 30분 전까지 참가자 등록을 하셔야 자동 출석 및 팀편성 됩니다.">
+<meta property="og:url" content="https://cmggolf.github.io/cmg-golf/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CMG 골프참가자등록 시스템">
+<meta name="twitter:description" content="게임 30분 전까지 참가자 등록을 하셔야 자동 출석 및 팀편성 됩니다.">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   CMG GOLF CLUB — FRESH LIGHT DESIGN
+═══════════════════════════════════════════════ */
+:root {
+  /* Core palette — clean bright white */
+  --ink:        #ffffff;
+  --ink-2:      #f0f7f0;
+  --surface-0:  #f2f6f2;
+  --surface-1:  #ffffff;
+  --surface-2:  #f8fbf8;
+  --surface-3:  #edf5ed;
+  --border-1:   rgba(0,0,0,0.08);
+  --border-2:   rgba(0,0,0,0.13);
+  --border-3:   rgba(0,0,0,0.20);
+
+  /* Accent — championship gold */
+  --gold:       #b8860b;
+  --gold-dim:   #9a7a32;
+  --gold-light: rgba(184,134,11,0.10);
+  --gold-glow:  rgba(184,134,11,0.22);
+
+  /* Green accent */
+  --green:      #1a8a46;
+  --green-dim:  #157a3c;
+  --green-dark: #0d5a2a;
+  --green-light:rgba(26,138,70,0.10);
+  --green-mid:  #1e9e52;
+
+  /* Medal */
+  --silver:     #6e8a9a;
+  --bronze:     #b8632e;
+
+  /* Text */
+  --text:       #1a2e1a;
+  --text-2:     #3d5c3d;
+  --text-3:     #7a9a7a;
+
+  /* Misc */
+  --radius:     16px;
+  --radius-sm:  10px;
+  --shadow:     0 4px 24px rgba(0,0,0,0.10);
+  --shadow-lg:  0 12px 48px rgba(0,0,0,0.18);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--surface-0);
+  color: var(--text);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 40% at 50% -10%, rgba(26,138,70,0.06) 0%, transparent 70%),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,0,0,0.015) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.015) 40px);
+}
+
+.bg-watermark {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-repeat: no-repeat;
+  background-position: center 30%;
+  background-size: min(480px, 80vw) auto;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── Header ── */
+.app-header {
+  background: linear-gradient(160deg, #1a6b30 0%, #1e7a38 60%, #166028 100%);
+  color: #ffffff;
+  padding: 22px 20px 18px;
+  padding-top: calc(22px + env(safe-area-inset-top));
+  text-align: center;
+  position: sticky; top: 0; z-index: 100;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 1px 0 rgba(255,220,80,0.25), 0 4px 24px rgba(0,0,0,0.15);
+}
+.app-header::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 20%; right: 20%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,220,80,0.6), transparent);
+}
+.app-header .header-content {
+  text-align: center;
+}
+.app-header .header-text { }
+.app-header h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+  text-shadow: 0 0 30px rgba(255,220,80,0.4);
+}
+.app-header .sub {
+  font-size: 14px;
+  opacity: 0.7;
+  margin-top: 3px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.85);
+  white-space: nowrap;
+}
+@media (max-width: 340px) {
+  .app-header .sub { font-size: 12px; letter-spacing: 0.03em; }
+}
+.room-badge {
+  display: inline-block;
+  background: rgba(255,220,80,0.2);
+  border: 1px solid rgba(255,220,80,0.5);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 18px;
+  font-family: 'DM Mono', monospace;
+  margin-top: 8px;
+  color: #ffe066;
+  letter-spacing: 0.05em;
+}
+
+/* ── Tab Nav ── */
+.tab-nav {
+  --tab-gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--surface-2) 100%);
+  border-bottom: 1px solid var(--border-2);
+  position: sticky;
+  top: 84px; z-index: 99;
+  padding: 9px 10px 8px;
+  box-shadow: 0 3px 14px rgba(13,90,42,0.08);
+}
+.tab-nav::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold) 80%, transparent);
+  opacity: 0.55;
+}
+.tab-nav-row {
+  display: flex;
+  gap: var(--tab-gap);
+}
+.tab-nav-row.row-2 { justify-content: center; }
+.tab-btn {
+  flex: 0 0 calc((100% - 3 * var(--tab-gap)) / 4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 4px 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.tab-btn:active { transform: scale(0.95); }
+.tab-btn:hover { color: var(--text-2); background: var(--green-light); }
+.tab-btn.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--green-mid) 0%, var(--green-dark) 100%);
+  box-shadow: 0 3px 10px rgba(13,90,42,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+  border-color: var(--green-dark);
+}
+.tab-btn.active:hover { background: linear-gradient(135deg, var(--green-mid) 0%, var(--green-dark) 100%); }
+.tab-btn .icon { display: block; font-size: 19px; line-height: 1; }
+.tab-btn.active .icon { filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
+
+/* ── Pages ── */
+.page { display: none; padding: 18px 16px; padding-bottom: 110px; }
+.page.active { display: block; }
+
+/* ── Card ── */
+.card {
+  background: #ffffff;
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(26,138,70,0.15), transparent);
+}
+.card-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 16px;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── Fields ── */
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  display: block;
+  font-size: 18px;
+  color: var(--text-3);
+  margin-bottom: 7px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+}
+.field input {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: 18px;
+  font-family: 'Noto Sans KR', sans-serif;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  background: #f8fbf8;
+  color: var(--text);
+  transition: 0.2s;
+}
+.field input::placeholder { color: #adc5ad; }
+.field input:focus {
+  outline: none;
+  border-color: rgba(26,138,70,0.5);
+  box-shadow: 0 0 0 3px rgba(26,138,70,0.12);
+  background: #ffffff;
+}
+.field input.input-error { border-color: #dc4444; box-shadow: 0 0 0 3px rgba(220,68,68,0.15); }
+.field textarea {
+  width: 100%; padding: 13px 16px; font-size: 15px; font-family: 'Noto Sans KR', sans-serif;
+  border: 1px solid var(--border-2); border-radius: var(--radius-sm); background: #f8fbf8; color: var(--text);
+  transition: 0.2s; resize: vertical; min-height: 110px; line-height: 1.7;
+}
+.field textarea::placeholder { color: #adc5ad; }
+.field textarea:focus {
+  outline: none; border-color: rgba(26,138,70,0.5); box-shadow: 0 0 0 3px rgba(26,138,70,0.12); background: #ffffff;
+}
+/* ── 공지사항 ── */
+.notice-board-item { border: 1px solid var(--border-1); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+.notice-board-item.pinned { border-color: rgba(201,168,76,0.45); background: linear-gradient(135deg, rgba(201,168,76,0.07), rgba(201,168,76,0.02)); }
+.notice-board-head { margin-bottom: 6px; }
+.notice-board-title { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.5; }
+.notice-board-date { font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; margin-top: 4px; }
+.notice-board-body { font-size: 14px; color: var(--text-2); line-height: 1.85; white-space: pre-wrap; word-break: break-word; }
+.notice-board-actions { display: flex; gap: 8px; margin-top: 12px; }
+.notice-board-actions button { flex: 0 0 auto; width: auto; padding: 7px 14px; font-size: 12px; }
+.notice-list-item { border: 1px solid var(--border-1); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 10px; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: 0.15s; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.notice-list-item:active { transform: scale(0.98); }
+.notice-list-item.pinned { border-color: rgba(201,168,76,0.45); background: linear-gradient(135deg, rgba(201,168,76,0.07), rgba(201,168,76,0.02)); }
+.notice-list-title { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice-list-date { font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; white-space: nowrap; flex: 0 0 auto; }
+.notice-detail-back { background: none; border: none; color: var(--green); font-size: 14px; font-weight: 600; cursor: pointer; padding: 6px 0 14px; display: flex; align-items: center; gap: 4px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.field-row .field { min-width: 0; }
+@media (max-width: 360px) { .field-row { grid-template-columns: 1fr; } }
+
+/* ── Buttons ── */
+.btn {
+  width: 100%; padding: 14px;
+  font-size: 17px; font-weight: 600;
+  border: none; border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.03em;
+  position: relative; overflow: hidden;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0);
+  transition: 0.15s;
+}
+.btn:active::after { background: rgba(255,255,255,0.07); }
+.btn:active { transform: scale(0.98); }
+
+.btn-green {
+  background: linear-gradient(135deg, #1e9e52 0%, #157a3c 100%);
+  color: #ffffff;
+  border: 1px solid rgba(26,138,70,0.3);
+  box-shadow: 0 2px 12px rgba(26,138,70,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.btn-green:hover { box-shadow: 0 4px 20px rgba(26,138,70,0.4); }
+
+.btn-green-outline {
+  background: transparent;
+  color: var(--green);
+  border: 1.5px solid rgba(46,204,113,0.3);
+}
+.btn-green-outline:hover { background: var(--green-light); }
+
+.btn-gray {
+  background: #f0f4f0;
+  color: var(--text-2);
+  border: 1px solid var(--border-2);
+}
+.btn-gray:hover { border-color: var(--border-3); background: #e8eee8; }
+
+.btn-dark {
+  background: #e8eee8;
+  color: var(--text);
+  border: 1px solid var(--border-3);
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, #e8a800 0%, #c47f00 100%);
+  color: #ffffff;
+  font-weight: 700;
+  border: 1px solid rgba(200,140,0,0.4);
+  box-shadow: 0 2px 12px rgba(200,140,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.btn-gold:hover { box-shadow: 0 4px 24px rgba(200,140,0,0.45); }
+
+.btn-danger { background: rgba(220,68,68,0.12); color: #f87171; border: 1px solid rgba(220,68,68,0.25); }
+.btn-danger:hover { background: rgba(220,68,68,0.2); }
+
+.btn-sm { padding: 10px 14px; font-size: 18px; }
+.btn-row { display: flex; gap: 8px; }
+.btn-row .btn { flex: 1; }
+
+/* ── Notice ── */
+.notice { font-size: 17px; padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 10px; line-height: 1.6; }
+.notice-warn { background: rgba(201,168,76,0.08); color: #d4b060; border: 1px solid rgba(201,168,76,0.2); }
+.notice-info { background: var(--green-light); color: var(--green); border: 1px solid rgba(46,204,113,0.2); }
+.notice-error { background: rgba(220,68,68,0.1); color: #f87171; border: 1px solid rgba(220,68,68,0.25); }
+
+/* ── QR ── */
+.qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 6px; }
+.qr-wrap > div { background: white; padding: 10px; border-radius: 8px; }
+.qr-label { font-size: 17px; color: var(--text-3); }
+
+/* ── Status Bar ── */
+.status-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 17px; font-weight: 600;
+  margin-bottom: 14px;
+  letter-spacing: 0.03em;
+}
+.status-pending { background: rgba(201,168,76,0.08); color: #d4b060; border: 1px solid rgba(201,168,76,0.18); }
+.status-preview { background: rgba(99,160,255,0.08); color: #7eb4ff; border: 1px solid rgba(99,160,255,0.2); }
+.status-live {
+  background: var(--green-light);
+  color: var(--green);
+  border: 1px solid rgba(46,204,113,0.2);
+}
+
+/* ── Rank List ── */
+.rank-list { display: flex; flex-direction: column; gap: 10px; }
+.rank-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px;
+  background: #ffffff;
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  animation: slideIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.rank-item::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(26,138,70,0.12), transparent);
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rank-item.rank-1 {
+  border-color: rgba(200,140,0,0.35);
+  background: linear-gradient(135deg, rgba(255,200,0,0.07) 0%, #ffffff 100%);
+  box-shadow: 0 0 0 1px rgba(200,140,0,0.15), 0 4px 20px rgba(0,0,0,0.08);
+}
+.rank-item.rank-1::before {
+  background: linear-gradient(90deg, transparent, rgba(200,140,0,0.35), transparent);
+}
+.rank-item.rank-2 {
+  border-color: rgba(100,150,170,0.3);
+  background: linear-gradient(135deg, rgba(100,150,170,0.06) 0%, #ffffff 100%);
+}
+.rank-item.rank-3 {
+  border-color: rgba(180,100,50,0.3);
+  background: linear-gradient(135deg, rgba(180,100,50,0.06) 0%, #ffffff 100%);
+}
+
+.rank-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 600;
+  width: 38px; text-align: center;
+  color: #aac2aa;
+  flex-shrink: 0;
+}
+.rank-num.n1 { color: #c8900a; }
+.rank-num.n2 { color: #5e8ca0; }
+.rank-num.n3 { color: #b06030; }
+
+.rank-info { flex: 1; min-width: 0; }
+.rank-name {
+  font-size: 17px; font-weight: 600;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+.rank-detail {
+  font-size: 18px; color: var(--text-3);
+  margin-top: 3px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.03em;
+}
+.rank-score { text-align: right; flex-shrink: 0; }
+.rank-net {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.rank-net-label { font-size: 17px; color: var(--text-3); letter-spacing: 0.08em; font-family: 'DM Mono', monospace; }
+.medal { font-size: 19px; flex-shrink: 0; }
+
+.preview-tag {
+  display: inline-block; font-size: 18px; font-weight: 600;
+  background: rgba(99,160,255,0.1); color: #7eb4ff;
+  border: 1px solid rgba(99,160,255,0.2);
+  border-radius: 4px; padding: 2px 7px; margin-left: 8px;
+  vertical-align: middle; letter-spacing: 0.05em; font-family: 'DM Mono', monospace;
+}
+
+/* ── Empty State ── */
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text-3); }
+.empty-state .big { font-size: 44px; margin-bottom: 14px; filter: grayscale(0.4); }
+.empty-state p { font-size: 18px; line-height: 1.8; color: var(--text-3); }
+
+/* ── Admin Section ── */
+.admin-section {
+  border: 1px solid rgba(46,204,113,0.15);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+  background: rgba(46,204,113,0.04);
+}
+.admin-section .card-title { color: var(--green-dim); }
+
+/* ── Sticky Bottom ── */
+.sticky-bottom {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: rgba(255,255,255,0.95);
+  border-top: 1px solid var(--border-1);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  z-index: 200;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 999;
+  display: flex; align-items: flex-end;
+  opacity: 0; transition: 0.3s; pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  width: 100%; max-width: 480px; margin: 0 auto;
+  background: #ffffff;
+  border-radius: 22px 22px 0 0;
+  border-top: 1px solid var(--border-2);
+  padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-handle { width: 36px; height: 3px; background: #d0d8d0; border-radius: 2px; margin: 0 auto 20px; }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; color: var(--text); }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; top: 96px; left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  color: var(--text);
+  padding: 10px 22px; border-radius: 100px;
+  font-size: 18px; font-weight: 500;
+  white-space: nowrap; z-index: 9999;
+  opacity: 0; transition: all 0.3s;
+  pointer-events: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  backdrop-filter: blur(10px);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Gender Toggle ── */
+.gender-toggle {
+  display: flex; gap: 0;
+  border-radius: var(--radius-sm); overflow: hidden;
+  border: 1px solid var(--border-2);
+}
+.gender-btn {
+  flex: 1; padding: 12px 0;
+  font-size: 17px; font-weight: 600;
+  border: none; background: var(--surface-2);
+  color: var(--text-3); cursor: pointer; transition: 0.2s;
+}
+.gender-btn.active-male { background: rgba(99,160,255,0.12); color: #7eb4ff; }
+.gender-btn.active-female { background: rgba(236,72,153,0.12); color: #f472b6; }
+
+/* ── Team Cards ── */
+.team-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 12px;
+  position: relative; overflow: hidden;
+}
+.team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.team-label { font-size: 18px; font-weight: 700; }
+.team-handi-sum {
+  font-family: 'DM Mono', monospace; font-size: 17px;
+  background: var(--green-light); color: var(--green);
+  padding: 3px 12px; border-radius: 20px;
+  border: 1px solid rgba(46,204,113,0.15);
+}
+.team-member {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-1);
+}
+.team-member:last-child { border-bottom: none; }
+.member-gender { font-size: 18px; width: 22px; text-align: center; }
+.member-name { flex: 1; font-size: 17px; font-weight: 500; color: var(--text); }
+.member-handi { font-family: 'DM Mono', monospace; font-size: 17px; color: var(--text-3); }
+.gender-badge {
+  display: inline-block; font-size: 17px;
+  padding: 1px 6px; border-radius: 4px;
+  margin-left: 5px; vertical-align: middle;
+}
+.badge-male { background: rgba(99,160,255,0.12); color: #7eb4ff; }
+.badge-female { background: rgba(236,72,153,0.12); color: #f472b6; }
+
+/* ── Team Edit Bar ── */
+.team-edit-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #1e9e52, #157a3c);
+  color: white;
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  font-size: 18px; font-weight: 600;
+  border: 1px solid rgba(26,138,70,0.3);
+  box-shadow: 0 2px 8px rgba(26,138,70,0.2);
+}
+.team-edit-bar button {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: white;
+  border-radius: 6px; padding: 5px 12px;
+  font-size: 17px; font-weight: 700; cursor: pointer;
+  transition: 0.2s;
+}
+.team-edit-bar button:hover { background: rgba(255,255,255,0.25); }
+
+.member-move-btn {
+  background: none; border: 1px solid var(--border-2);
+  border-radius: 6px; padding: 3px 8px;
+  font-size: 18px; font-weight: 600; cursor: pointer;
+  color: var(--text-3); transition: 0.15s;
+  white-space: nowrap; margin-left: 4px;
+}
+.member-move-btn:hover { background: var(--green-light); border-color: rgba(46,204,113,0.3); color: var(--green); }
+
+.member-del-btn {
+  background: none; border: 1px solid rgba(220,68,68,0.25);
+  border-radius: 6px; padding: 3px 8px;
+  font-size: 18px; font-weight: 600; cursor: pointer;
+  color: #f87171; transition: 0.15s;
+  white-space: nowrap; margin-left: 4px;
+}
+.member-del-btn:hover { background: rgba(220,68,68,0.1); }
+
+/* ── Move Modal ── */
+.move-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1200;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: 0.22s;
+  backdrop-filter: blur(6px);
+}
+.move-modal-overlay.open { opacity: 1; pointer-events: all; }
+.move-modal {
+  background: #ffffff;
+  border: 1px solid var(--border-2);
+  border-radius: 20px; padding: 24px 22px;
+  width: 88%; max-width: 340px;
+  transform: scale(0.94); transition: 0.22s;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+}
+.move-modal-overlay.open .move-modal { transform: scale(1); }
+.move-modal-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.move-modal-sub { font-size: 17px; color: var(--text-3); margin-bottom: 18px; }
+.team-pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.team-pick-btn {
+  padding: 13px 4px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: #f4f8f4;
+  font-size: 18px; font-weight: 700;
+  cursor: pointer; transition: 0.15s; text-align: center;
+  color: var(--text-2);
+}
+.team-pick-btn:hover { border-color: rgba(26,138,70,0.4); background: var(--green-light); color: var(--green); }
+.team-pick-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+.team-pick-btn.new-team { border-style: dashed; color: var(--text-3); }
+.move-modal-cancel {
+  width: 100%; padding: 12px;
+  background: #f0f4f0;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  font-size: 17px; font-weight: 600;
+  cursor: pointer; color: var(--text-2);
+  transition: 0.15s;
+}
+.move-modal-cancel:hover { background: #e8eee8; }
+
+/* ── Attendance ── */
+.attend-row {
+  border-bottom: 1px solid var(--border-1);
+  overflow: hidden;
+}
+.attend-row:last-child { border-bottom: none; }
+.attend-row-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 0;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.attend-row-header:active { opacity: 0.75; }
+.attend-info { flex: 1; min-width: 0; }
+.attend-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.attend-name { font-weight: 600; font-size: 18px; color: var(--text); }
+.attend-count-badge {
+  background: var(--green-light); color: var(--green);
+  font-size: 18px; font-weight: 700;
+  padding: 2px 10px; border-radius: 20px;
+  border: 1px solid rgba(46,204,113,0.2);
+  font-family: 'DM Mono', monospace;
+}
+.attend-chevron {
+  font-size: 18px; color: var(--text-3);
+  transition: transform 0.22s ease;
+  flex-shrink: 0;
+  padding-right: 2px;
+}
+.attend-row.open .attend-chevron { transform: rotate(180deg); }
+.attend-body {
+  display: none;
+  padding: 0 0 14px 0;
+}
+.attend-row.open .attend-body { display: block; }
+.attend-history-wrap { display: flex; flex-direction: column; gap: 4px; }
+.attend-entry { display: flex; align-items: center; gap: 6px; font-size: 17px; color: var(--text-3); font-family: 'DM Mono', monospace; }
+.attend-entry-del {
+  background: none; border: 1px solid rgba(220,68,68,0.25);
+  border-radius: 5px; padding: 1px 7px; font-size: 17px;
+  color: #f87171; cursor: pointer; flex-shrink: 0;
+}
+.attend-entry-del:hover { background: rgba(220,68,68,0.1); }
+.attend-person-del {
+  background: none; border: 1px solid rgba(220,68,68,0.25);
+  border-radius: 8px; padding: 5px 10px;
+  font-size: 18px; font-weight: 600; color: #f87171;
+  cursor: pointer; flex-shrink: 0; align-self: flex-start;
+  margin-top: 8px;
+}
+.attend-person-del:hover { background: rgba(220,68,68,0.1); }
+.attend-more-btn {
+  background: none; border: none;
+  color: var(--green); font-size: 18px; font-weight: 600;
+  cursor: pointer; padding: 4px 0; margin-top: 2px;
+  font-family: 'DM Mono', monospace;
+}
+.attend-more-btn:hover { text-decoration: underline; }
+.attend-year-block { margin-bottom: 6px; }
+.attend-year-label {
+  font-size: 13px; font-weight: 600; color: var(--text-3);
+  margin: 6px 0 4px; letter-spacing: 0.02em;
+}
+.attend-year-toggle { cursor: pointer; user-select: none; }
+.attend-year-toggle:hover { color: var(--green); }
+.attend-year-archived { padding-top: 4px; border-top: 1px dashed var(--border-1); }
+.attend-add-modal {
+  background: #ffffff;
+  border: 1px solid var(--border-2);
+  border-radius: 20px; padding: 24px 22px;
+  width: 92%; max-width: 360px;
+  transform: scale(0.94); transition: 0.22s;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+}
+.move-modal-overlay.open .attend-add-modal { transform: scale(1); }
+
+/* ── Attend Add modal inputs ── */
+.attend-add-modal .field input {
+  background: #f8fbf8;
+  border-color: var(--border-2);
+  color: var(--text);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.modal-wait { margin: 0 0 12px; padding: 12px 14px; background: var(--gold-light); border: 1px solid var(--gold-glow); border-radius: 10px; font-size: 13px; color: var(--gold-dim); display: none; }
+.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+.data-table th, .data-table td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--border-2); }
+.data-table th { color: var(--text-3); font-weight: 600; font-size: 11.5px; }
+
+/* ── 💰 운영비 관리 ── */
+.fund-summary { background: linear-gradient(135deg,#1a8a46,#0f6b38); color:#fff; border-radius:14px; padding:14px 16px; margin-bottom:12px; }
+.fund-summary small { display:block; font-size:12px; opacity:0.85; }
+.fund-bal b { display:block; font-size:28px; font-weight:800; margin-top:2px; letter-spacing:-0.01em; }
+.fund-sub { display:flex; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.25); }
+.fund-sub > div { flex:1; }
+.fund-sub b { display:block; font-size:15px; margin-top:1px; }
+.fund-type { display:flex; gap:8px; margin-bottom:10px; }
+.fund-type button { flex:1; padding:11px 0; font-size:15px; font-weight:800; font-family:inherit; border-radius:10px; border:1px solid var(--border-2); background:#f4f7f4; color:var(--text-3); cursor:pointer; }
+.fund-type button.active.in { background:rgba(26,138,70,0.12); border-color:#1a8a46; color:#0f6b38; }
+.fund-type button.active.out { background:rgba(214,69,69,0.1); border-color:#d64545; color:#b73030; }
+.fund-row2 { display:flex; gap:10px; }
+.fund-row2 .field { flex:1; min-width:0; }
+.fund-receipt-box { margin-bottom:12px; }
+.fund-receipt-box .rc-btn { display:block; width:100%; padding:12px; font-size:14px; font-weight:700; font-family:inherit; border:1.5px dashed var(--border-3,#b9c6b9); background:#f7faf7; color:var(--text-2); border-radius:10px; cursor:pointer; }
+.fund-thumb { display:flex; align-items:center; gap:10px; margin-top:8px; }
+.fund-thumb img { width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid var(--border-2); }
+.fund-table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:6px; }
+.fund-table th { background:#f0f5f0; color:var(--text-3); font-size:11px; padding:7px 4px; text-align:right; white-space:nowrap; }
+.fund-table th:first-child, .fund-table th:nth-child(2) { text-align:left; }
+.fund-table td { padding:9px 4px; border-bottom:1px solid var(--border-2); text-align:right; vertical-align:top; white-space:nowrap; }
+.fund-table td.d { text-align:left; color:var(--text-3); font-size:11.5px; }
+.fund-table td.m { text-align:left; white-space:normal; word-break:break-all; min-width:96px; }
+.fund-table td.m .memo { font-weight:600; color:var(--text); }
+.fund-table td.in { color:#0f6b38; font-weight:700; }
+.fund-table td.out { color:#c43a3a; font-weight:700; }
+.fund-table td.bal { font-weight:800; color:var(--text); }
+.fund-acts { display:flex; gap:4px; margin-top:5px; flex-wrap:wrap; }
+.fund-acts button { font-family:inherit; font-size:11px; font-weight:700; padding:4px 8px; border-radius:7px; border:1px solid var(--border-2); background:#fff; color:var(--text-2); cursor:pointer; }
+.fund-acts button.rc { background:#e8f5ec; border-color:#bfe6cd; color:#0f6b38; }
+.fund-acts button.del { color:#c43a3a; }
+#receiptViewer { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:1200; display:none; flex-direction:column; align-items:center; justify-content:center; padding:16px; }
+#receiptViewer.open { display:flex; }
+#receiptViewer img { max-width:100%; max-height:80vh; border-radius:8px; background:#fff; }
+#receiptViewer .rv-close { margin-top:14px; padding:12px 28px; font-size:15px; font-weight:800; font-family:inherit; border:0; border-radius:24px; background:#fff; color:#14233a; cursor:pointer; }
+#receiptViewer .rv-msg { color:#fff; font-size:14px; }
+
+.nseg { display:flex; background:#e6ede6; border-radius:12px; padding:3px; margin-bottom:12px; }
+.nseg button { flex:1; padding:11px 0; font-size:15px; font-weight:800; font-family:inherit; border:0; border-radius:10px; background:transparent; color:var(--text-3); cursor:pointer; }
+.nseg button.active { background:#fff; color:var(--green-dark, #0f6b38); box-shadow:0 1px 5px rgba(0,0,0,0.15); }
+.fund-gate { text-align:center; padding:26px 12px; color:var(--text-2); font-size:14px; line-height:1.7; background:#fff; border:1px solid var(--border-2); border-radius:14px; }
+.fund-tbar { display:flex; justify-content:flex-end; margin-bottom:8px; }
+.fund-tbar button { font-family:inherit; font-size:12px; font-weight:700; padding:7px 12px; border-radius:20px; border:1px solid var(--border-2); background:#fff; color:var(--text-3); cursor:pointer; }
+.fund-formcard { background:#fff; border:1px solid var(--border-2); border-radius:14px; padding:14px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div class="app-header">
+  <div class="header-content">
+  <div class="header-text">
+  <h1>CMG GOLF CLUB</h1>
+  <div class="sub">CLUB MANAGEMENT SYSTEM</div>
+  <div id="roomBadge" style="display:none">
+    <div class="room-badge" id="roomBadgeText"></div>
+  </div>
+  </div>
+  </div>
+</div>
+<div class="tab-nav">
+  <div class="tab-nav-row row-1">
+    <button class="tab-btn" onclick="switchTab('notice')" id="tab-notice"><span class="icon">📢</span>공지</button>
+    <button class="tab-btn active" onclick="switchTab('room')" id="tab-room"><span class="icon">⛳</span>경기안내</button>
+    <button class="tab-btn" onclick="switchTab('list')" id="tab-list"><span class="icon">👥</span>참가자</button>
+    <button class="tab-btn" onclick="switchTab('score')" id="tab-score"><span class="icon">✏️</span>참가자등록</button>
+  </div>
+  <div class="tab-nav-row row-2">
+    <button class="tab-btn" onclick="switchTab('rank')" id="tab-rank"><span class="icon">🏆</span>순위</button>
+    <button class="tab-btn" onclick="switchTab('team')" id="tab-team"><span class="icon">🔀</span>팀편성</button>
+    <button class="tab-btn" onclick="switchTab('attendance')" id="tab-attendance"><span class="icon">📋</span>출석</button>
+    <button class="tab-btn" onclick="switchTab('admin')" id="tab-admin"><span class="icon">⚙️</span>관리자</button>
+  </div>
+</div>
+<div class="page" id="page-notice">
+  <div class="nseg">
+    <button id="nsegNotice" class="active" onclick="noticeSeg('notice')">📢 공지</button>
+    <button id="nsegFund" onclick="noticeSeg('fund')">💰 운영비</button>
+  </div>
+  <div id="noticePane">
+  <div class="card admin-section" id="noticeAdminBox" style="display:none; border-color:rgba(201,168,76,0.3); background:rgba(201,168,76,0.06);">
+    <div class="card-title" style="color:var(--gold);" id="noticeFormTitle">📢 공지 작성</div>
+    <div class="field">
+      <label>제목</label>
+      <input id="noticeTitleInput" placeholder="공지 제목을 입력하세요" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>내용</label>
+      <textarea id="noticeContentInput" placeholder="공지 내용을 입력하세요"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-gold btn-sm" id="noticeSubmitBtn" onclick="noticeSubmit()">게시하기</button>
+      <button class="btn btn-gray btn-sm" id="noticeCancelBtn" style="display:none;" onclick="noticeCancelEdit()">취소</button>
+    </div>
+  </div>
+  <div id="noticeList">
+    <div class="empty-state">
+      <div class="big">📢</div>
+      <p>등록된 공지가 없습니다</p>
+    </div>
+  </div>
+  </div>
+  <!-- 💰 운영비: 회원 누구나 열람 / 총무만 작성·수정 -->
+  <div id="fundPane" style="display:none;">
+    <div class="fund-gate" id="fundGate" style="display:none;">🔒 운영비 내역은 회원만 볼 수 있습니다.<br>먼저 <b>경기안내</b> 탭에서 회원 로그인을 해주세요.</div>
+    <div id="fundBody">
+      <div class="fund-summary">
+        <div class="fund-bal"><small>현재 잔액</small><b id="fundBalance">0원</b></div>
+        <div class="fund-sub">
+          <div><small>총 입금</small><b id="fundTotalIn">0원</b></div>
+          <div><small>총 출금</small><b id="fundTotalOut">0원</b></div>
+        </div>
+      </div>
+      <div class="fund-tbar">
+        <button id="fundTLogin" onclick="fundTreasurerLogin()">🔑 총무 인증</button>
+        <button id="fundTLogout" style="display:none;" onclick="fundTreasurerLogout()">총무 로그아웃</button>
+      </div>
+      <div class="fund-formcard" id="fundForm" style="display:none;">
+        <div class="card-title" style="margin-bottom:10px; font-size:14px;">✏️ 내역 입력 (총무 전용)</div>
+        <div class="fund-type">
+          <button id="fundTypeIn" class="active in" onclick="fundSetType('in')">➕ 입금</button>
+          <button id="fundTypeOut" onclick="fundSetType('out')">➖ 출금</button>
+        </div>
+        <div class="fund-row2">
+          <div class="field"><label>날짜</label><input id="fundDate" type="date"></div>
+          <div class="field"><label>금액(원)</label><input id="fundAmount" type="number" inputmode="numeric" placeholder="예: 50000"></div>
+        </div>
+        <div class="field"><label>내역</label><input id="fundMemo" placeholder="예: 10월 월회비 / 스크린 대관료"></div>
+        <div class="fund-receipt-box" id="fundReceiptBox" style="display:none;">
+          <button type="button" class="rc-btn" onclick="document.getElementById('fundReceiptInput').click()">📷 영수증 사진 첨부 (촬영 또는 갤러리)</button>
+          <input type="file" id="fundReceiptInput" accept="image/*" style="display:none" onchange="fundPickReceipt(this)">
+          <div class="fund-thumb" id="fundThumb" style="display:none;">
+            <img id="fundThumbImg" alt="영수증 미리보기">
+            <button type="button" class="btn btn-gray btn-sm" style="width:auto; padding:8px 12px; font-size:12px;" onclick="fundClearReceipt()">✕ 사진 삭제</button>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-green" id="fundSaveBtn" onclick="fundSave()">저장</button>
+          <button class="btn btn-gray" id="fundCancelBtn" style="display:none;" onclick="fundResetForm()">수정 취소</button>
+        </div>
+        <div class="notice notice-info" style="margin:10px 0 0; font-size:11.5px;">처음에는 현재 통장 잔액을 "입금 · 이월잔액"으로 한 번 넣어두면 이후 잔액이 정확히 맞습니다. 내역을 고치거나 지우면 잔액은 자동으로 다시 계산됩니다.</div>
+      </div>
+      <div class="table-scroll" id="fundListWrap"><div class="empty-state" style="padding:16px 0"><p>등록된 내역이 없습니다</p></div></div>
+    </div>
+  </div>
+</div>
+<div class="page active" id="page-room">
+  <div class="card" id="memberAuthCard" style="border:1.5px solid var(--gold-dim); padding:12px 16px;">
+    <div class="card-title" id="memberAuthTitle" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:14px; margin-bottom:0; letter-spacing:0.06em;" onclick="toggleMemberAuthCard()">
+      <span>👤 회원가입 / 회원은 자동로그인</span>
+      <span id="memberAuthToggleIcon" style="font-size:13px; color:var(--text-3);">▾</span>
+    </div>
+    <div id="memberLoggedOutBox" style="display:none; margin-top:14px;">
+      <div style="font-size:13px; color:var(--gold); font-weight:600; margin-bottom:10px;">처음 오셨다면 먼저 회원가입해주세요! 한 번만 하면 계속 자동 로그인됩니다.</div>
+      <div class="field">
+        <label>이름</label>
+        <input id="memberAuthName" placeholder="이름을 입력하세요" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>전화번호 <span style="color:var(--text-3); font-size:11px; font-weight:400;">(회원가입 시에만 필요)</span></label>
+        <input id="memberAuthPhone" type="tel" placeholder="예: 010-1234-5678" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>비밀번호</label>
+        <input id="memberAuthPw" type="password" placeholder="비밀번호 (4자리 이상)" autocomplete="off">
+      </div>
+      <div class="btn-row" style="margin-top:4px">
+        <button class="btn btn-gold btn-sm" onclick="memberSignUp()">✍️ 회원가입</button>
+        <button class="btn btn-gray btn-sm" onclick="memberLogin()">로그인</button>
+      </div>
+      <div id="memberAuthNotice" style="display:none" class="notice"></div>
+    </div>
+    <div id="memberLoggedInBox" style="display:none; margin-top:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-size:15px; font-weight:600; color:var(--text);">✅ <span id="memberLoggedInName"></span>님으로 로그인됨</div>
+        <button class="btn btn-gray btn-sm" style="width:auto; padding:8px 14px;" onclick="memberLogout()">로그아웃</button>
+      </div>
+    </div>
+  </div>
+  <div id="roomNotice" class="notice notice-warn" style="display:none; margin-bottom:14px;"></div>
+  <div class="card">
+    <div class="card-title">진행 중인 경기방</div>
+    <div id="availableRoomsList">
+      <div class="empty-state"><p>목록을 불러오는 중...</p></div>
+    </div>
+  </div>
+  <div style="background:linear-gradient(135deg,rgba(201,168,76,0.13),rgba(201,168,76,0.06)); border:1px solid rgba(201,168,76,0.35); border-radius:12px; padding:16px 18px; margin-bottom:12px; display:flex; align-items:flex-start; gap:12px;">
+    <div style="font-size:22px; flex-shrink:0; margin-top:1px;">⏰</div>
+    <div>
+      <div style="font-family:'DM Mono',monospace; font-size:9.5px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:6px;">중요 안내</div>
+      <div style="font-size:14px; font-weight:700; color:var(--gold); line-height:1.6;">게임 30분 전까지 참가자 등록을 하셔야<br>자동 출석 및 팀편성 됩니다.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">사용 안내</div>
+    <div style="font-size:13px; color:var(--text-2); line-height:1.9;">
+      1. 현재 운영 중인 방이 자동으로 연결됩니다.<br>
+      2. 경기 전 이름과 핸디캡만 입력하여 사전 등록하세요.<br>
+      3. 라운드가 끝나면 친타수를 추가로 입력해 주세요.<br>
+      <span style="color:#fca5a5; font-weight:600;">4. 핸디캡은 최대 12까지만 입력 가능합니다.</span><br>
+      <span style="color:#fca5a5; font-weight:600;">5. 본인 G핸디, 친타수 다를 게 기재 시 무조건 시상에서 제외 됩니다.</span>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-list">
+  <div id="participantStatusBar"></div>
+  <div id="participantList">
+    <div class="empty-state">
+      <div class="big">⛳</div>
+      <p>운영 중인 방이 연결되면<br>참가자 명단이 표시됩니다</p>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-score">
+  <div class="card">
+    <div class="card-title">내 정보</div>
+    <div class="field">
+      <label>이름</label>
+      <input id="pName" placeholder="먼저 로그인해주세요" autocomplete="off" disabled>
+    </div>
+    <div class="field">
+      <label>성별</label>
+      <div class="gender-toggle">
+        <button type="button" class="gender-btn active-male" id="genderMale" onclick="setGender('male')">남성</button>
+        <button type="button" class="gender-btn" id="genderFemale" onclick="setGender('female')">여성</button>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">핸디캡 <span style="color:#b91c1c; font-size:11px; white-space:nowrap;">(최대 12)</span></label>
+        <input id="pHandi" type="text" placeholder="예: 7.6 또는 -4" oninput="validateHandi(this)">
+        <div id="handiError" style="display:none; font-size:11px; color:#fca5a5; margin-top:4px;">⚠ 핸디캡은 최대 12까지만 입력 가능합니다</div>
+      </div>
+      <div class="field">
+        <label>친타수</label>
+        <input id="pScore" type="text" placeholder="예: 77">
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-gray btn-sm" onclick="loadMyData()">불러오기</button>
+      <button class="btn btn-green btn-sm" onclick="saveMyScore()">저장하기</button>
+    </div>
+    <div id="scoreNotice" style="display:none" class="notice"></div>
+  </div>
+  <div class="card" id="myNetCard" style="display:none">
+    <div class="card-title">내 NET 스코어</div>
+    <div style="text-align:center; padding:10px 0;">
+      <div style="font-family:'Cormorant Garamond',serif; font-size:56px; font-weight:600; color:var(--gold);" id="myNetDisplay">-</div>
+      <div style="font-size:12px; color:var(--text-3); margin-top:6px; font-family:'DM Mono',monospace; letter-spacing:0.08em;">친타수 - 핸디캡 = NET</div>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-rank">
+  <div id="rankStatusBar"></div>
+  <div id="rankList">
+    <div class="empty-state">
+      <div class="big">⛳</div>
+      <p>운영 중인 방이 연결되면<br>순위가 표시됩니다</p>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-team">
+  <div id="teamWarning" style="display:none" class="notice notice-warn" style="margin-bottom:10px;"></div>
+  <div id="teamResult">
+    <div class="empty-state">
+      <div class="big">🔀</div>
+      <p>관리자가 팀편성을 실행하면<br>여기에 결과가 표시됩니다</p>
+    </div>
+  </div>
+</div>
+
+<!-- 멤버 이동 모달 -->
+<div class="move-modal-overlay" id="moveModal">
+  <div class="move-modal">
+    <div class="move-modal-title">🔀 멤버 이동</div>
+    <div class="move-modal-sub" id="moveModalSub"></div>
+    <div class="team-pick-grid" id="teamPickGrid"></div>
+    <button class="move-modal-cancel" onclick="closeMoveModal()">취소</button>
+  </div>
+</div>
+
+<!-- 출석 추가 모달 -->
+<div class="move-modal-overlay" id="attendAddModal">
+  <div class="attend-add-modal">
+    <div class="move-modal-title">📋 출석 수동 추가</div>
+    <div class="move-modal-sub">이름과 경기방을 입력하여 출석을 기록합니다</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>이름</label>
+      <input id="attendAddName" placeholder="참가자 이름" autocomplete="off" style="width:100%; padding:12px 14px; font-size:15px; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:var(--surface-3); color:var(--text);">
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>경기방 (비우면 현재 방)</label>
+      <input id="attendAddRoom" placeholder="예: 2026-04-09-봄대회" autocomplete="off" style="width:100%; padding:12px 14px; font-size:15px; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:var(--surface-3); color:var(--text);">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-gray btn-sm" onclick="closeAttendAddModal()">취소</button>
+      <button class="btn btn-green btn-sm" onclick="confirmAttendAdd()">추가하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 출석 수동 삭제 모달 -->
+<div class="move-modal-overlay" id="attendDeleteModal">
+  <div class="attend-add-modal">
+    <div class="move-modal-title">🗑 출석 수동 삭제</div>
+    <div class="move-modal-sub">이름과 경기방을 입력하여 해당 출석 기록을 삭제합니다</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>이름</label>
+      <input id="attendDelName" placeholder="참가자 이름" autocomplete="off" style="width:100%; padding:12px 14px; font-size:15px; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:var(--surface-3); color:var(--text);">
+    </div>
+    <div class="field" style="margin-bottom:8px">
+      <label>경기방 (비우면 해당 이름 전체 삭제)</label>
+      <input id="attendDelRoom" placeholder="예: 2026-04-09-봄대회 (선택)" autocomplete="off" style="width:100%; padding:12px 14px; font-size:15px; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:var(--surface-3); color:var(--text);">
+    </div>
+    <div class="notice notice-warn" style="margin-bottom:14px; font-size:12px;">경기방을 비우면 해당 참가자의 <strong>모든 출석</strong>이 삭제됩니다</div>
+    <div class="btn-row">
+      <button class="btn btn-gray btn-sm" onclick="closeAttendDeleteModal()">취소</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmAttendDelete()">삭제하기</button>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-attendance">
+  <div class="card">
+    <div class="card-title">📋 출석 시스템 안내</div>
+    <div style="background:var(--surface-2); border:1px solid var(--border-1); border-radius:10px; padding:14px; line-height:1.9; font-size:13px; color:var(--text-2);">
+      • 참가자 등록 시 자동으로 출석 기록이 저장됩니다.<br>
+      • 출석 수를 누르면 날짜별 참석 기록을 확인할 수 있습니다.<br>
+      <span style="font-size:12px; color:#fca5a5; font-weight:600;">※ 원활한 출석 누적을 위해 항상 동일한 이름으로 등록해주세요.</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📊 출석 현황</div>
+    <div id="attendanceList">
+      <div class="empty-state">
+        <div class="big">📋</div>
+        <p>출석 데이터를 불러오는 중...</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-admin">
+  <div id="adminLocked">
+    <div class="card" id="adminLoginCard">
+      <div class="card-title">관리자 인증</div>
+      <div class="field">
+        <label>비밀번호</label>
+        <input id="adminPw" type="password" placeholder="비밀번호 입력">
+      </div>
+      <button class="btn btn-dark" onclick="unlockAdmin()">인증하기</button>
+    </div>
+  </div>
+  <div id="adminUnlocked" style="display:none">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding:10px 14px; background:rgba(26,138,70,0.08); border:1px solid rgba(26,138,70,0.25); border-radius:var(--radius-sm);">
+      <span style="font-size:13px; font-weight:600; color:var(--green);" id="adminStatusLabel">🔓 관리자 로그인 됨 (자동 로그인 유지)</span>
+      <button class="btn btn-gray btn-sm" style="width:auto; padding:7px 14px; font-size:12px;" onclick="logoutAdmin()">로그아웃</button>
+    </div>
+    <div class="admin-section" style="border-color:rgba(201,168,76,0.3); background:rgba(201,168,76,0.06);">
+      <div class="card-title" style="color:var(--gold);">⭐ 새 경기방 생성</div>
+      <div class="field">
+        <input id="newRoomInput" placeholder="예: 2026-04-09-봄대회" autocomplete="off">
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="createRoom()">새 방 생성 및 입장</button>
+    </div>
+    <div class="card" id="qrCard" style="display:none">
+      <div class="card-title">초대 링크 공유</div>
+      <div class="qr-wrap">
+        <button class="btn btn-gold btn-sm" onclick="shareRoomLink()">🔗 링크 복사 / 모바일 공유하기</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">현재 접속한 방 상태</div>
+      <div id="adminRoomStatus" class="empty-state" style="padding:16px 0">
+        <p>현재 연결된 방이 없습니다</p>
+      </div>
+    </div>
+    <div class="admin-section">
+      <div class="card-title">🏆 순위 관리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.7;">
+        미리보기로 순위를 먼저 확인하고,<br>준비가 되면 전체 공개하세요.
+      </div>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn btn-gray btn-sm" onclick="adminPreview()">👁 미리보기</button>
+        <button class="btn btn-gold btn-sm" onclick="adminPublish()">🚀 전체 공개</button>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn btn-gray btn-sm" id="autoPublishBtn" onclick="toggleAutoPublish()">⚫ 자동 공개 OFF</button>
+        <button class="btn btn-green-outline btn-sm" onclick="adminHide()">🔒 공개 취소</button>
+      </div>
+      <div class="notice notice-info" style="margin-top:0;">
+        자동 공개를 켜면 한 명이라도 친타수를 입력하는 즉시 순위가 공개되고,<br>입력한 사람들 기준으로 실시간 순위가 갱신됩니다. 미입력자는 <strong>대기</strong>으로 표시됩니다.
+      </div>
+    </div>
+    <div class="card" id="participantAdminCard">
+      <div class="card-title">참가자 관리</div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <span id="teamSelectCount" style="font-size:12px; color:var(--text-3); font-family:'DM Mono',monospace;">0 / 0명 체크됨</span>
+        <span style="flex:1;"></span>
+        <button class="btn btn-gray btn-sm" style="width:auto; padding:7px 12px; font-size:12px;" onclick="teamSelectAll(true)">전체 선택</button>
+        <button class="btn btn-gray btn-sm" style="width:auto; padding:7px 12px; font-size:12px;" onclick="teamSelectAll(false)">전체 해제</button>
+      </div>
+      <div class="notice notice-info" style="margin:0 0 10px; font-size:11.5px;">체크한 사람들끼리는 자동 팀편성 시 무조건 같은 팀으로 묶이며(2명 이상 체크했을 때), 그 팀은 첫 조와 마지막 조를 제외한 조 중에서 무작위로 배정됩니다. 나머지 참가자는 평소처럼 자동으로 배정됩니다.</div>
+      <div id="adminPlayerList">
+        <div class="empty-state" style="padding:16px 0"><p>참가자가 없습니다</p></div>
+      </div>
+    </div>
+    <div class="admin-section" id="attendanceAdminSection">
+      <div class="card-title">📋 출석 관리</div>
+      <div class="btn-row" style="margin-bottom:8px;">
+        <button class="btn btn-green-outline btn-sm" onclick="openAttendAddModal()">➕ 수동 추가</button>
+        <button class="btn btn-gray btn-sm" onclick="openAttendDeleteModal()">🗑 수동 삭제</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAllAttendance()">⚠ 전체 초기화</button>
+      </div>
+      <div class="notice notice-warn" style="margin-top:0; font-size:12px;">출석 탭에서 각 항목 옆 🗑 버튼으로 개별 삭제도 가능합니다</div>
+    </div>
+    <!-- 팀편성 관리 -->
+    <div class="admin-section" id="teamAdminSection" style="display:none;">
+      <div class="card-title">🔀 팀편성 관리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
+        여자 <strong>최소 1명</strong> 강제 배정 · 핸디 평준화 자동 배분
+      </div>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">팀당 인원 선택</div>
+        <div class="btn-row">
+          <button id="teamSizeBtn3" class="btn btn-gray btn-sm" onclick="setTeamSize(3)" style="flex:1;">3명씩</button>
+          <button id="teamSizeBtn4" class="btn btn-gold btn-sm" onclick="setTeamSize(4)" style="flex:1;">4명씩 ✓</button>
+        </div>
+      </div>
+      <div style="font-size:12px; color:var(--text-3); margin-bottom:10px;" id="teamSizeInfo">
+        총 <span id="teamSizeTotal">0</span>명 → <span id="teamSizeCount">0</span>팀 예상
+      </div>
+      <!-- 자동 팀공개 예약 -->
+      <div style="border-top:1px dashed var(--border-2); margin:12px 0 10px; padding-top:12px;">
+        <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">자동 팀공개 — 목표 인원 (3~40명)</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <button class="btn btn-gray btn-sm" style="width:46px; flex:0 0 auto;" onclick="adjustAutoTeamTarget(-1)">−</button>
+          <input id="autoTeamTargetInput" type="number" min="3" max="40" value="20" inputmode="numeric"
+            style="flex:1; min-width:0; text-align:center; padding:11px; font-size:19px; font-weight:700; border:1px solid var(--border-2); border-radius:var(--radius-sm); background:#f8fbf8; color:var(--text);"
+            onchange="setAutoTeamTarget(this.value)">
+          <button class="btn btn-gray btn-sm" style="width:46px; flex:0 0 auto;" onclick="adjustAutoTeamTarget(1)">＋</button>
+        </div>
+        <button id="autoTeamBtn" class="btn btn-gray btn-sm" style="width:100%;" onclick="toggleAutoTeamPublish()">⚫ 자동 팀공개 OFF</button>
+        <div id="autoTeamInfo" style="font-size:12px; color:var(--text-3); margin-top:8px; line-height:1.6;">
+          목표 인원 도달 시 위에서 선택한 인원수로 자동 편성·공개됩니다.
+        </div>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px;">
+        <button class="btn btn-green btn-sm" onclick="autoAssignTeams()">⚡ 자동 팀편성 실행</button>
+        <button class="btn btn-gray btn-sm" onclick="clearTeams()">🗑 초기화</button>
+      </div>
+      <div id="teamEditBar">
+        <div class="team-edit-bar" id="teamEditBarInner">
+          <span id="teamEditBarLabel">✏️ 편집 모드 OFF</span>
+          <button onclick="toggleTeamEditMode()">편집 모드 켜기</button>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section" id="memberAdminSection">
+      <div class="card-title">👤 회원 관리</div>
+      <button class="btn btn-gray btn-sm" style="width:100%; display:flex; justify-content:space-between; align-items:center;" onclick="toggleMemberList()">
+        <span id="memberListToggleLabel">회원 명부 보기 (0명)</span>
+        <span id="memberListToggleIcon">▾</span>
+      </button>
+      <div id="memberListWrap" style="display:none; margin-top:8px;"><div class="empty-state" style="padding:12px 0"><p>펼치면 표시됩니다</p></div></div>
+      <button class="btn btn-gray btn-sm" style="width:100%; margin-top:8px;" onclick="adminBackfillMemberPhones()">📞 전화번호 중복가입 인덱스 소급 생성</button>
+    </div>
+    <div class="admin-section" id="handiStatsAdminSection">
+      <div class="card-title">📊 회원별 평균 핸디 관리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:10px; line-height:1.7;">
+        지금까지 만들어진 모든 방의 "핸디+친타수" 기록을 모아 회원별 평균을 계산합니다. 넷스코어(친타수−핸디)가 그날 전체 참가자 평균보다 꾸준히 낮으면(잘 침) 핸디를 낮추고, 높으면(못 침) 핸디를 올리는 방향으로 <strong>제안 핸디</strong>를 계산합니다.<br>
+        <strong>게임수 5회 미만</strong>인 회원은 아직 데이터가 부족하다고 보고 제안핸디를 적용하지 않습니다.<br>
+        "핸디 반영"을 누르면 그 회원의 <strong>기본 핸디</strong>로 저장되어, 다음에 새 방에서 그 이름으로 등록할 때(불러오기) 자동으로 채워집니다.
+      </div>
+      <button class="btn btn-gray btn-sm" style="width:100%; margin-bottom:10px;" onclick="renderMemberHandiStats(true)">🔄 통계 새로고침</button>
+      <div id="memberHandiStatsWrap"><div class="empty-state" style="padding:12px 0"><p>통계 새로고침을 눌러주세요</p></div></div>
+      <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border-2);">
+        <div style="font-size:12px; color:var(--text-3); margin-bottom:6px;">🔍 특정 이름의 원본 기록을 방별로 직접 확인 (집계에서 왜 빠지는지 확인할 때)</div>
+        <div style="display:flex; gap:8px;">
+          <input id="nameDiagInput" placeholder="이름 입력 (예: 윤인서)" style="flex:1;">
+          <button class="btn btn-gray btn-sm" style="width:auto; padding:9px 14px; flex-shrink:0;" onclick="adminDiagnoseName()">진단</button>
+        </div>
+        <div id="nameDiagResult"></div>
+      </div>
+      <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border-2);">
+        <div style="font-size:12px; color:var(--text-3); margin-bottom:6px;">🛠 과거에 출석 체크가 누락된 기록 복구 — 저장된 모든 경기방을 훑어 전체 회원의 빠진 출석을 한번에 만듭니다 (이미 있는 기록은 그대로)</div>
+        <button class="btn btn-gray btn-sm" style="width:100%;" onclick="adminBackfillAttendance()">📋 출석 기록 소급 생성 (전체 회원 한번에)</button>
+        <div id="attendBackfillResult"></div>
+      </div>
+    </div>
+    <div class="admin-section" id="handiPolicyAdminSection">
+      <div class="card-title">⚙️ 핸디 관리 정책 (3가지 방법 조합)</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.8;">
+        고수와 하수의 격차를 좁혀서 다들 비슷한 스코어가 나오게 하는 3가지 방법을 같이 적용합니다.<br>
+        <b>① 정기적 핸디 리뷰</b> — 위 "회원별 평균 핸디 관리" 표를 주기적으로(예: 한 달에 한 번) 확인하고 "핸디 반영"을 눌러 실력에 맞게 조정하는 것 자체가 이 방법입니다.<br>
+        <b>② 퍼센트 핸디</b> — 조정할 핸디를 100% 그대로 반영하지 않고, 아래에서 정한 비율만 적용합니다. 90%를 고르면 상급자·하급자 모두 핸디 변화폭이 10%씩 줄어들어 격차가 원천적으로 좁혀집니다.<br>
+        <b>③ 스테이블포드 취지 순위 캡</b> — 홀별 타수를 입력할 수 없어 정식 스테이블포드(홀마다 포인트 환산)는 만들 수 없지만, 같은 취지로 <u>그날 필드 평균보다 지정한 타수 이상 나쁜 스코어는 순위 계산에서만 그 초과분을 캡 처리</u>합니다. 한 사람이 크게 무너진 한 라운드가 전체 순위를 과도하게 좌우하지 않게 해서, 접전을 유도합니다. (화면에 보이는 실제 스코어는 그대로 표시되고, <b>순위 매기는 기준에만</b> 적용됩니다.)
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">② 퍼센트 핸디</div>
+        <select id="handiPercentSelect" onchange="setHandiPercent(this.value)" style="width:100%; padding:11px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface-1); color:var(--text); font-size:14px;">
+          <option value="100">100% (그대로 반영)</option>
+          <option value="95">95%</option>
+          <option value="90" selected>90% (권장)</option>
+          <option value="85">85%</option>
+          <option value="80">80%</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--text-3); font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">③ 스테이블포드 취지 순위 캡</div>
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+          <span style="font-size:13px; color:var(--text-2); white-space:nowrap;">필드평균 +</span>
+          <input id="stablefordCapInput" type="number" value="10" min="0" onchange="setStablefordCapAmount(this.value)" style="flex:1; padding:11px; border:1px solid var(--border-2); border-radius:8px; background:var(--surface-1); color:var(--text); font-size:14px; text-align:center;">
+          <span style="font-size:13px; color:var(--text-2); white-space:nowrap;">타 초과분 캡</span>
+        </div>
+        <button id="stablefordCapBtn" class="btn btn-gray btn-sm" style="width:100%;" onclick="toggleStablefordCap()">⚫ 순위 캡 꺼짐 (원래 방식)</button>
+      </div>
+    </div>
+    <div class="card" id="roomCleanupCard">
+      <div class="card-title">📦 방 정리</div>
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.7;">
+        게임이 끝난 방은 <strong>보관 처리</strong>를 추천합니다 — 목록에서는 사라지지만 점수 기록은 그대로 남아 회원 평균 핸디 통계에 계속 반영됩니다.
+      </div>
+      <button class="btn btn-gold btn-sm" style="width:100%; margin-bottom:12px;" onclick="archiveRoom()">📦 현재 방 보관 처리 (목록에서만 숨기기)</button>
+      <button class="btn btn-gray btn-sm" style="width:100%; display:flex; justify-content:space-between; align-items:center;" onclick="toggleArchivedRoomsList()">
+        <span id="archivedRoomsToggleLabel">보관된 방 보기</span>
+        <span id="archivedRoomsToggleIcon">▾</span>
+      </button>
+      <div id="archivedRoomsWrap" style="display:none; margin-top:8px;"><div class="empty-state" style="padding:10px 0"><p>새로고침하면 표시됩니다</p></div></div>
+    </div>
+  </div>
+</div>
+<div class="sticky-bottom" id="stickyScore" style="display:none">
+  <button class="btn btn-green" onclick="saveMyScore()">✓ 내 점수 저장</button>
+</div>
+<div class="modal-overlay" id="previewModal" onclick="closePreview(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">순위 미리보기 <span class="preview-tag">관리자 전용</span></div>
+    <div id="previewContent"></div>
+    <div style="margin-top:16px">
+      <button class="btn btn-gold" onclick="adminPublish()">🚀 지금 전체 공개</button>
+    </div>
+  </div>
+</div>
+<div id="receiptViewer" onclick="if(event.target===this||event.target.className==='rv-close')fundCloseReceipt()"><div id="receiptViewerBody"></div><button class="rv-close" onclick="fundCloseReceipt()">닫기</button></div>
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAXrZPMhTZXdj5uJufyj3ZyS5wbOiZfU9Y",
+  authDomain: "cmg-golf.firebaseapp.com",
+  databaseURL: "https://cmg-golf-default-rtdb.firebaseio.com",
+  projectId: "cmg-golf",
+  storageBucket: "cmg-golf.firebasestorage.app",
+  messagingSenderId: "1081371409280",
+  appId: "1:1081371409280:web:3b813b1a9cc4806f701f65",
+  measurementId: "G-7TGYE2GL3P"
+};
+let useFirebase = false, db = null, admin = false, currentRoom = "", localData = {}, published = false, currentTab = "room", allRooms = {}, autoPublishEnabled = false, localAttendance = {};
+let adminRole = "full"; // "full" = 관리자(전체), "sub" = 부관리자(경기방 생성·순위관리·팀편성관리만)
+let autoTeamEnabled = false, autoTeamTarget = 20; // 자동 팀공개: 목표 인원 도달 시 자동 편성·공개
+let selectedGender = 'male'; // 성별 선택 상태
+// 같은 팀으로 편성하지 않을 사람들 (필요하면 [["이름1","이름2"], ...] 형태로 추가)
+var NEVER_TOGETHER = [["박희정", "안동인"]];
+function isConflictPair(p, q) {
+  if (!p || !q) return false;
+  var a = baseName(p.name) || p.name, b = baseName(q.name) || q.name;
+  for (var i = 0; i < NEVER_TOGETHER.length; i++) {
+    var x = NEVER_TOGETHER[i][0], y = NEVER_TOGETHER[i][1];
+    if ((a === x && b === y) || (a === y && b === x)) return true;
+  }
+  return false;
+}
+function conflictsWithTeam(p, team) {
+  for (var i = 0; i < team.length; i++) if (isConflictPair(p, team[i])) return true;
+  return false;
+}
+var APP_VER = "2026-11-01-a"; // 팀편성을 만든 화면 버전 기록용 (오래된 캐시 화면이 만든 팀편성을 구분)
+function teamSig(teams) { try { return (teams || []).map(function(t) { return (t || []).map(function(p) { return p && p.name; }).join(","); }).join("|"); } catch (e) { return ""; } }
+var teamGrouped = {}; // { 이름: true } = 체크됨(팀편성 시 강제로 한 팀으로 묶임). 없으면 기본값(일반 자동배정).
+var loggedInMemberName = null; // 로그인된 회원 이름(null이면 로그인 안 됨). 관리자는 이 로그인과 무관하게 항상 자유 입력 가능.
+var allMembers = {}; // { 이름: {passwordHash, createdAt} } — 관리자 회원 목록 표시용
+var teamGroupedDirty = false;   // 방금 로컬에서 체크를 바꿨는데 아직 서버 저장이 안 끝난 상태인지
+var teamGroupedPushTimer = null;
+// ── 핸디 관리 정책 (관리자 전용, 이 기기의 화면 설정 — 서버 저장 없이 즉시 적용) ──
+var handiPercent = 90;             // 퍼센트 핸디: 제안핸디에 곱해서 적용할 비율 (기본 90%, 드롭다운 기본 선택과 일치)
+var stablefordCapEnabled = false; // 스테이블포드 취지의 순위 캡 적용 여부 (기본 OFF, 켜야 적용됨)
+var stablefordCapAmount = 10;     // 필드 평균 넷스코어보다 이 타수 이상 나쁜 스코어는 순위 계산 시 이 값으로 캡
+
+// 📢 공지사항 (경기방과 무관한 고정 경로 — 관리자만 작성/수정/삭제, 전 회원 열람 가능)
+var NOTICE_PATH = "notices";
+var authReady = Promise.resolve(false);
+function myUid() { var u = firebase.auth().currentUser; return u ? u.uid : null; }
+var allNotices = {};
+var noticeEditingId = null;
+var noticeViewingId = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  useFirebase = true;
+  // 🔐 보이지 않는 익명 로그인 — 이게 되어야 서버(보안 규칙)가 이 앱을 통과시켜 줌
+  authReady = firebase.auth().signInAnonymously().then(function() { return true; });
+  authReady.then(function() {
+    listenAllRooms();
+    membersListenGlobal();  // 👤 회원 이름 목록(이름만)
+    noticesListenGlobal();  // 📢 공지사항
+  }).catch(function(e) {
+    console.error("익명 로그인 오류:", e && e.message);
+    var rn = document.getElementById("roomNotice");
+    if (rn) { rn.style.display = "block"; rn.textContent = "⚠ 서버 인증 실패 — 잠시 후 새로고침 해주세요"; }
+  });
+} catch(e) {
+  console.error("Firebase 오류:", e.message);
+  document.getElementById("roomNotice").style.display = "block";
+  document.getElementById("roomNotice").textContent = "⚠ Firebase 연결 오류 (데이터베이스 규칙을 확인하세요)";
+}
+// 관리자 참가자 목록: 체크박스를 누르는 도중(mousedown~mouseup 사이) 실시간 재렌더링이 끼어들어
+// 클릭이 씹히는 문제 방지 — 누르기 시작하면 잠깐 렌더링을 잠그고, 손을 떼면 풀어서 반영한다.
+function adminListInteractStart(e) {
+  if (e.target && e.target.closest && e.target.closest("#adminPlayerList")) adminListInteracting = true;
+}
+function adminListInteractEnd() {
+  if (!adminListInteracting) return;
+  setTimeout(function() {
+    adminListInteracting = false;
+    if (adminListRenderPending) { adminListRenderPending = false; refreshAdminPlayerList(); }
+  }, 250); // change 이벤트가 확실히 처리될 시간을 준 뒤 잠금 해제
+}
+document.addEventListener("mousedown", adminListInteractStart);
+document.addEventListener("touchstart", adminListInteractStart, { passive: true });
+document.addEventListener("mouseup", adminListInteractEnd);
+document.addEventListener("touchend", adminListInteractEnd);
+window.addEventListener("DOMContentLoaded", function() {
+  var savedGender = localStorage.getItem("myGolfGender");
+  if (savedGender) setGender(savedGender);
+  restoreMemberSession(); // 저장된 회원 로그인 자동 복원
+  // 저장된 관리자 세션 자동 복원 (모바일에서 매번 재로그인 방지)
+  try {
+    var savedAdmin = localStorage.getItem("cmgAdmin");
+    if (savedAdmin === "1" || savedAdmin === "sub") {
+      // 서버에 이 기기의 관리자 인증이 실제로 남아 있는지 확인 후 복원
+      authReady.then(function() {
+        var node = (savedAdmin === "1") ? "adminKeys/" : "subKeys/";
+        return db.ref(node + myUid()).once("value").then(function(snap) {
+          if (snap.exists()) { adminRole = (savedAdmin === "1") ? "full" : "sub"; enterAdminMode(); }
+          else { try { localStorage.removeItem("cmgAdmin"); } catch(e) {} }
+        });
+      }).catch(function() {});
+    }
+  } catch(e) {}
+});
+// ── 성별 선택 ──
+function setGender(g) {
+  selectedGender = g;
+  var mBtn = document.getElementById("genderMale");
+  var fBtn = document.getElementById("genderFemale");
+  mBtn.className = 'gender-btn' + (g === 'male' ? ' active-male' : '');
+  fBtn.className = 'gender-btn' + (g === 'female' ? ' active-female' : '');
+  localStorage.setItem("myGolfGender", g);
+}
+// ── 핸디캡 유효성 검사 (최대 12) ──
+function validateHandi(el) {
+  var val = el.value.trim();
+  var errEl = document.getElementById("handiError");
+  if (val === "" || val === "-") { errEl.style.display = "none"; el.classList.remove("input-error"); return; }
+  var num = parseFloat(val);
+  if (isNaN(num)) { errEl.style.display = "none"; el.classList.remove("input-error"); return; }
+  if (num > 12) {
+    el.classList.add("input-error");
+    errEl.style.display = "block";
+  } else {
+    el.classList.remove("input-error");
+    errEl.style.display = "none";
+  }
+}
+function checkHandiValid() {
+  var val = document.getElementById("pHandi").value.trim();
+  if (val === "" || val === "-") return true;
+  var num = parseFloat(val);
+  if (isNaN(num)) return true;
+  if (num > 12) {
+    toast("⚠ 핸디캡은 최대 12까지만 입력 가능합니다");
+    document.getElementById("pHandi").focus();
+    return false;
+  }
+  return true;
+}
+function switchTab(tab) {
+  if (!admin && !loggedInMemberName && tab !== "room" && tab !== "admin" && tab !== "notice") {
+    toast("🔒 먼저 회원가입/로그인해주세요");
+    tab = "room";
+    memberAuthExpanded = true;
+    updateMemberAuthUI();
+  }
+  document.querySelectorAll(".page").forEach(function(p) { p.classList.remove("active"); });
+  document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
+  document.getElementById("page-" + tab).classList.add("active");
+  document.getElementById("tab-" + tab).classList.add("active");
+  currentTab = tab;
+  document.getElementById("stickyScore").style.display = (tab === "score") ? "block" : "none";
+  if (tab === "attendance") renderAttendance();
+  if (tab === "notice" && document.getElementById("fundPane").style.display !== "none") fundRefreshView();
+}
+function toast(msg) {
+  var el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  setTimeout(function() { el.classList.remove("show"); }, 2200);
+}
+function listenAllRooms() {
+  if (!useFirebase) return;
+  db.ref("rooms").on("value", function(snap) {
+    var data = snap.val();
+    var listEl = document.getElementById("availableRoomsList");
+    allRooms = data || {};
+    if (!data) {
+      currentRoom = "";
+      localData = {};
+      published = false;
+      autoPublishEnabled = false;
+      updateAutoPublishButton();
+      listEl.innerHTML = '<div class="empty-state"><p>현재 진행 중인 경기방이 없습니다.<br>[관리자] 탭에서 방을 생성해주세요.</p></div>';
+      renderRank();
+      renderParticipantList();
+      if (admin) refreshAdminRoomStatus();
+      return;
+    }
+    var roomsArray = Object.keys(data).filter(function(key) {
+      return !(data[key].meta && data[key].meta.archived); // 보관 처리된 방은 목록에서 숨김(통계 데이터는 유지)
+    }).map(function(key) {
+      return {
+        id: key,
+        created: (data[key].meta && data[key].meta.created) ? data[key].meta.created : 0
+      };
+    }).sort(function(a, b) { return b.created - a.created; });
+    if (!roomsArray.length) {
+      listEl.innerHTML = '<div class="empty-state"><p>현재 진행 중인 경기방이 없습니다.<br>[관리자] 탭에서 방을 생성해주세요.</p></div>';
+    } else {
+      listEl.innerHTML = roomsArray.map(function(r, idx) {
+        return '<button class="btn btn-gray" style="margin-bottom:10px; text-align:left; padding:18px; display:flex; justify-content:space-between; align-items:center; background:' + (currentRoom === r.id ? 'rgba(46,204,113,0.08)' : 'var(--surface-2)') + '; border:1px solid ' + (currentRoom === r.id ? 'rgba(46,204,113,0.3)' : 'var(--border-2)') + ';" onclick="joinRoom(\'' + r.id + '\')">' +
+          '<span style="font-size:15px; font-weight:600; color:var(--text);">📍 ' + r.id + (idx === 0 ? ' <span style="font-size:11px; color:var(--green); font-weight:700;">(현재 운영 방)</span>' : '') + '</span>' +
+          '<span style="font-size:13px; color:var(--gold); font-weight:600;">바로 보기 ›</span>' +
+          '</button>';
+      }).join("");
+    }
+    var curRoomArchived = currentRoom && data[currentRoom] && data[currentRoom].meta && data[currentRoom].meta.archived;
+    if ((!currentRoom || !data[currentRoom] || curRoomArchived) && roomsArray.length) {
+      joinRoom(roomsArray[0].id, true);
+    }
+    if (admin) renderArchivedRooms();
+  });
+}
+function createRoom() {
+  if (!admin) { toast("관리자 인증이 풀렸습니다."); return; }
+  var name = document.getElementById("newRoomInput").value.trim();
+  if (!name) { toast("새로운 방 이름을 입력하세요"); return; }
+  currentRoom = name; updateRoomBadge();
+  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta").set({ published: false, autoPublish: false, autoTeam: false, autoTeamTarget: 20, teamSize: 4, autoTeamDone: false, created: Date.now() });
+  toast("방 [" + name + "] 생성 완료!");
+  document.getElementById("qrCard").style.display = "block";
+  document.getElementById("newRoomInput").value = "";
+  listenRoom();
+}
+function joinRoom(roomName, silent) {
+  if (!roomName) return;
+  currentRoom = roomName;
+  updateRoomBadge();
+  listenRoom();
+  if (!silent) {
+    toast("방 [" + roomName + "] 연결 완료!");
+    switchTab('list');
+  }
+}
+function updateRoomBadge() {
+  document.getElementById("roomBadge").style.display = "block";
+  document.getElementById("roomBadgeText").textContent = "📍 " + currentRoom;
+  if (admin) refreshAdminRoomStatus();
+}
+function shareRoomLink() {
+  if (!currentRoom) { toast("방을 먼저 생성해주세요."); return; }
+  var url = location.href.split("?")[0] + "?room=" + encodeURIComponent(currentRoom);
+  if (navigator.share) {
+    navigator.share({ title: 'CMG 골프클럽', text: "⛳ CMG 골프클럽 [" + currentRoom + "] 경기방에 초대합니다!", url: url }).catch(console.error);
+  } else {
+    navigator.clipboard.writeText(url).then(function() {
+      toast("🔗 초대 링크가 복사되었습니다! 카카오톡에 붙여넣기 하세요.");
+    }).catch(function() { toast("링크 복사에 실패했습니다."); });
+  }
+}
+function updateAutoPublishButton() {
+  var btn = document.getElementById("autoPublishBtn");
+  if (!btn) return;
+  btn.textContent = autoPublishEnabled ? "🟢 자동 공개 ON" : "⚫ 자동 공개 OFF";
+  btn.className = autoPublishEnabled ? "btn btn-gold btn-sm" : "btn btn-gray btn-sm";
+}
+function canAutoPublish() {
+  var players = Object.values(localData || {});
+  if (!players.length) return false;
+  return players.some(function(p) {
+    return p.score !== "" && p.score !== undefined && !isNaN(Number(p.score));
+  });
+}
+// ✅ 수정된 함수: 모든 접속 사용자(비관리자 포함)가 자동 공개를 트리거할 수 있음
+function runAutoPublishIfNeeded() {
+  if (!useFirebase || !currentRoom || !autoPublishEnabled || published) return;
+  if (!canAutoPublish()) return;
+  db.ref("rooms/" + currentRoom + "/meta/published").set(true).then(function() {
+    toast("🤖 첫 점수 입력 감지 — 순위가 자동 공개되었습니다.");
+  }).catch(function() {
+    toast("자동 공개 처리 중 오류가 발생했습니다.");
+  });
+}
+function toggleAutoPublish() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!currentRoom) { toast("먼저 운영할 방을 선택하세요"); return; }
+  if (!useFirebase) {
+    autoPublishEnabled = !autoPublishEnabled;
+    updateAutoPublishButton();
+    if (autoPublishEnabled && canAutoPublish()) {
+      published = true;
+      renderRank();
+      refreshAdminRoomStatus();
+      toast("🤖 자동 공개 ON — 순위가 즉시 공개되었습니다.");
+    } else {
+      toast(autoPublishEnabled ? "🤖 자동 공개 ON" : "자동 공개 OFF");
+    }
+    return;
+  }
+  var next = !autoPublishEnabled;
+  // autoPublish 플래그 저장
+  db.ref("rooms/" + currentRoom + "/meta/autoPublish").set(next).then(function() {
+    if (!next) { toast("자동 공개가 꺼졌습니다."); return; }
+    // 자동공개 ON 전환 직후 — 이미 점수가 있으면 즉시 published=true 저장
+    if (canAutoPublish() && !published) {
+      db.ref("rooms/" + currentRoom + "/meta/published").set(true).then(function() {
+        toast("🤖 자동 공개 ON — 입력된 점수가 있어 순위가 즉시 공개되었습니다.");
+      });
+    } else {
+      toast("🤖 자동 공개 ON — 첫 친타수 입력 시 순위가 자동 공개됩니다.");
+    }
+  }).catch(function() {
+    toast("자동 공개 설정 저장에 실패했습니다.");
+  });
+}
+// ══════════════════════════════════════════════════════════════
+// 👤 회원 가입/로그인 — 비밀번호는 SHA-256으로 해시해서 저장(평문 저장 안 함)
+// 한 번 로그인하면 이 휴대폰에서는 localStorage에 남아 계속 자동 로그인 유지됨.
+// ══════════════════════════════════════════════════════════════
+function hashPassword(pw) {
+  if (!window.crypto || !window.crypto.subtle) {
+    return Promise.reject(new Error("이 브라우저/연결(HTTPS 아님)에서는 회원가입·로그인을 사용할 수 없습니다"));
+  }
+  var enc = new TextEncoder().encode(pw);
+  return crypto.subtle.digest("SHA-256", enc).then(function(buf) {
+    return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+  });
+}
+function memberAuthNotice(type, msg) { showNotice(document.getElementById("memberAuthNotice"), type, msg); }
+
+function memberSignUp() {
+  var name = document.getElementById("memberAuthName").value.trim();
+  var phone = document.getElementById("memberAuthPhone").value.trim();
+  var pw = document.getElementById("memberAuthPw").value;
+  if (!name) { memberAuthNotice("error", "이름을 입력하세요"); return; }
+  var phoneDigits = phone.replace(/[^0-9]/g, "");
+  if (phoneDigits.length < 9) { memberAuthNotice("error", "전화번호를 정확히 입력하세요 (예: 010-1234-5678)"); return; }
+  if (!pw || pw.length < 4) { memberAuthNotice("error", "비밀번호는 4자리 이상 입력하세요"); return; }
+  if (!useFirebase) { memberAuthNotice("error", "온라인 상태에서만 가입할 수 있습니다"); return; }
+  db.ref("members/" + name + "/passwordHash").once("value").then(function(snap) {
+    if (snap.exists()) { memberAuthNotice("error", "이미 가입된 이름입니다. 로그인해주세요."); return; }
+    db.ref("memberPhones/" + phoneDigits).once("value").then(function(phoneSnap) {
+      if (phoneSnap.exists()) {
+        var existingName = phoneSnap.val();
+        memberAuthNotice("error", "이 전화번호로는 이미 [" + existingName + "]님이 가입되어 있습니다. 한 번호당 한 명만 가입할 수 있어요. 본인 계정이라면 로그인해주세요.");
+        return;
+      }
+      hashPassword(pw).then(function(hash) {
+        return db.ref("members/" + name).set({ passwordHash: hash, phone: phone, createdAt: Date.now() }).then(function() {
+          return db.ref("memberPhones/" + phoneDigits).set(name);
+        }).then(function() {
+          return db.ref("memberNames/" + name).set(true);
+        });
+      }).then(function() {
+        completeMemberLogin(name);
+        toast("✅ 회원가입 완료! 자동으로 로그인되었습니다.");
+      }).catch(function(err) {
+        memberAuthNotice("error", (err && err.message) ? err.message : "가입 실패 — 연결을 확인해주세요");
+      });
+    });
+  });
+}
+function memberLogin() {
+  var name = document.getElementById("memberAuthName").value.trim();
+  var pw = document.getElementById("memberAuthPw").value;
+  if (!name || !pw) { memberAuthNotice("error", "이름과 비밀번호를 입력하세요"); return; }
+  if (!useFirebase) { memberAuthNotice("error", "온라인 상태에서만 로그인할 수 있습니다"); return; }
+  db.ref("members/" + name + "/passwordHash").once("value").then(function(snap) {
+    var savedHash = snap.val();
+    if (!savedHash) { memberAuthNotice("error", "가입되지 않은 이름입니다. 회원가입을 먼저 해주세요."); return; }
+    return hashPassword(pw).then(function(hash) {
+      if (hash !== savedHash) { memberAuthNotice("error", "비밀번호가 일치하지 않습니다"); return; }
+      if (!memberNamesData[name]) db.ref("memberNames/" + name).set(true).catch(function() {});
+      completeMemberLogin(name);
+      toast("✅ " + name + "님, 로그인되었습니다.");
+    });
+  }).catch(function(err) {
+    memberAuthNotice("error", (err && err.message) ? err.message : "로그인 실패 — 연결을 확인해주세요");
+  });
+}
+function completeMemberLogin(name) {
+  loggedInMemberName = name;
+  try { localStorage.setItem("cmgMemberName", name); } catch (e) {}
+  localStorage.setItem("myGolfName", name); // 기존 기기잠금과 연동(같은 값 사용)
+  document.getElementById("memberAuthName").value = "";
+  document.getElementById("memberAuthPw").value = "";
+  var phoneEl = document.getElementById("memberAuthPhone"); if (phoneEl) phoneEl.value = "";
+  updateMemberAuthUI();
+}
+function memberLogout() {
+  if (!confirm("로그아웃하시겠습니까? 다음에 다시 로그인해야 합니다.")) return;
+  loggedInMemberName = null;
+  try { localStorage.removeItem("cmgMemberName"); } catch (e) {}
+  updateMemberAuthUI();
+  toast("로그아웃되었습니다");
+}
+var memberAuthExpanded = false; // 회원가입/로그인 카드 기본값: 접힘
+function toggleMemberAuthCard() {
+  memberAuthExpanded = !memberAuthExpanded;
+  updateMemberAuthUI();
+}
+function updateMemberAuthUI() {
+  var card = document.getElementById("memberAuthCard");
+  var outBox = document.getElementById("memberLoggedOutBox");
+  var inBox = document.getElementById("memberLoggedInBox");
+  var nameEl = document.getElementById("memberLoggedInName");
+  var pNameInput = document.getElementById("pName");
+  var icon = document.getElementById("memberAuthToggleIcon");
+  if (admin) {
+    // 관리자는 회원 로그인과 무관하게 항상 자유롭게 이름을 입력할 수 있음
+    if (card) card.style.display = "none";
+    if (pNameInput) { pNameInput.disabled = false; pNameInput.placeholder = "이름을 입력하세요"; }
+    return;
+  }
+  if (card) card.style.display = "";
+  if (loggedInMemberName) {
+    if (outBox) outBox.style.display = "none";
+    if (inBox) inBox.style.display = "block";
+    if (nameEl) nameEl.textContent = loggedInMemberName;
+    if (pNameInput) { pNameInput.disabled = true; pNameInput.value = loggedInMemberName; pNameInput.placeholder = ""; }
+    if (icon) icon.textContent = "";
+  } else {
+    if (outBox) outBox.style.display = memberAuthExpanded ? "block" : "none";
+    if (inBox) inBox.style.display = "none";
+    if (pNameInput) { pNameInput.disabled = true; pNameInput.value = ""; pNameInput.placeholder = "먼저 로그인해주세요"; }
+    if (icon) icon.textContent = memberAuthExpanded ? "▴" : "▾";
+  }
+}
+function restoreMemberSession() {
+  var saved = null;
+  try { saved = localStorage.getItem("cmgMemberName"); } catch (e) {}
+  if (saved) loggedInMemberName = saved;
+  updateMemberAuthUI();
+}
+
+function editMyScore(name) {
+  var d = localData[name]; if (!d) return;
+  if (!admin && (!loggedInMemberName || name !== loggedInMemberName)) { toast("🔒 본인의 점수만 수정할 수 있습니다."); return; }
+  document.getElementById("pName").value = d.name;
+  document.getElementById("pHandi").value = d.handi;
+  if (d.gender) setGender(d.gender); else setGender('male');
+  var hasScore = (d.score !== "" && d.score !== undefined);
+  document.getElementById("pScore").value = hasScore ? d.score : "";
+  if (hasScore) {
+    var net = parseFloat((d.score - d.handi).toFixed(1));
+    document.getElementById("myNetCard").style.display = "block";
+    document.getElementById("myNetDisplay").textContent = net;
+  } else {
+    document.getElementById("myNetCard").style.display = "none";
+  }
+  validateHandi(document.getElementById("pHandi"));
+  switchTab('score');
+  setTimeout(function() { document.getElementById("pScore").focus(); }, 300);
+}
+// 이름 뒤 '팀편성용 숫자'를 떼어낸 기본 이름 — 출석은 항상 기본 이름으로 기록
+function baseName(name) {
+  var s = String(name == null ? "" : name).trim();
+  // 기기별로 한글이 다른 유니코드 형태(NFC/NFD)로 저장되어 화면엔 똑같이 보여도 다른 문자열로 취급되는 문제 방지
+  if (s.normalize) s = s.normalize("NFC");
+  // 눈에 안 보이는 문자(키보드 자동완성 등으로 섞여 들어가는 한글 채움 문자, 폭 없는 공백 등) 제거 — 화면엔 똑같아 보여도 다른 이름으로 취급되는 문제 방지
+  s = s.replace(/[\u200B\u200C\u200D\uFEFF\u115F\u1160\u3164\uFFA0]/g, "");
+  // 이름 중간에 섞여 들어간 공백도 전부 제거 (한글 이름엔 원래 공백이 없음)
+  s = s.replace(/\s+/g, "");
+  // 중복 구분/메모용으로 뒤에 붙는 표시들을 제거해 원래 이름으로 정규화
+  // 예: "홍길동(2)", "홍길동(빅스비)", "홍길동-2", "홍길동_2" 모두 "홍길동"
+  s = s.replace(/[\-_]*[\(（][^()（）]*[\)）]$/, "");
+  s = s.replace(/[\-_]*\d+$/, "");
+  return s.trim();
+}
+function saveMyScore() {
+  if (!admin && !loggedInMemberName) { showNotice(document.getElementById("scoreNotice"), "error", "🔒 먼저 로그인해주세요"); return; }
+  var name = (!admin && loggedInMemberName) ? loggedInMemberName : document.getElementById("pName").value.trim();
+  var handiStr = document.getElementById("pHandi").value.trim();
+  var scoreStr = document.getElementById("pScore").value.trim();
+  var notice = document.getElementById("scoreNotice");
+  if (!currentRoom) { showNotice(notice, "error", "먼저 경기방에 입장하세요"); return; }
+  if (!name) { showNotice(notice, "error", "이름을 입력하세요"); return; }
+  if (!checkHandiValid()) return;
+  localStorage.setItem("myGolfName", name);
+  localStorage.setItem("myGolfGender", selectedGender);
+  if (handiStr === "-") handiStr = "0";
+  if (scoreStr === "-") scoreStr = "";
+  var handi = handiStr !== "" ? Number(handiStr) : 0;
+  var hasScore = scoreStr !== "";
+  var score = hasScore ? Number(scoreStr) : "";
+  var timestamp = (localData[name] && localData[name].timestamp) ? localData[name].timestamp : Date.now();
+  if (useFirebase) {
+    // localData 즉시 반영 → 저장 직후 canAutoPublish()가 정확한 값 반환
+    localData[name] = { name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender };
+    db.ref("rooms/" + currentRoom + "/players/" + name).set({ name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender });
+    // 출석은 기존 이름(숫자 제거)으로 기록 → "홍길동1"도 "홍길동" 출석으로 집계 (회원가입된 이름일 때만)
+    var attName = baseName(name) || name;
+    // 회원 등록 여부 확인: 입력한 이름 그대로, 숫자 제거한 기본 이름, 또는 회원DB에 "이름2"처럼
+    // 숫자가 붙은 키로 등록되어 있어도(baseName이 같으면) 모두 동일 회원으로 인식 → 출석 미기록 버그 방지
+    var isRegisteredMember = !!allMembers[name] || !!allMembers[attName];
+    if (!isRegisteredMember) {
+      for (var __mk in allMembers) {
+        if (baseName(__mk) === attName) { isRegisteredMember = true; break; }
+      }
+    }
+    if (isRegisteredMember) {
+      var attendRef = db.ref("attendance/" + attName + "/" + currentRoom);
+      attendRef.once("value", function(snap) {
+        if (!snap.exists()) {
+          attendRef.set({ room: currentRoom, timestamp: Date.now() });
+        }
+      });
+    }
+    // 자동 공개 ON 상태이고 점수가 입력됐으면 즉시 공개 트리거
+    if (hasScore) runAutoPublishIfNeeded();
+  } else {
+    // 오프라인(로컬) 모드
+    localData[name] = { name: name, handi: handi, score: score, timestamp: timestamp, gender: selectedGender };
+    // 출석은 기존 이름(숫자 제거)으로 기록
+    var attNameL = baseName(name) || name;
+    if (!localAttendance[attNameL] || !localAttendance[attNameL][currentRoom]) {
+      if (!localAttendance[attNameL]) localAttendance[attNameL] = {};
+      localAttendance[attNameL][currentRoom] = { room: currentRoom, timestamp: Date.now() };
+    }
+    renderRank(); renderParticipantList();
+    if (admin) { refreshAdminPlayerList(); updateTeamSizeInfo(); updateAutoTeamInfo(); }
+    runAutoTeamIfNeeded();
+  }
+  if (hasScore) {
+    var net = parseFloat((score - handi).toFixed(1));
+    document.getElementById("myNetCard").style.display = "block";
+    document.getElementById("myNetDisplay").textContent = net;
+  } else {
+    document.getElementById("myNetCard").style.display = "none";
+  }
+  if (navigator.vibrate) navigator.vibrate([30, 10, 30]);
+  toast(hasScore ? "✅ 스코어 저장 완료!" : "✅ 사전 등록 완료!");
+  setTimeout(function() { switchTab('list'); }, 400);
+}
+
+function renderAttendance() {
+  var el = document.getElementById("attendanceList");
+  // 버그 수정 3: 오프라인 모드에서도 로컬 출석 데이터 표시
+  if (!useFirebase) {
+    var data = localAttendance || {};
+    var html = buildAttendanceHTML(data);
+    if (el) el.innerHTML = html;
+    return;
+  }
+  db.ref("attendance").once("value").then(function(snapshot) {
+    var data = snapshot.val() || {};
+    var html = buildAttendanceHTML(data);
+    if (el) el.innerHTML = html;
+  });
+}
+
+function buildAttendanceHTML(data) {
+  var html = "";
+  var currentYear = new Date().getFullYear();
+
+  // 각 사람별 출석 기록을 실제 타임스탬프와 함께 수집
+  var namesInfo = Object.keys(data).map(function(name) {
+    var entries = [];
+    Object.keys(data[name] || {}).forEach(function(room) {
+      var entry = data[name][room];
+      if (entry && typeof entry === 'object' && !entry.timestamp) {
+        Object.keys(entry).forEach(function(subRoom) {
+          var sub = entry[subRoom];
+          var ts = (sub && sub.timestamp) ? sub.timestamp : 0;
+          entries.push({ label: room + " [" + subRoom + "]", key: room, subKey: subRoom, ts: ts });
+        });
+      } else {
+        var ts = (entry && entry.timestamp) ? entry.timestamp : 0;
+        entries.push({ label: room, key: room, subKey: null, ts: ts });
+      }
+    });
+    // 날짜순(최신순) 정렬 — 방 이름이 아니라 실제 출석 시각 기준
+    entries.sort(function(a, b) { return b.ts - a.ts; });
+    var currentYearCount = entries.filter(function(e) {
+      return e.ts && new Date(e.ts).getFullYear() === currentYear;
+    }).length;
+    return { name: name, entries: entries, currentYearCount: currentYearCount, totalCount: entries.length };
+  });
+
+  // 올해 출석 많은 순으로 정렬 (동률이면 누적 출석 많은 순) — 새해엔 출석수가 0부터 다시 시작
+  namesInfo.sort(function(a, b) {
+    if (b.currentYearCount !== a.currentYearCount) return b.currentYearCount - a.currentYearCount;
+    return b.totalCount - a.totalCount;
+  });
+
+  namesInfo.forEach(function(info) {
+    var name = info.name;
+    var entries = info.entries;
+    var count = info.currentYearCount;
+
+    // 연도별 그룹화
+    var byYear = {};
+    entries.forEach(function(e) {
+      var y = e.ts ? new Date(e.ts).getFullYear() : 0; // 타임스탬프 없는 옛 기록은 '기타'로 묶음
+      if (!byYear[y]) byYear[y] = [];
+      byYear[y].push(e);
+    });
+    var years = Object.keys(byYear).map(Number).sort(function(a, b) { return b - a; });
+
+    var safeId = 'att_' + name.replace(/[^a-zA-Z0-9가-힣]/g, '_');
+
+    function entryHtml(e) {
+      var delBtn = admin
+        ? '<button class="attend-entry-del" onclick="deleteAttendEntry(\'' + escStr(name) + '\',\'' + escStr(e.key) + '\'' + (e.subKey ? ',\'' + escStr(e.subKey) + '\'' : ',null') + ')">🗑</button>'
+        : '';
+      return '<div class="attend-entry">• ' + e.label + delBtn + '</div>';
+    }
+
+    var yearBlocksHtml = years.map(function(y) {
+      var yEntries = byYear[y];
+      var yLabel = y ? (y + "년") : "기타";
+      var isCurrent = (y === currentYear);
+      if (isCurrent) {
+        // 올해 기록은 펼친 상태로, 5개까지 보이고 나머지는 더보기
+        var SHOW = 5;
+        var visibleEntries = yEntries.slice(0, SHOW);
+        var hiddenEntries = yEntries.slice(SHOW);
+        var hasMore = hiddenEntries.length > 0;
+        var visibleHtml = visibleEntries.map(entryHtml).join("");
+        var hiddenHtml = hiddenEntries.map(entryHtml).join("");
+        var moreBlock = hasMore
+          ? '<div id="' + safeId + '_more" style="display:none">' + hiddenHtml + '</div>' +
+            '<button class="attend-more-btn" id="' + safeId + '_btn" onclick="event.stopPropagation();toggleAttendMore(\'' + safeId + '\',' + hiddenEntries.length + ')">▼ ' + hiddenEntries.length + '개 더 보기</button>'
+          : '';
+        return '<div class="attend-year-block">' +
+          '<div class="attend-year-label">' + yLabel + ' (' + yEntries.length + '건)</div>' +
+          visibleHtml + moreBlock +
+          '</div>';
+      } else {
+        // 지난 연도는 접어서 표시 — 클릭하면 펼침
+        var yearSafeId = safeId + '_y' + y;
+        var entriesHtml = yEntries.map(entryHtml).join("");
+        return '<div class="attend-year-block attend-year-archived">' +
+          '<div class="attend-year-label attend-year-toggle" id="' + yearSafeId + '_label" onclick="event.stopPropagation();toggleAttendYear(\'' + yearSafeId + '\')">▸ ' + yLabel + ' (' + yEntries.length + '건)</div>' +
+          '<div id="' + yearSafeId + '_body" style="display:none">' + entriesHtml + '</div>' +
+          '</div>';
+      }
+    }).join("");
+
+    var delPersonBtn = admin
+      ? '<button class="attend-person-del" onclick="event.stopPropagation();deleteAttendPerson(\'' + escStr(name) + '\')">전체삭제</button>'
+      : '';
+
+    html += '<div class="attend-row" id="' + safeId + '_row">' +
+      '<div class="attend-row-header" onclick="toggleAttendRow(\'' + safeId + '\')">' +
+        '<div class="attend-info">' +
+          '<div class="attend-name-row">' +
+            '<span class="attend-name">' + name + '</span>' +
+            '<span class="attend-count-badge">' + currentYear + '년 출석 ' + count + '회</span>' +
+          '</div>' +
+        '</div>' +
+        '<span class="attend-chevron">▼</span>' +
+      '</div>' +
+      '<div class="attend-body" id="' + safeId + '_body">' +
+        '<div class="attend-history-wrap">' +
+          yearBlocksHtml +
+        '</div>' +
+        delPersonBtn +
+      '</div>' +
+    '</div>';
+  });
+  if (!html) html = '<div class="empty-state"><div class="big">📋</div><p>출석 데이터가 없습니다.</p></div>';
+  return html;
+}
+
+function toggleAttendYear(yearSafeId) {
+  var body = document.getElementById(yearSafeId + '_body');
+  var label = document.getElementById(yearSafeId + '_label');
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (label) label.textContent = (open ? '▸ ' : '▾ ') + label.textContent.replace(/^[▸▾]\s*/, '');
+}
+
+function toggleAttendRow(safeId) {
+  var row = document.getElementById(safeId + '_row');
+  if (!row) return;
+  row.classList.toggle('open');
+}
+
+function toggleAttendMore(safeId, hiddenCount) {
+  var more = document.getElementById(safeId + '_more');
+  var btn  = document.getElementById(safeId + '_btn');
+  if (!more) return;
+  var open = more.style.display !== 'none';
+  more.style.display = open ? 'none' : 'block';
+  if (btn) btn.textContent = open ? ('▼ ' + hiddenCount + '개 더 보기') : '▲ 접기';
+}
+
+// ── 출석 관리자 기능 ──
+function deleteAttendEntry(name, key, subKey) {
+  if (!admin) return;
+  var label = subKey ? key + " [" + subKey + "]" : key;
+  if (!confirm("[" + name + "] 의 '" + label + "' 출석 기록을 삭제할까요?")) return;
+  var path = subKey
+    ? "attendance/" + name + "/" + key + "/" + subKey
+    : "attendance/" + name + "/" + key;
+  if (useFirebase) {
+    db.ref(path).remove().then(function() {
+      toast("출석 기록 삭제됨");
+      renderAttendance();
+    });
+  } else {
+    if (subKey) { delete localAttendance[name][key][subKey]; }
+    else { delete localAttendance[name][key]; }
+    renderAttendance();
+    toast("출석 기록 삭제됨");
+  }
+}
+
+function deleteAttendPerson(name) {
+  if (!admin) return;
+  if (!confirm("[" + name + "] 의 모든 출석 기록을 삭제할까요?")) return;
+  if (useFirebase) {
+    db.ref("attendance/" + name).remove().then(function() {
+      toast(name + " 출석 기록 전체 삭제됨");
+      renderAttendance();
+    });
+  } else {
+    delete localAttendance[name];
+    renderAttendance();
+    toast(name + " 출석 기록 전체 삭제됨");
+  }
+}
+
+function deleteAllAttendance() {
+  if (!admin) return;
+  if (!confirm("⚠ 모든 출석 기록을 완전히 초기화할까요?\n이 작업은 되돌릴 수 없습니다!")) return;
+  if (useFirebase) {
+    db.ref("attendance").remove().then(function() {
+      toast("출석 기록 전체 초기화 완료");
+      renderAttendance();
+    });
+  } else {
+    localAttendance = {};
+    renderAttendance();
+    toast("출석 기록 전체 초기화 완료");
+  }
+}
+
+function openAttendAddModal() {
+  document.getElementById("attendAddName").value = "";
+  document.getElementById("attendAddRoom").value = currentRoom || "";
+  document.getElementById("attendAddModal").classList.add("open");
+  setTimeout(function(){ document.getElementById("attendAddName").focus(); }, 300);
+}
+
+function closeAttendAddModal() {
+  document.getElementById("attendAddModal").classList.remove("open");
+}
+
+function openAttendDeleteModal() {
+  document.getElementById("attendDelName").value = "";
+  document.getElementById("attendDelRoom").value = "";
+  document.getElementById("attendDeleteModal").classList.add("open");
+  setTimeout(function(){ document.getElementById("attendDelName").focus(); }, 300);
+}
+
+function closeAttendDeleteModal() {
+  document.getElementById("attendDeleteModal").classList.remove("open");
+}
+
+function confirmAttendDelete() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  var name = document.getElementById("attendDelName").value.trim();
+  var room = document.getElementById("attendDelRoom").value.trim();
+  if (!name) { toast("이름을 입력하세요"); return; }
+  var msg = room
+    ? "[" + name + "] 의 '" + room + "' 출석 기록을 삭제할까요?"
+    : "[" + name + "] 의 모든 출석 기록을 삭제할까요?";
+  if (!confirm(msg)) return;
+  closeAttendDeleteModal();
+  var path = room ? "attendance/" + name + "/" + room : "attendance/" + name;
+  if (useFirebase) {
+    db.ref(path).remove().then(function() {
+      toast("🗑 출석 기록이 삭제되었습니다");
+      renderAttendance();
+    }).catch(function() { toast("삭제 실패 — 이름/방 이름을 확인하세요"); });
+  } else {
+    if (room) {
+      if (localAttendance[name]) delete localAttendance[name][room];
+    } else {
+      delete localAttendance[name];
+    }
+    renderAttendance();
+    toast("🗑 출석 기록이 삭제되었습니다");
+  }
+}
+
+function confirmAttendAdd() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  var name = baseName(document.getElementById("attendAddName").value.trim()) || document.getElementById("attendAddName").value.trim();
+  var room = document.getElementById("attendAddRoom").value.trim() || currentRoom;
+  if (!name) { toast("이름을 입력하세요"); return; }
+  if (!room) { toast("경기방 이름을 입력하세요"); return; }
+  closeAttendAddModal();
+  if (useFirebase) {
+    var ref = db.ref("attendance/" + name + "/" + room);
+    ref.once("value", function(snap) {
+      if (snap.exists()) { toast(name + " 는 이미 해당 방에 출석 기록이 있습니다"); return; }
+      ref.set({ room: room, timestamp: Date.now() }).then(function() {
+        toast("✅ " + name + " 출석 추가됨 (" + room + ")");
+        renderAttendance();
+      });
+    });
+  } else {
+    if (!localAttendance[name]) localAttendance[name] = {};
+    if (localAttendance[name][room]) { toast(name + " 는 이미 해당 방에 출석 기록이 있습니다"); return; }
+    localAttendance[name][room] = { room: room, timestamp: Date.now() };
+    renderAttendance();
+    toast("✅ " + name + " 출석 추가됨 (" + room + ")");
+  }
+}
+function loadMyData() {
+  if (!admin && !loggedInMemberName) { toast("🔒 먼저 로그인해주세요"); return; }
+  var name = (!admin && loggedInMemberName) ? loggedInMemberName : document.getElementById("pName").value.trim();
+  if (!name) { toast("이름을 먼저 입력하세요"); return; }
+  if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
+  localStorage.setItem("myGolfName", name);
+  if (useFirebase) {
+    db.ref("rooms/" + currentRoom + "/players/" + name).once("value", function(snap) {
+      var d = snap.val();
+      if (!d) {
+        // 이 방엔 기록이 없음 → 회원 기본 핸디가 저장되어 있으면 핸디만 자동으로 채워줌
+        var bn = baseName(name) || name;
+        db.ref("memberDefaultHandi/" + bn).once("value", function(snap2) {
+          var def = snap2.val();
+          if (def && def.handi !== undefined) {
+            document.getElementById("pHandi").value = def.handi;
+            validateHandi(document.getElementById("pHandi"));
+            toast("기본 핸디(" + def.handi + ")를 불러왔습니다");
+          } else {
+            toast("저장된 데이터가 없습니다");
+          }
+        });
+        return;
+      }
+      var hasScore = (d.score !== "" && d.score !== undefined);
+      document.getElementById("pHandi").value = d.handi;
+      document.getElementById("pScore").value = hasScore ? d.score : "";
+      if (d.gender) setGender(d.gender);
+      validateHandi(document.getElementById("pHandi"));
+      toast("불러오기 완료");
+    });
+  } else {
+    var d = localData[name]; if (!d) { toast("저장된 데이터가 없습니다"); return; }
+    var hasScore = (d.score !== "" && d.score !== undefined);
+    document.getElementById("pHandi").value = d.handi;
+    document.getElementById("pScore").value = hasScore ? d.score : "";
+    if (d.gender) setGender(d.gender);
+    validateHandi(document.getElementById("pHandi"));
+    toast("불러오기 완료");
+  }
+}
+function showNotice(el, type, msg) {
+  el.style.display = "block"; el.className = "notice notice-" + (type === "error" ? "error" : "info");
+  el.textContent = msg; setTimeout(function() { el.style.display = "none"; }, 3000);
+}
+// ✅ 핵심 수정: runAutoPublishIfNeeded()를 if(admin) 블록 밖으로 이동
+// → 관리자가 없어도 모든 접속 유저 브라우저에서 자동 공개 트리거 가능
+function listenRoom() {
+  if (!useFirebase) return;
+  db.ref("rooms/" + currentRoom).on("value", function(snap) {
+    var room = snap.val();
+    if (!room) return;
+    published = room.meta ? !!room.meta.published : false;
+    autoPublishEnabled = room.meta ? !!room.meta.autoPublish : false;
+    autoTeamEnabled = room.meta ? !!room.meta.autoTeam : false;
+    if (room.meta && room.meta.autoTeamTarget) autoTeamTarget = clampTeamTarget(room.meta.autoTeamTarget);
+    if (room.meta && room.meta.teamSize) selectedTeamSize = Number(room.meta.teamSize);
+    if (!teamGroupedDirty) {
+      teamGrouped = (room.meta && room.meta.teamGrouped && typeof room.meta.teamGrouped === "object") ? room.meta.teamGrouped : {};
+    }
+    localData = room.players || {};
+    updateAutoPublishButton();
+    renderRank();
+    renderParticipantList();
+    if (admin) {
+      refreshAdminRoomStatus();
+      refreshAdminPlayerList();
+      updateTeamSizeButtons();
+      updateTeamSizeInfo();
+      var tIn = document.getElementById("autoTeamTargetInput");
+      if (tIn) tIn.value = autoTeamTarget;
+      updateAutoTeamButton();
+      updateAutoTeamInfo();
+    }
+    // 팀편성 결과 — 관리자/일반 사용자 모두 팀편성 탭에 표시
+    var savedTeams = (room.teams && Array.isArray(room.teams) && room.teams.length) ? room.teams : null;
+    if (savedTeams) {
+      currentTeams = savedTeams;
+      renderTeams(savedTeams);
+      var twEl = document.getElementById("teamWarning");
+      if (admin) {
+        var tn = room.teamNote, msg;
+        if (!tn || tn.sig !== teamSig(savedTeams)) {
+          msg = "⚠ 이 팀편성은 체크 기능이 없는 이전 버전 화면(오래된 캐시)에서 만들어졌습니다. 체크가 반영되지 않았을 수 있습니다. 팀편성을 다시 실행해 주세요.";
+        } else {
+          msg = "ℹ 편성 버전 " + tn.ver + (tn.auto ? " (자동 편성)" : " (수동 편성)") + " · " +
+            (tn.checked && tn.checked.length ? ("체크 " + tn.checked.length + "명(" + tn.checked.join(", ") + ") → " + tn.teamNo + "조") : "체크한 사람 없음(또는 1명)");
+        }
+        twEl.style.display = "block"; twEl.innerHTML = msg;
+      } else { twEl.style.display = "none"; }
+    } else {
+      currentTeams = [];
+      if (!admin) {
+        document.getElementById("teamResult").innerHTML =
+          '<div class="empty-state"><div class="big">🔀</div><p>관리자가 팀편성을 실행하면<br>여기에 결과가 표시됩니다</p></div>';
+      }
+    }
+    // ✅ 관리자 여부와 관계없이 자동 공개 조건 체크
+    runAutoPublishIfNeeded();
+    runAutoTeamIfNeeded();
+  });
+}
+function getSorted(data) {
+  var arr = Object.values(data || {});
+  arr.forEach(function(p) {
+    p.hasScore = (p.score !== "" && p.score !== undefined);
+    if (p.hasScore) p.net = parseFloat((p.score - p.handi).toFixed(1));
+  });
+  // 스테이블포드 취지를 반영한 순위 계산용 보정값(rankNet). 화면에 보이는 실제 넷스코어(net)는 그대로 두고,
+  // "순위를 매기는 기준"만 한 라운드 크게 무너진 사람의 영향을 제한하도록 캡을 씌운다 (기본은 꺼져있어 기존과 동일).
+  if (stablefordCapEnabled) {
+    var withScore = arr.filter(function(p) { return p.hasScore; });
+    var avgNet = withScore.length ? withScore.reduce(function(a, p) { return a + p.net; }, 0) / withScore.length : 0;
+    var cap = avgNet + stablefordCapAmount;
+    arr.forEach(function(p) { if (p.hasScore) p.rankNet = Math.min(p.net, cap); });
+  } else {
+    arr.forEach(function(p) { if (p.hasScore) p.rankNet = p.net; });
+  }
+  arr.sort(function(a, b) {
+    if (!a.hasScore) return 1; if (!b.hasScore) return -1; return a.rankNet - b.rankNet;
+  });
+  var rank = 1, actualIndex = 1;
+  arr.forEach(function(p, i) {
+    if (!p.hasScore) { p.rank = '통계전'; }
+    else { if (i > 0 && p.hasScore && p.rankNet !== arr[i-1].rankNet) rank = actualIndex; p.rank = rank; actualIndex++; }
+  });
+  return arr;
+}
+function medalIcon(rank) {
+  if (rank === 1) return "🥇"; if (rank === 2) return "🥈"; if (rank === 3) return "🥉"; return "";
+}
+function buildRankHTML(arr) {
+  if (!arr.length) return '<div class="empty-state"><div class="big">👋</div><p>아직 참가자가 없습니다</p></div>';
+  return arr.map(function(p) {
+    return '<div class="rank-item ' + (p.rank <= 3 && p.hasScore ? 'rank-' + p.rank : '') + '">' +
+      '<div class="rank-num ' + (p.rank <= 3 && p.hasScore ? 'n' + p.rank : '') + '" style="font-size:' + (p.hasScore ? '20px' : '12px') + '; width:' + (p.hasScore ? '36px' : '52px') + ';">' + p.rank + '</div>' +
+      '<div class="rank-info">' +
+        '<div class="rank-name">' + p.name + '</div>' +
+        '<div class="rank-detail">' + (p.hasScore ? ('친타수 ' + p.score + ' · 핸디 ' + p.handi) : ('친타수 미입력 · 핸디 ' + p.handi)) + '</div>' +
+      '</div>' +
+      '<div class="rank-score">' +
+        '<div class="rank-net" style="color:' + (p.hasScore ? 'var(--text)' : 'var(--text-3)') + '">' + (p.hasScore ? p.net : '대기') + '</div>' +
+        '<div class="rank-net-label">NET</div>' +
+      '</div>' +
+      '<div class="medal">' + (p.hasScore ? medalIcon(p.rank) : '') + '</div>' +
+    '</div>';
+  }).join("");
+}
+function renderParticipantList() {
+  var listEl = document.getElementById("participantList");
+  var statusEl = document.getElementById("participantStatusBar");
+  var myName = localStorage.getItem("myGolfName") || "";
+  var arr = Object.values(localData || {}).sort(function(a, b) { return (a.timestamp || 0) - (b.timestamp || 0); });
+  if (!currentRoom) {
+    statusEl.innerHTML = "";
+    listEl.innerHTML = '<div class="empty-state"><div class="big">⛳</div><p>방에 입장하면<br>참가자 명단이 표시됩니다</p></div>';
+    return;
+  }
+  if (!arr.length) {
+    statusEl.innerHTML = '<div class="status-bar status-pending">현재 등록된 참가자가 없습니다.</div>';
+    listEl.innerHTML = '<div class="empty-state"><div class="big">👋</div><p>아직 참가자가 없습니다</p></div>';
+    return;
+  }
+  statusEl.innerHTML = '<div class="status-bar status-live" style="justify-content:space-between;"><span>✓ 총 ' + arr.length + '명 참가 중 (신청 순)</span></div>';
+  listEl.innerHTML = arr.map(function(p) {
+    var isMe = (p.name === myName);
+    var canEdit = isMe || admin;
+    var hasScore = (p.score !== "" && p.score !== undefined);
+    return '<div class="rank-item" style="' + (canEdit ? 'cursor:pointer; border:1px solid var(--green);' : 'opacity:0.8;') + '" onclick="' + (canEdit ? "editMyScore('" + p.name + "')" : "toast('🔒 본인의 점수만 수정할 수 있습니다.')") + '">' +
+      '<div class="rank-num" style="font-size:16px;">' + (isMe ? '⛳' : (p.gender === 'female' ? '👩' : '👤')) + '</div>' +
+      '<div class="rank-info">' +
+        '<div class="rank-name" style="' + (isMe ? 'color:var(--green); font-weight:800;' : '') + '">' + p.name +
+          (isMe ? ' <span style="font-size:10px; background:var(--green-light); color:var(--green); padding:2px 6px; border-radius:10px; margin-left:4px;">나</span>' : '') +
+          (p.gender === 'female' ? '<span class="gender-badge badge-female">여</span>' : '') +
+        '</div>' +
+        '<div class="rank-detail">핸디캡 ' + p.handi + '</div>' +
+      '</div>' +
+      '<div class="rank-score">' +
+        '<div style="font-size:12px; font-weight:700; color:' + (hasScore ? 'var(--green)' : 'var(--text-3)') + '">' + (hasScore ? '경기종료' : '대기중') + '</div>' +
+        (canEdit ? '<div style="font-size:10px; color:var(--gold); margin-top:4px;">터치하여 점수입력 ›</div>' : '<div style="font-size:10px; color:var(--text-3); margin-top:4px;">🔒 수정불가</div>') +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+function renderRank() {
+  var listEl = document.getElementById("rankList");
+  var statusEl = document.getElementById("rankStatusBar");
+  var arr = getSorted(localData);
+  if (!currentRoom) {
+    listEl.innerHTML = '<div class="empty-state"><div class="big">⛳</div><p>방에 입장하면<br>순위가 표시됩니다</p></div>';
+    statusEl.innerHTML = ""; return;
+  }
+  if (admin) {
+    statusEl.innerHTML = '<div class="status-bar status-preview">👁 관리자 모드 — 항상 전체 타수와 순위가 보입니다</div>';
+    listEl.innerHTML = '<div class="rank-list">' + buildRankHTML(arr) + '</div>'; return;
+  }
+  if (!published) {
+    statusEl.innerHTML = '<div class="status-bar status-pending">⏳ 아직 공개된 순위가 없습니다</div>';
+    listEl.innerHTML = '<div class="empty-state"><div class="big">🔒</div><p>첫 친타수가 입력되면<br>순위가 자동/수동으로 공개됩니다.</p></div>'; return;
+  }
+  statusEl.innerHTML = '<div class="status-bar status-live">✓ 입력된 친타수 기준 실시간 순위가 공개 중입니다</div>';
+  listEl.innerHTML = '<div class="rank-list">' + buildRankHTML(arr) + '</div>';
+}
+function unlockAdmin() {
+  var pw = document.getElementById("adminPw").value.trim();
+  if (!pw) { toast("비밀번호를 입력하세요"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  // 비밀번호는 앱이 아니라 서버 규칙이 확인함(앱 코드에는 비밀번호가 없음)
+  authReady.then(function() {
+    var uid = myUid();
+    return db.ref("adminKeys/" + uid).set(pw).then(function() {
+      adminRole = "full";
+      try { localStorage.setItem("cmgAdmin", "1"); } catch(e) {}
+      enterAdminMode();
+      toast("관리자 모드 활성화 — 다음부터 자동 로그인됩니다");
+    }, function() {
+      return db.ref("subKeys/" + uid).set(pw).then(function() {
+        adminRole = "sub";
+        try { localStorage.setItem("cmgAdmin", "sub"); } catch(e) {}
+        enterAdminMode();
+        toast("부관리자 모드 활성화 — 다음부터 자동 로그인됩니다");
+      }, function() { toast("비밀번호가 틀렸습니다"); });
+    });
+  }).catch(function() { toast("서버 연결을 확인해주세요"); });
+}
+function applyAdminRoleVisibility() {
+  // 부관리자는 경기방 생성 · 순위 관리 · 팀편성 관리만 볼 수 있음
+  var subAdminHiddenIds = ["participantAdminCard", "attendanceAdminSection", "memberAdminSection", "handiStatsAdminSection", "handiPolicyAdminSection"];
+  var hideForSub = (adminRole === "sub");
+  subAdminHiddenIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = hideForSub ? "none" : "";
+  });
+  // 공지 작성도 부관리자 범위 밖이므로 숨김
+  var noticeBox = document.getElementById("noticeAdminBox");
+  if (noticeBox) noticeBox.style.display = (hideForSub || !admin) ? "none" : "block";
+  var statusLabel = document.getElementById("adminStatusLabel");
+  if (statusLabel) statusLabel.textContent = hideForSub ? "🔧 부관리자 로그인 됨 (자동 로그인 유지)" : "🔓 관리자 로그인 됨 (자동 로그인 유지)";
+  var tabAdmin = document.getElementById("tab-admin");
+  if (tabAdmin) tabAdmin.innerHTML = '<span class="icon">⚙️</span>' + (hideForSub ? "부관리자✓" : "관리자✓");
+}
+function enterAdminMode() {
+  admin = true;
+  document.getElementById("adminLocked").style.display = "none";
+  document.getElementById("adminUnlocked").style.display = "block";
+  var pwIn = document.getElementById("adminPw"); if (pwIn) pwIn.value = "";
+  // 팀편성 관리 섹션 표시
+  var teamAdmin = document.getElementById("teamAdminSection");
+  if (teamAdmin) teamAdmin.style.display = "block";
+  updateAutoPublishButton(); refreshAdminRoomStatus(); refreshAdminPlayerList(); renderRank(); renderParticipantList();
+  updateTeamSizeButtons(); updateTeamSizeInfo();
+  var tIn0 = document.getElementById("autoTeamTargetInput"); if (tIn0) tIn0.value = autoTeamTarget;
+  updateAutoTeamButton(); updateAutoTeamInfo();
+  renderMemberHandiStats();
+  renderArchivedRooms();
+  adminMembersListen();
+  renderMemberList();
+  updateMemberAuthUI();
+  renderNotices();
+  applyAdminRoleVisibility();
+}
+function logoutAdmin() {
+  if (!confirm("관리자 로그아웃하시겠습니까?\n(이 기기에서 자동 로그인이 해제됩니다)")) return;
+  try { localStorage.removeItem("cmgAdmin"); } catch(e) {}
+  try { var __u = myUid(); if (__u) { db.ref("adminKeys/" + __u).remove(); db.ref("subKeys/" + __u).remove(); } } catch(e) {}
+  admin = false;
+  adminRole = "full";
+  var pwIn = document.getElementById("adminPw"); if (pwIn) pwIn.value = "";
+  document.getElementById("adminUnlocked").style.display = "none";
+  document.getElementById("adminLocked").style.display = "block";
+  document.getElementById("tab-admin").innerHTML = '<span class="icon">⚙️</span>관리자';
+  var teamAdmin = document.getElementById("teamAdminSection");
+  if (teamAdmin) teamAdmin.style.display = "none";
+  renderRank(); renderParticipantList();
+  toast("관리자 로그아웃되었습니다");
+  updateMemberAuthUI();
+  var noticeBox2 = document.getElementById("noticeAdminBox");
+  if (noticeBox2) noticeBox2.style.display = "none";
+  noticeCancelEdit();
+  renderNotices();
+}
+function refreshAdminRoomStatus() {
+  var el = document.getElementById("adminRoomStatus");
+  if (!currentRoom) { el.innerHTML = '<p style="font-size:13px; color:var(--text-3)">현재 연결된 방이 없습니다</p>'; return; }
+  var count = Object.keys(localData).length;
+  var statusText = published ? "🟢 순위 공개 중" : "🟡 집계 중 (비공개)";
+  var autoText = autoPublishEnabled ? " / 자동 공개 ON" : " / 자동 공개 OFF";
+  el.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">' +
+    '<span style="font-size:15px; font-weight:700">' + currentRoom + '</span>' +
+    '<span style="font-size:13px; color:var(--text-2)">' + statusText + autoText + '</span></div>' +
+    '<div style="font-size:13px; color:var(--text-3)">총 참가자 ' + count + '명 등록됨</div>';
+}
+var adminListInteracting = false;  // 관리자가 참가자 목록(체크박스 등)을 만지고 있는 중인지
+var adminListRenderPending = false; // 그 사이에 놓친 재렌더링 요청이 있는지
+function refreshAdminPlayerList() {
+  // 다른 참가자의 실시간 점수 입력 등으로 재렌더링 신호가 왔더라도, 관리자가 지금 막 체크박스를
+  // 누르는 중이면 통째로 다시 그리면 그 클릭이 씹혀서 "체크했는데 바로 풀린다"는 문제가 생긴다.
+  // 그래서 만지는 중에는 렌더링을 잠깐 미뤘다가, 손을 뗀 직후에 한 번에 반영한다.
+  if (adminListInteracting) { adminListRenderPending = true; return; }
+  var el = document.getElementById("adminPlayerList");
+  var arr = getSorted(localData);
+  if (!arr.length) { el.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>참가자가 없습니다</p></div>'; return; }
+  el.innerHTML = arr.map(function(p) {
+    var gIcon = p.gender === 'female' ? '여' : '';
+    var gColor = p.gender === 'female' ? '#f472b6' : '#7eb4ff';
+    var checked = teamGrouped[p.name] ? "checked" : "";
+    return '<div style="display:flex; align-items:center; padding:11px 0; border-bottom:1px solid var(--border-1);">' +
+      '<input type="checkbox" ' + checked + ' onchange="toggleTeamSelect(\'' + p.name.replace(/'/g, "\\'") + '\', this.checked)" title="체크하면 팀편성 시 이 사람들끼리 한 팀으로 묶입니다" style="width:18px; height:18px; margin-right:10px; flex-shrink:0; accent-color:var(--green);">' +
+      '<div style="width:28px; font-family:\'DM Mono\',monospace; font-size:14px; color:var(--text-3)">' + p.rank + '</div>' +
+      '<div style="width:20px; font-size:13px; color:' + gColor + '; font-weight:700;">' + gIcon + '</div>' +
+      '<div style="flex:1; font-size:14px; font-weight:500; color:var(--text);">' + p.name + '</div>' +
+      '<div style="font-size:12px; color:var(--text-3); margin-right:12px; font-family:\'DM Mono\',monospace">' +
+        (p.hasScore ? p.score + ' - ' + p.handi + ' = <strong style="color:var(--gold)">' + p.net + '</strong>' : '<span style="color:#fca5a5">점수입력 대기중</span>') +
+      '</div>' +
+      '<button onclick="deletePlayer(\'' + p.name + '\')" style="background:none; border:none; font-size:16px; cursor:pointer; padding:4px; color:var(--text-3);">🗑</button>' +
+    '</div>';
+  }).join("");
+  updateTeamSelectCount();
+}
+
+// ── 팀편성 강제 그룹 선택 (체크박스) — 체크한 사람들끼리 한 팀으로 묶고, 나머지는 평소처럼 자동배정 ──
+// (teamGrouped 자체는 스크립트 상단에서 미리 선언됨 — hoisting 문제 방지)
+function toggleTeamSelect(name, isChecked) {
+  if (!admin) return;
+  if (isChecked) teamGrouped[name] = true;
+  else delete teamGrouped[name];
+  teamGroupedDirty = true;
+  updateTeamSelectCount();
+  pushTeamGrouped();
+}
+function teamSelectAll(select) {
+  if (!admin) return;
+  if (select) { Object.keys(localData).forEach(function(n) { teamGrouped[n] = true; }); }
+  else { teamGrouped = {}; }
+  teamGroupedDirty = true;
+  refreshAdminPlayerList();
+  pushTeamGrouped();
+}
+// 체크 상태를 서버에 저장 — 새로고침해도, 다른 관리자 기기에서도 유지되도록.
+// 저장이 완료되기 전까지는(teamGroupedDirty) 실시간으로 들어오는 다른 변경사항이 방금 누른 체크를
+// 덮어쓰지 않도록 listenRoom()에서 보호한다.
+function pushTeamGrouped() {
+  if (!useFirebase || !currentRoom) { teamGroupedDirty = false; return; }
+  clearTimeout(teamGroupedPushTimer);
+  teamGroupedPushTimer = setTimeout(function() {
+    db.ref("rooms/" + currentRoom + "/meta/teamGrouped").set(teamGrouped).then(function() {
+      teamGroupedDirty = false;
+    }).catch(function() {
+      teamGroupedDirty = false;
+      toast("⚠ 체크 상태 저장 실패 — 새로고침하면 이전 상태로 보일 수 있습니다.");
+    });
+  }, 250);
+}
+function updateTeamSelectCount() {
+  var el = document.getElementById("teamSelectCount");
+  if (!el) return;
+  var total = Object.keys(localData).length;
+  var grouped = Object.keys(teamGrouped).filter(function(n) { return localData[n]; }).length;
+  el.textContent = grouped >= 2
+    ? (grouped + "명 체크됨 — 이 사람들끼리 한 팀으로 묶입니다")
+    : (grouped + " / " + total + "명 체크됨");
+}
+
+function deletePlayer(name) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!confirm("[" + name + "] 을 삭제할까요?")) return;
+  if (useFirebase) db.ref("rooms/" + currentRoom + "/players/" + name).remove();
+  else { delete localData[name]; renderRank(); renderParticipantList(); refreshAdminPlayerList(); refreshAdminRoomStatus(); }
+  toast(name + " 삭제됨");
+}
+
+// ── 팀편성 인원 설정 ──
+var selectedTeamSize = 4;
+
+function setTeamSize(n) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  selectedTeamSize = n;
+  updateTeamSizeButtons();
+  updateTeamSizeInfo();
+  updateAutoTeamInfo();
+  // 팀당 인원을 Firebase에 저장 → 자동 팀공개가 다른 기기에서 실행돼도 동일 인원 적용
+  if (useFirebase && currentRoom) db.ref("rooms/" + currentRoom + "/meta/teamSize").set(n);
+}
+
+function updateTeamSizeButtons() {
+  var btn3 = document.getElementById("teamSizeBtn3");
+  var btn4 = document.getElementById("teamSizeBtn4");
+  if (btn3 && btn4) {
+    btn3.className = 'btn btn-sm' + (selectedTeamSize === 3 ? ' btn-gold' : ' btn-gray');
+    btn3.textContent = selectedTeamSize === 3 ? '3명씩 ✓' : '3명씩';
+    btn4.className = 'btn btn-sm' + (selectedTeamSize === 4 ? ' btn-gold' : ' btn-gray');
+    btn4.textContent = selectedTeamSize === 4 ? '4명씩 ✓' : '4명씩';
+  }
+}
+
+function updateTeamSizeInfo() {
+  var total = Object.keys(localData || {}).length;
+  var teamCount = Math.max(1, Math.ceil(total / selectedTeamSize));
+  var totalEl = document.getElementById("teamSizeTotal");
+  var countEl = document.getElementById("teamSizeCount");
+  if (totalEl) totalEl.textContent = total;
+  if (countEl) countEl.textContent = teamCount;
+}
+
+// ── 자동 팀공개 (목표 인원 도달 시 자동 팀편성·공개) ──
+function clampTeamTarget(n) {
+  n = parseInt(n, 10);
+  if (isNaN(n)) n = 20;
+  if (n < 3) n = 3;
+  if (n > 40) n = 40;
+  return n;
+}
+function adjustAutoTeamTarget(delta) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (autoTeamEnabled) { toast("자동 팀공개를 끈 뒤 변경하세요"); return; }
+  var input = document.getElementById("autoTeamTargetInput");
+  var base = input ? Number(input.value) : autoTeamTarget;
+  setAutoTeamTarget(base + delta);
+}
+function setAutoTeamTarget(n) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (autoTeamEnabled) return; // ON 상태에서는 변경 잠금
+  autoTeamTarget = clampTeamTarget(n);
+  var input = document.getElementById("autoTeamTargetInput");
+  if (input) input.value = autoTeamTarget;
+  updateAutoTeamInfo();
+  if (useFirebase && currentRoom) db.ref("rooms/" + currentRoom + "/meta/autoTeamTarget").set(autoTeamTarget);
+}
+function updateAutoTeamButton() {
+  var btn = document.getElementById("autoTeamBtn");
+  if (btn) {
+    btn.textContent = autoTeamEnabled ? "🟢 자동 팀공개 ON" : "⚫ 자동 팀공개 OFF";
+    btn.className = autoTeamEnabled ? "btn btn-gold btn-sm" : "btn btn-gray btn-sm";
+  }
+  var input = document.getElementById("autoTeamTargetInput");
+  if (input) input.disabled = autoTeamEnabled;
+}
+function updateAutoTeamInfo() {
+  var el = document.getElementById("autoTeamInfo");
+  if (!el) return;
+  var count = Object.keys(localData || {}).length;
+  var teamCount = Math.max(1, Math.ceil(autoTeamTarget / selectedTeamSize));
+  if (autoTeamEnabled) {
+    el.innerHTML = "🟢 예약됨 — <strong>" + autoTeamTarget + "명</strong> 등록 시 <strong>" + selectedTeamSize + "명씩 약 " + teamCount + "팀</strong>으로 자동 편성·공개 (현재 <strong>" + count + "명</strong>)";
+  } else {
+    el.innerHTML = "목표 인원(<strong>" + autoTeamTarget + "명</strong>) 도달 시 " + selectedTeamSize + "명씩 자동 편성·공개됩니다. 버튼을 켜서 예약하세요.";
+  }
+}
+function toggleAutoTeamPublish() {
+  if (!admin) { toast("관리자만 설정할 수 있습니다"); return; }
+  if (!currentRoom) { toast("먼저 운영할 방을 선택하세요"); return; }
+  var next = !autoTeamEnabled;
+  if (!useFirebase) {
+    autoTeamEnabled = next;
+    updateAutoTeamButton(); updateAutoTeamInfo();
+    if (next) runAutoTeamIfNeeded();
+    toast(next ? "🤖 자동 팀공개 ON" : "자동 팀공개 OFF");
+    return;
+  }
+  var updates = { autoTeam: next, teamSize: selectedTeamSize, autoTeamTarget: autoTeamTarget };
+  if (next) updates.autoTeamDone = false; // 다시 켜면 재무장 (1회만 실행)
+  db.ref("rooms/" + currentRoom + "/meta").update(updates).then(function() {
+    if (next) {
+      toast("🤖 자동 팀공개 ON — " + autoTeamTarget + "명 도달 시 자동 편성됩니다.");
+      runAutoTeamIfNeeded(); // 켜는 순간 이미 목표 도달이면 즉시 실행
+    } else {
+      toast("자동 팀공개가 꺼졌습니다.");
+    }
+  }).catch(function() { toast("설정 저장에 실패했습니다.") });
+}
+// 목표 인원 도달 시 자동 팀편성 — 여러 기기 동시 실행 방지(트랜잭션으로 1회만)
+function runAutoTeamIfNeeded() {
+  if (!currentRoom || !autoTeamEnabled) return;
+  var target = clampTeamTarget(autoTeamTarget);
+  var count = Object.keys(localData || {}).length;
+  if (count < target) return;
+  if (currentTeams && currentTeams.length) return; // 이미 편성됨
+  if (!useFirebase) { autoAssignTeams(true); return; } // 로컬 모드: 바로 실행
+  db.ref("rooms/" + currentRoom + "/meta/autoTeamDone").transaction(function(cur) {
+    if (cur) return; // 이미 다른 기기가 실행함 → 중단
+    return true;     // 실행 권한 확보
+  }, function(err, committed) {
+    if (err || !committed) return;
+    autoAssignTeams(true); // 자동 실행
+  });
+}
+
+// ── 자동 팀편성 ──
+function autoAssignTeams(isAuto) {
+  if (!isAuto && !admin) { toast("관리자만 가능합니다"); return; }
+  var players = Object.values(localData || {});
+  if (!players.length) { toast("참가자가 없습니다"); return; }
+
+  // 수동 실행 전 확인: 체크된 사람이 몇 명인지 보여주고, 1명만 체크했거나 기존 팀이 있으면 실수를 막는다.
+  if (!isAuto) {
+    var chkNames = players.filter(function(p) { return teamGrouped[p.name]; }).map(function(p) { return p.name; });
+    if (teamGroupedDirty) { toast("체크 저장 중입니다. 잠시 후 다시 눌러주세요."); return; }
+    if (chkNames.length === 1) {
+      if (!confirm("체크된 사람이 1명(" + chkNames[0] + ")뿐입니다.\n2명 이상 체크해야 한 팀으로 묶입니다.\n그대로 팀편성을 할까요?")) return;
+    } else if (chkNames.length >= 2) {
+      if (!confirm("체크된 " + chkNames.length + "명(" + chkNames.join(", ") + ")을 한 팀으로 묶어 첫·마지막 조를 제외한 조에 배정합니다.\n진행할까요?")) return;
+    }
+    if (currentTeams && currentTeams.length && !confirm("이미 편성된 팀이 있습니다. 새로 편성하면 기존 팀편성이 바뀝니다.\n계속할까요?")) return;
+  }
+
+  // 직전 2게임(가장 최근에 저장된 다른 방들)의 팀편성을 가져와서, 그때 같은 팀이었던 사람 쌍을 파악
+  function getPreviousGameTeamsList(count) {
+    var candidates = Object.keys(allRooms || {}).filter(function(k) {
+      return k !== currentRoom && allRooms[k] && Array.isArray(allRooms[k].teams) && allRooms[k].teams.length
+        && allRooms[k].meta && allRooms[k].meta.created;
+    });
+    if (!candidates.length) return [];
+    candidates.sort(function(a, b) { return (allRooms[b].meta.created || 0) - (allRooms[a].meta.created || 0); });
+    return candidates.slice(0, count).map(function(k) { return allRooms[k].teams; });
+  }
+  function buildPrevPartnerMap(prevTeamsList) {
+    var map = {};
+    (prevTeamsList || []).forEach(function(prevTeams) {
+      if (!prevTeams) return;
+      prevTeams.forEach(function(team) {
+        if (!Array.isArray(team)) return;
+        team.forEach(function(p) {
+          if (!p || !p.name) return;
+          map[p.name] = map[p.name] || {};
+          team.forEach(function(q) {
+            if (q && q.name && q.name !== p.name) map[p.name][q.name] = true;
+          });
+        });
+      });
+    });
+    return map;
+  }
+  var prevPartnerMap = buildPrevPartnerMap(getPreviousGameTeamsList(2));
+  function countPrevPartnersInTeam(player, team) {
+    var s = prevPartnerMap[player.name];
+    if (!s) return 0;
+    var c = 0;
+    team.forEach(function(p) { if (s[p.name]) c++; });
+    return c;
+  }
+
+  var females = players.filter(function(p) { return p.gender === 'female'; });
+  var males   = players.filter(function(p) { return p.gender !== 'female'; });
+  var total   = players.length;
+  var teamCount = Math.max(1, Math.ceil(total / selectedTeamSize));
+  var warnEl  = document.getElementById("teamWarning");
+
+  var sortDesc = function(arr) {
+    return arr.slice().sort(function(a, b) { return Number(b.handi) - Number(a.handi); });
+  };
+  var countFemales = function(team) {
+    var c = 0;
+    for (var k = 0; k < team.length; k++) { if (team[k].gender === 'female') c++; }
+    return c;
+  };
+
+  var teams = [];
+  var teamHandiSum = [];
+  for (var i = 0; i < teamCount; i++) { teams.push([]); teamHandiSum.push(0); }
+
+  // 0) 이름 뒤 숫자가 같은 참가자는 무조건 한 팀으로 묶기 (예: 홍길동1, 김철수1 → 같은 조)
+  function trailingNum(nm) {
+    var m = String(nm == null ? "" : nm).match(/(\d+)\s*$/);
+    return m ? m[1] : null;
+  }
+  var groupMap = {};
+  for (var gi = 0; gi < players.length; gi++) {
+    var key = trailingNum(players[gi].name);
+    if (key === null) continue;
+    (groupMap[key] = groupMap[key] || []).push(players[gi]);
+  }
+  var forcedGroups = [];      // 같은 숫자가 2명 이상인 묶음
+  var groupedNames = {};
+  var groupKeys = [];
+  Object.keys(groupMap).forEach(function(k) {
+    if (groupMap[k].length >= 2) {
+      forcedGroups.push(groupMap[k]);
+      groupKeys.push(k);
+      groupMap[k].forEach(function(p) { groupedNames[p.name] = true; });
+    }
+  });
+  // 0-2) 참가자 관리에서 체크한 사람들도 하나의 팀으로 강제 묶기 (2명 이상 체크했을 때만)
+  //      이 조는 핸디밸런스와 무관하게 "첫 조·마지막 조를 제외한 조" 중 무작위로 배정한다.
+  var checkedGroup = players.filter(function(p) { return teamGrouped[p.name] && !groupedNames[p.name]; });
+  var hasCheckedGroup = checkedGroup.length >= 2;
+  if (hasCheckedGroup) {
+    checkedGroup.forEach(function(p) { groupedNames[p.name] = true; });
+  }
+  var overflow = false;
+  // 인원이 많은 묶음부터 배치 (자리 확보가 쉬울 때 먼저) — 묶음 전체를 핸디합 낮은 팀에
+  forcedGroups.sort(function(a, b) { return b.length - a.length; });
+  forcedGroups.forEach(function(grp) {
+    var bestIdx = -1;
+    for (var t = 0; t < teamCount; t++) {
+      if (teams[t].length + grp.length <= selectedTeamSize) {
+        if (bestIdx === -1 || teamHandiSum[t] < teamHandiSum[bestIdx]) bestIdx = t;
+      }
+    }
+    if (bestIdx === -1) { // 정원 안에 다 못 들어가면 핸디합 가장 낮은 팀에 강제(정원 초과) 배치
+      overflow = true;
+      for (var t2 = 0; t2 < teamCount; t2++) {
+        if (bestIdx === -1 || teamHandiSum[t2] < teamHandiSum[bestIdx]) bestIdx = t2;
+      }
+    }
+    grp.forEach(function(p) { teams[bestIdx].push(p); teamHandiSum[bestIdx] += Number(p.handi); });
+  });
+
+  // 체크박스로 묶은 조는 핸디밸런스 상관없이 "첫 조와 마지막 조를 제외한" 조 중에서 무작위로 배정
+  // (예: 5개조 → 2·3·4조 중 무작위, 3개조 → 2조). 자리가 있는 조를 우선 고르고, 없으면 인원이 가장 적은 중간 조.
+  var checkedGroupCenterIndex = -1;
+  var checkedGroupNoMiddle = false;
+  if (hasCheckedGroup) {
+    var middleIdxs = [];
+    for (var mi0 = 1; mi0 <= teamCount - 2; mi0++) middleIdxs.push(mi0);
+    var pool = middleIdxs;
+    if (!pool.length) { // 조가 1~2개뿐이라 "중간 조"가 없는 경우 → 어느 조든 허용
+      checkedGroupNoMiddle = true;
+      pool = [];
+      for (var ai = 0; ai < teamCount; ai++) pool.push(ai);
+    }
+    var roomy = pool.filter(function(ix) { return teams[ix].length + checkedGroup.length <= selectedTeamSize; });
+    var targetIdx;
+    if (roomy.length) {
+      targetIdx = roomy[Math.floor(Math.random() * roomy.length)];
+    } else {
+      // 자리가 있는 조가 없으면 가장 인원이 적은 조(동률이면 무작위)에 정원 초과로 배치
+      var minLen = Math.min.apply(null, pool.map(function(ix) { return teams[ix].length; }));
+      var fewest = pool.filter(function(ix) { return teams[ix].length === minLen; });
+      targetIdx = fewest[Math.floor(Math.random() * fewest.length)];
+      overflow = true;
+    }
+    checkedGroupCenterIndex = targetIdx;
+    checkedGroup.forEach(function(p) { teams[targetIdx].push(p); teamHandiSum[targetIdx] += Number(p.handi); });
+  }
+
+  // 묶이지 않은 나머지 참가자만 따로 배분
+  var singles = players.filter(function(p) { return !groupedNames[p.name]; });
+
+  // 1) 나머지 여자: 팀 간 최대한 균등 분배 (여자 수 적은 팀 우선 → 핸디합 낮은 팀)
+  var femalesSorted = sortDesc(singles.filter(function(p) { return p.gender === 'female'; }));
+  for (var fi = 0; fi < femalesSorted.length; fi++) {
+    var bestIdx = -1, bestPartners = Infinity, bestFCount = Infinity, bestHandi = Infinity;
+    for (var ti0 = 0; ti0 < teamCount; ti0++) {
+      if (teams[ti0].length >= selectedTeamSize) continue; // 정원이 찬 팀 제외
+      if (conflictsWithTeam(femalesSorted[fi], teams[ti0])) continue; // 같은 팀 금지 조합 제외
+      var partners0 = countPrevPartnersInTeam(femalesSorted[fi], teams[ti0]);
+      var fCount = countFemales(teams[ti0]);
+      var handi0 = teamHandiSum[ti0];
+      var better = (partners0 < bestPartners) ||
+        (partners0 === bestPartners && (fCount < bestFCount ||
+          (fCount === bestFCount && handi0 < bestHandi)));
+      if (bestIdx === -1 || better) { bestIdx = ti0; bestPartners = partners0; bestFCount = fCount; bestHandi = handi0; }
+    }
+    if (bestIdx === -1) { for (var tf = 0; tf < teamCount; tf++) { if (bestIdx === -1 || teamHandiSum[tf] < teamHandiSum[bestIdx]) bestIdx = tf; } }
+    teams[bestIdx].push(femalesSorted[fi]); teamHandiSum[bestIdx] += Number(femalesSorted[fi].handi);
+  }
+
+  // 2) 나머지 남자: 핸디합 가장 낮은 팀부터 순서대로 채우기
+  var malesSorted = sortDesc(singles.filter(function(p) { return p.gender !== 'female'; }));
+  for (var mi2 = 0; mi2 < malesSorted.length; mi2++) {
+    var minIdx2 = -1, minPartners2 = Infinity, minHandi2 = Infinity;
+    for (var ti = 0; ti < teamCount; ti++) {
+      if (teams[ti].length >= selectedTeamSize) continue;
+      if (conflictsWithTeam(malesSorted[mi2], teams[ti])) continue; // 같은 팀 금지 조합 제외
+      var partners2 = countPrevPartnersInTeam(malesSorted[mi2], teams[ti]);
+      var handi2 = teamHandiSum[ti];
+      var better2 = (partners2 < minPartners2) || (partners2 === minPartners2 && handi2 < minHandi2);
+      if (minIdx2 === -1 || better2) { minIdx2 = ti; minPartners2 = partners2; minHandi2 = handi2; }
+    }
+    if (minIdx2 === -1) { for (var tm = 0; tm < teamCount; tm++) { if (minIdx2 === -1 || teamHandiSum[tm] < teamHandiSum[minIdx2]) minIdx2 = tm; } }
+    teams[minIdx2].push(malesSorted[mi2]); teamHandiSum[minIdx2] += Number(malesSorted[mi2].handi);
+  }
+
+  // 같은 팀 금지 조합 최종 보정: 한 팀에 같이 들어갔다면 한 명을 다른 팀 사람과 맞바꾼다 (묶음 조에 속한 사람은 제외)
+  var sepMsgs = [];
+  for (var sp = 0; sp < teams.length; sp++) {
+    var guard = 0;
+    while (guard++ < 10) {
+      var pa = null, pb = null;
+      for (var x1 = 0; x1 < teams[sp].length && !pa; x1++) for (var x2 = x1 + 1; x2 < teams[sp].length; x2++) {
+        if (isConflictPair(teams[sp][x1], teams[sp][x2])) { pa = teams[sp][x1]; pb = teams[sp][x2]; break; }
+      }
+      if (!pa) break;
+      var movers = [pa, pb].filter(function(m) { return !groupedNames[m.name]; });
+      var best = null;
+      movers.forEach(function(m) {
+        for (var ot = 0; ot < teams.length; ot++) {
+          if (ot === sp) continue;
+          for (var oi = 0; oi < teams[ot].length; oi++) {
+            var c = teams[ot][oi];
+            if (groupedNames[c.name]) continue;
+            var restA = teams[sp].filter(function(z) { return z !== m; });
+            var restB = teams[ot].filter(function(z) { return z !== c; });
+            if (conflictsWithTeam(c, restA) || conflictsWithTeam(m, restB)) continue;
+            var diff = Math.abs(Number(m.handi) - Number(c.handi));
+            var score = (m.gender === c.gender ? 0 : 1000) + diff;
+            if (!best || score < best.score) best = { m: m, c: c, ot: ot, oi: oi, score: score };
+          }
+        }
+      });
+      if (!best) { sepMsgs.push("⚠ " + pa.name + " · " + pb.name + " 님을 서로 다른 팀으로 나누지 못했습니다 (묶음 조 때문). 수동으로 조정해 주세요."); break; }
+      var mi = teams[sp].indexOf(best.m);
+      teams[sp][mi] = best.c; teams[best.ot][best.oi] = best.m;
+      sepMsgs.push(pa.name + " · " + pb.name + " 님은 같은 팀이 되지 않도록 " + best.m.name + " ↔ " + best.c.name + " 자리를 바꿨습니다.");
+    }
+  }
+
+  // 안내 메시지 (여자 부족 / 묶음 / 정원 초과 / 직전 게임 재편성 회피 결과)
+  var warnMsgs = [];
+  if (Object.keys(prevPartnerMap).length) {
+    var repeatPairs = 0;
+    teams.forEach(function(team) {
+      for (var i = 0; i < team.length; i++) {
+        for (var j = i + 1; j < team.length; j++) {
+          if (prevPartnerMap[team[i].name] && prevPartnerMap[team[i].name][team[j].name]) repeatPairs++;
+        }
+      }
+    });
+    if (repeatPairs > 0) {
+      warnMsgs.push("직전 2게임과 같은 팀 조합이 " + repeatPairs + "건 남았습니다 (인원 제약상 완전히 피하지 못함).");
+    }
+  }
+  if (females.length < teamCount) {
+    warnMsgs.push("여자 참가자(" + females.length + "명)가 팀 수(" + teamCount + "팀)보다 적어 일부 팀에 여자가 없을 수 있습니다.");
+  }
+  if (groupKeys.length) {
+    warnMsgs.push("이름 뒤 숫자가 같은 참가자(" + groupKeys.sort(function(a,b){return Number(a)-Number(b);}).map(function(k){return k+"번";}).join(", ") + ")는 같은 조로 묶었습니다.");
+  }
+  if (hasCheckedGroup) {
+    warnMsgs.push("체크 표시한 " + checkedGroup.length + "명(" + checkedGroup.map(function(p){return p.name;}).join(", ") + ")은 " + (checkedGroupCenterIndex + 1) + "조로 묶었습니다 (첫 조·마지막 조를 제외하고 무작위 배정)." + (checkedGroupNoMiddle ? " ※ 조가 2개 이하라 첫·마지막 조 제외가 불가능해 일반 무작위로 배정했습니다." : ""));
+  }
+  sepMsgs.forEach(function(m) { warnMsgs.push(m); });
+  if (overflow) {
+    warnMsgs.push("묶음 인원이 많아 일부 조가 선택한 팀당 인원(" + selectedTeamSize + "명)을 초과했습니다.");
+  }
+  if (warnMsgs.length) { warnEl.style.display = "block"; warnEl.innerHTML = "⚠ " + warnMsgs.join("<br>⚠ "); }
+  else { warnEl.style.display = "none"; }
+
+  renderTeams(teams);
+  currentTeams = teams;
+
+  // Firebase에 팀편성 결과 저장 → 일반 사용자 팀편성 탭에도 공개
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teamNote").set({ ver: APP_VER, sig: teamSig(teams), auto: !!isAuto, checked: hasCheckedGroup ? checkedGroup.map(function(p) { return p.name; }) : [], teamNo: hasCheckedGroup ? (checkedGroupCenterIndex + 1) : 0, at: Date.now() });
+    db.ref("rooms/" + currentRoom + "/teams").set(teams).then(function() {
+      toast(isAuto ? ("🤖 목표 인원 도달! 자동 팀편성이 공개되었습니다.") : "⚡ 팀편성 완료! 팀편성 탭에 공개되었습니다.");
+    }).catch(function() {
+      toast("⚡ 팀편성 완료! (Firebase 저장 실패)");
+    });
+  }
+}
+
+function renderTeams(teams) {
+  var el = document.getElementById("teamResult");
+  if (!teams || !teams.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>팀편성 결과가 없습니다</p></div>';
+    return;
+  }
+  // 버그수정 4: 팀 수가 8개를 넘어도 색상이 겹치지 않도록 HSL로 동적 생성
+  function teamColor(idx) {
+    var presets = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#be185d','#65a30d'];
+    if (idx < presets.length) return presets[idx];
+    var hue = Math.round((idx * 137.508) % 360);
+    return 'hsl(' + hue + ',55%,42%)';
+  }
+  var isEdit = teamEditMode && admin;
+  el.innerHTML = teams.map(function(team, idx) {
+    var handiSum = team.reduce(function(s, p) { return s + Number(p.handi); }, 0);
+    var handiAvg = team.length ? (handiSum / team.length).toFixed(1) : 0;
+    var color = teamColor(idx);
+    return '<div class="team-card" style="border-color:' + color + '20; border-left:4px solid ' + color + '">' +
+      '<div class="team-header">' +
+        '<div class="team-label" style="color:' + color + '">🏌️ ' + (idx + 1) + '조</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<div class="team-handi-sum">핸디합 ' + handiSum.toFixed(1) + ' / 평균 ' + handiAvg + '</div>' +
+        '</div>' +
+      '</div>' +
+      team.map(function(p) {
+        var isFemale = p.gender === 'female';
+        var memberHtml = '<div class="team-member">' +
+          '<div class="member-gender">' + (isFemale ? '👩' : '👨') + '</div>' +
+          '<div class="member-name">' + p.name +
+            (isFemale ? '<span class="gender-badge badge-female">여</span>' : '') +
+          '</div>' +
+          '<div class="member-handi">핸디 ' + p.handi + '</div>';
+        if (isEdit) {
+          memberHtml += '<button class="member-move-btn" onclick="openMoveModal(\'' + escStr(p.name) + '\',' + idx + ')">🔀 이동</button>' +
+            '<button class="member-del-btn" onclick="removeFromTeam(\'' + escStr(p.name) + '\',' + idx + ')">✕</button>';
+        }
+        memberHtml += '</div>';
+        return memberHtml;
+      }).join("") +
+    '</div>';
+  }).join("");
+}
+
+function clearTeams() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  currentTeams = [];
+  teamEditMode = false;
+  document.getElementById("teamResult").innerHTML = '<div class="empty-state"><div class="big">🔀</div><p>참가자가 등록되면<br>자동 팀편성을 실행할 수 있습니다</p></div>';
+  document.getElementById("teamWarning").style.display = "none";
+  var label = document.getElementById("teamEditBarLabel");
+  if (label) label.textContent = "✏️ 편집 모드 OFF";
+  var barInner = document.getElementById("teamEditBarInner");
+  if (barInner) { barInner.style.background = "var(--green)"; var btn = barInner.querySelector("button"); if (btn) btn.textContent = "편집 모드 켜기"; }
+  // Firebase에서도 팀편성 데이터 삭제
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teams").remove();
+  }
+  toast("팀편성이 초기화되었습니다");
+}
+
+// ── 팀편성 편집 모드 ──
+var teamEditMode = false;
+var currentTeams = [];
+var moveTarget = null; // { name, fromTeam }
+
+function escStr(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function toggleTeamEditMode() {
+  if (!admin) { toast("관리자만 편집할 수 있습니다"); return; }
+  teamEditMode = !teamEditMode;
+  var bar = document.getElementById("teamEditBarInner");
+  var btn = bar ? bar.querySelector("button") : null;
+  var label = document.getElementById("teamEditBarLabel");
+  if (teamEditMode) {
+    label.textContent = "✏️ 편집 모드 ON — 이동/삭제 가능";
+    if (btn) btn.textContent = "편집 완료";
+    if (bar) bar.style.background = "#d97706";
+    toast("✏️ 편집 모드 ON — 팀편성 탭에서 멤버를 이동하세요");
+  } else {
+    label.textContent = "✏️ 편집 모드 OFF";
+    if (btn) btn.textContent = "편집 모드 켜기";
+    if (bar) bar.style.background = "var(--green)";
+    toast("편집 완료");
+  }
+  renderTeams(currentTeams);
+}
+
+function openMoveModal(name, fromTeamIdx) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  moveTarget = { name: name, fromTeam: fromTeamIdx };
+  document.getElementById("moveModalSub").textContent = '"' + name + '" 을(를) 이동할 조를 선택하세요';
+  var grid = document.getElementById("teamPickGrid");
+  grid.innerHTML = currentTeams.map(function(team, idx) {
+    var isCurrent = idx === fromTeamIdx;
+    return '<button class="team-pick-btn' + (isCurrent ? ' disabled' : '') + '" onclick="confirmMove(' + idx + ')" ' + (isCurrent ? 'disabled' : '') + '>' +
+      (idx + 1) + '조' +
+      (isCurrent ? '<br><span style="font-size:10px;font-weight:400;">현재</span>' : '<br><span style="font-size:10px;font-weight:400;">' + team.length + '명</span>') +
+    '</button>';
+  }).join("") +
+  '<button class="team-pick-btn new-team" onclick="confirmMove(-1)">➕<br><span style="font-size:10px;">새 조</span></button>';
+  document.getElementById("moveModal").classList.add("open");
+}
+
+function closeMoveModal() {
+  document.getElementById("moveModal").classList.remove("open");
+  moveTarget = null;
+}
+
+function confirmMove(toTeamIdx) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!moveTarget) return;
+  var name = moveTarget.name;
+  var from = moveTarget.fromTeam;
+  closeMoveModal();
+
+  // 원래 조에서 해당 멤버 찾기
+  var player = null;
+  currentTeams[from] = currentTeams[from].filter(function(p) {
+    if (p.name === name) { player = p; return false; }
+    return true;
+  });
+  if (!player) { toast("멤버를 찾을 수 없습니다"); renderTeams(currentTeams); return; }
+
+  if (toTeamIdx === -1) {
+    // 새 조 생성
+    currentTeams.push([player]);
+    toast(name + " → 새 " + currentTeams.length + "조 이동");
+  } else {
+    currentTeams[toTeamIdx].push(player);
+    toast(name + " → " + (toTeamIdx + 1) + "조 이동");
+  }
+  // 빈 조 제거
+  currentTeams = currentTeams.filter(function(t) { return t.length > 0; });
+  renderTeams(currentTeams);
+  // 편집 결과 Firebase에 반영
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teams").set(currentTeams);
+  }
+}
+
+function removeFromTeam(name, fromTeamIdx) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!confirm("[" + name + "] 을(를) 이 조에서 제거할까요?\n(참가자 명단에는 남아있습니다)")) return;
+  currentTeams[fromTeamIdx] = currentTeams[fromTeamIdx].filter(function(p) { return p.name !== name; });
+  currentTeams = currentTeams.filter(function(t) { return t.length > 0; });
+  renderTeams(currentTeams);
+  // 편집 결과 Firebase에 반영
+  if (useFirebase && currentRoom) {
+    db.ref("rooms/" + currentRoom + "/teams").set(currentTeams);
+  }
+  toast(name + " 제거됨");
+}
+function adminPreview() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
+  document.getElementById("previewContent").innerHTML = '<div class="rank-list">' + buildRankHTML(getSorted(localData)) + '</div>';
+  document.getElementById("previewModal").classList.add("open");
+}
+function closePreview(e) { if (e.target.id === "previewModal") document.getElementById("previewModal").classList.remove("open"); }
+function adminPublish() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
+  if (!confirm("순위를 전체 공개할까요?")) return;
+  document.getElementById("previewModal").classList.remove("open");
+  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta/published").set(true);
+  else { published = true; renderRank(); refreshAdminRoomStatus(); }
+  toast("🚀 순위 공개 완료!");
+}
+function adminHide() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!confirm("순위를 다시 숨길까요?")) return;
+  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta/published").set(false);
+  else { published = false; renderRank(); refreshAdminRoomStatus(); }
+  toast("🔒 순위 숨김 처리");
+}
+// 방을 완전히 지우지 않고 "목록에서만 숨김" 처리 — 참가자 기록은 그대로 남아 회원 평균 핸디 통계 등에 계속 반영됨
+function archiveRoom() {
+  if (!admin) { toast("관리자만 가능"); return; }
+  if (!currentRoom) { toast("먼저 방에 입장하세요"); return; }
+  if (!confirm("[" + currentRoom + "] 을 목록에서 숨기시겠습니까?\n(점수 기록은 삭제되지 않고 평균 핸디 통계 등에 계속 사용됩니다. 관리자 탭에서 언제든 다시 꺼낼 수 있습니다.)")) return;
+  if (useFirebase) db.ref("rooms/" + currentRoom + "/meta/archived").set(true);
+  toast("경기방을 목록에서 숨겼습니다. (기록은 유지됨)");
+  setTimeout(function() { location.href = location.href.split("?"); }, 1200);
+}
+function renderArchivedRooms() {
+  var wrap = document.getElementById("archivedRoomsWrap");
+  var label = document.getElementById("archivedRoomsToggleLabel");
+  if (!wrap || !admin) return;
+  var archived = Object.keys(allRooms || {}).filter(function(k) {
+    return allRooms[k].meta && allRooms[k].meta.archived;
+  }).sort(function(a, b) { return (allRooms[b].meta.created || 0) - (allRooms[a].meta.created || 0); });
+  if (label) label.textContent = "보관된 방 보기 (" + archived.length + "개)";
+  if (!archived.length) { wrap.innerHTML = '<div class="empty-state" style="padding:10px 0"><p>보관된 방이 없습니다</p></div>'; return; }
+  wrap.innerHTML = archived.map(function(k) {
+    return '<div style="padding:9px 0; border-bottom:1px solid var(--border-1);">'
+      + '<div style="display:flex; align-items:center; justify-content:space-between; font-size:13px; gap:8px;">'
+      + '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📦 ' + k + '</span>'
+      + '<button class="btn btn-gray btn-sm" style="width:auto; padding:6px 10px; font-size:12px; flex-shrink:0;" onclick="toggleArchivedRoomDetail(\'' + escStr(k) + '\')">내용보기</button>'
+      + '<button class="btn btn-danger btn-sm" style="width:auto; padding:6px 10px; font-size:12px; flex-shrink:0;" onclick="permanentlyDeleteRoom(\'' + escStr(k) + '\')">영구삭제</button>'
+      + '</div>'
+      + '<div id="archDetail_' + escId(k) + '" style="display:none; margin-top:8px; padding:10px; background:var(--surface-3); border-radius:8px; font-size:12px;"></div>'
+      + '</div>';
+  }).join("");
+}
+function escId(k) { return String(k).replace(/[^a-zA-Z0-9가-힣]/g, '_'); }
+function toggleArchivedRoomDetail(roomKey) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  var el = document.getElementById("archDetail_" + escId(roomKey));
+  if (!el) return;
+  var open = el.style.display !== "none";
+  if (open) { el.style.display = "none"; return; }
+  var room = allRooms[roomKey];
+  if (!room) { el.innerHTML = "데이터를 찾을 수 없습니다"; el.style.display = "block"; return; }
+  var players = Object.values(room.players || {});
+  players.sort(function(a, b) { return Number(b.handi) - Number(a.handi); });
+  var playersHtml = players.length
+    ? players.map(function(p) {
+        var scoreTxt = (p.score !== "" && p.score != null) ? p.score : "-";
+        return '<div style="padding:3px 0; border-bottom:1px dashed var(--border-1);">'
+          + (p.gender === 'female' ? '🌸 ' : '') + p.name
+          + ' <span style="color:var(--text-3);">(핸디 ' + p.handi + ', 스코어 ' + scoreTxt + ')</span></div>';
+      }).join("")
+    : '<div style="color:var(--text-3);">참가자 기록 없음</div>';
+  var teamsHtml = "";
+  if (Array.isArray(room.teams) && room.teams.length) {
+    teamsHtml = '<div style="margin-top:10px; font-weight:600;">🔀 팀편성</div>' +
+      room.teams.map(function(team, idx) {
+        var names = (team || []).map(function(p) { return p.name; }).join(", ");
+        return '<div style="padding:2px 0;">' + (idx + 1) + '조: ' + names + '</div>';
+      }).join("");
+  }
+  el.innerHTML = '<div style="font-weight:600; margin-bottom:6px;">👥 참가자 (' + players.length + '명)</div>' + playersHtml + teamsHtml;
+  el.style.display = "block";
+}
+function permanentlyDeleteRoom(roomKey) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!confirm("[" + roomKey + "] 을 완전히 삭제하시겠습니까?\n(되돌릴 수 없고, 그 안의 점수 기록도 사라져 회원 평균 핸디 통계에서도 제외됩니다)")) return;
+  if (useFirebase) {
+    db.ref("rooms/" + roomKey).remove().then(function() {
+      toast("🗑 [" + roomKey + "] 이(가) 완전히 삭제되었습니다.");
+    }).catch(function() {
+      toast("⚠ 삭제 실패! 서버에 반영되지 않았습니다.");
+    });
+  }
+}
+function toggleArchivedRoomsList() {
+  var wrap = document.getElementById("archivedRoomsWrap");
+  var icon = document.getElementById("archivedRoomsToggleIcon");
+  if (!wrap) return;
+  var open = wrap.style.display !== "none";
+  wrap.style.display = open ? "none" : "block";
+  if (icon) icon.textContent = open ? "▾" : "▴";
+}
+// 👤 회원 목록 실시간 구독 (경기방과 무관, 관리자 회원 관리 화면용)
+// ── 📢 공지사항 ──
+function noticesListenGlobal() {
+  if (!useFirebase) return;
+  db.ref(NOTICE_PATH).on("value", function(snap) {
+    allNotices = snap.val() || {};
+    renderNotices();
+  });
+}
+function noticeFormatDate(ts) {
+  if (!ts) return "";
+  var d = new Date(ts);
+  return d.toLocaleDateString("ko-KR") + " " + d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+}
+function renderNotices() {
+  var listEl = document.getElementById("noticeList");
+  if (!listEl) return;
+  var ids = Object.keys(allNotices).sort(function(a, b) {
+    return (allNotices[b].createdAt || 0) - (allNotices[a].createdAt || 0);
+  });
+  // 조회 중인 공지가 삭제된 경우 목록으로 복귀
+  if (noticeViewingId && !allNotices[noticeViewingId]) noticeViewingId = null;
+  if (noticeViewingId) {
+    renderNoticeDetail(listEl, ids);
+    return;
+  }
+  if (!ids.length) {
+    listEl.innerHTML = '<div class="empty-state"><div class="big">📢</div><p>등록된 공지가 없습니다</p></div>';
+    return;
+  }
+  listEl.innerHTML = ids.map(function(id, idx) {
+    var n = allNotices[id] || {};
+    var title = (n.title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return '<div class="notice-list-item' + (idx === 0 ? ' pinned' : '') + '" onclick="noticeOpenDetail(\'' + id + '\')">' +
+      '<div class="notice-list-title">' + (idx === 0 ? '📌 ' : '') + title + '</div>' +
+    '</div>';
+  }).join("");
+}
+function renderNoticeDetail(listEl, ids) {
+  var n = allNotices[noticeViewingId];
+  if (!n) { noticeViewingId = null; renderNotices(); return; }
+  var idx = ids.indexOf(noticeViewingId);
+  var title = (n.title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  var content = (n.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  var dateStr = noticeFormatDate(n.createdAt);
+  var editedTag = (n.updatedAt && n.updatedAt !== n.createdAt) ? " (수정됨)" : "";
+  var adminBtns = admin ? (
+    '<div class="notice-board-actions">' +
+      '<button class="btn btn-gray btn-sm" onclick="noticeStartEdit(\'' + noticeViewingId + '\')">✏️ 수정</button>' +
+      '<button class="btn btn-danger btn-sm" onclick="noticeDelete(\'' + noticeViewingId + '\')">🗑 삭제</button>' +
+    '</div>'
+  ) : "";
+  listEl.innerHTML =
+    '<button class="notice-detail-back" onclick="noticeBackToList()">← 목록으로</button>' +
+    '<div class="notice-board-item' + (idx === 0 ? ' pinned' : '') + '">' +
+      '<div class="notice-board-head">' +
+        '<div class="notice-board-title">' + (idx === 0 ? '📌 ' : '') + title + '</div>' +
+        '<div class="notice-board-date">' + dateStr + editedTag + '</div>' +
+      '</div>' +
+      '<div class="notice-board-body">' + content + '</div>' +
+      adminBtns +
+    '</div>';
+}
+function noticeOpenDetail(id) {
+  noticeViewingId = id;
+  renderNotices();
+}
+function noticeBackToList() {
+  noticeViewingId = null;
+  renderNotices();
+}
+function noticeSubmit() {
+  if (!admin) { toast("관리자만 작성할 수 있습니다"); return; }
+  var titleEl = document.getElementById("noticeTitleInput");
+  var contentEl = document.getElementById("noticeContentInput");
+  var title = titleEl.value.trim();
+  var content = contentEl.value.trim();
+  if (!title || !content) { toast("제목과 내용을 모두 입력해주세요"); return; }
+  if (noticeEditingId) {
+    db.ref(NOTICE_PATH + "/" + noticeEditingId).update({ title: title, content: content, updatedAt: Date.now() }).then(function() {
+      toast("✅ 공지가 수정되었습니다");
+      noticeCancelEdit();
+    });
+  } else {
+    db.ref(NOTICE_PATH).push({ title: title, content: content, createdAt: Date.now() }).then(function() {
+      toast("✅ 공지가 등록되었습니다");
+      titleEl.value = ""; contentEl.value = "";
+    });
+  }
+}
+function noticeStartEdit(id) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  var n = allNotices[id];
+  if (!n) return;
+  noticeEditingId = id;
+  document.getElementById("noticeTitleInput").value = n.title || "";
+  document.getElementById("noticeContentInput").value = n.content || "";
+  document.getElementById("noticeFormTitle").textContent = "✏️ 공지 수정";
+  document.getElementById("noticeSubmitBtn").textContent = "수정 완료";
+  document.getElementById("noticeCancelBtn").style.display = "block";
+  document.getElementById("noticeTitleInput").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function noticeCancelEdit() {
+  noticeEditingId = null;
+  document.getElementById("noticeTitleInput").value = "";
+  document.getElementById("noticeContentInput").value = "";
+  document.getElementById("noticeFormTitle").textContent = "📢 공지 작성";
+  document.getElementById("noticeSubmitBtn").textContent = "게시하기";
+  document.getElementById("noticeCancelBtn").style.display = "none";
+}
+function noticeDelete(id) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!confirm("이 공지를 삭제하시겠습니까?")) return;
+  db.ref(NOTICE_PATH + "/" + id).remove().then(function() {
+    toast("🗑 공지가 삭제되었습니다");
+    if (noticeEditingId === id) noticeCancelEdit();
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// 💰 운영비 관리 (입금/출금/잔액 + 출금 영수증 사진) — 전체 관리자 전용
+//   Firebase: fund/entries/{id} = 내역(가벼운 데이터), fund/receipts/{id} = 영수증 사진(눌러볼 때만 불러옴)
+// ══════════════════════════════════════════════════════════════
+var fundEntries = {}, fundListening = false, fundType = "in";
+var fundEditId = null, fundReceiptData = null, fundReceiptRemove = false;
+// 총무 비밀번호는 앱이 아니라 서버 보안 규칙(treasKeys)에서 확인합니다
+var fundTreasurer = false;
+try { fundTreasurer = (localStorage.getItem("cmgTreasurer") === "1"); } catch (e) {}
+// 서버에 이 기기의 총무 인증이 실제로 남아 있는지 확인 (없으면 해제)
+authReady.then(function() {
+  if (!fundTreasurer) return;
+  return db.ref("treasKeys/" + myUid()).once("value").then(function(snap) {
+    if (!snap.exists()) { fundTreasurer = false; try { localStorage.removeItem("cmgTreasurer"); } catch (e) {} if (typeof fundRefreshView === "function") fundRefreshView(); }
+  });
+}).catch(function() {});
+function fundEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function fundFmt(n) { return Number(n).toLocaleString("ko-KR"); }
+function fundToday() {
+  var d = new Date(), m = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
+  return d.getFullYear() + "-" + m + "-" + dd;
+}
+function fundListenGlobal() {
+  if (!useFirebase || fundListening) return;
+  fundListening = true;
+  db.ref("fund/entries").on("value", function(snap) {
+    fundEntries = snap.val() || {};
+    renderFund();
+  }, function(err) {
+    fundListening = false;
+    toast("⚠ 운영비 데이터를 불러오지 못했습니다 (DB 규칙 확인)");
+  });
+}
+function fundSetType(t) {
+  fundType = t;
+  document.getElementById("fundTypeIn").className = (t === "in" ? "active in" : "");
+  document.getElementById("fundTypeOut").className = (t === "out" ? "active out" : "");
+  document.getElementById("fundReceiptBox").style.display = (t === "out") ? "block" : "none";
+}
+function fundCompressImage(file, cb) {
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() {
+      var max = 1200, r = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement("canvas");
+      c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      var ctx = c.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      var q = 0.72, out = c.toDataURL("image/jpeg", q);
+      while (out.length > 900000 && q > 0.35) { q -= 0.1; out = c.toDataURL("image/jpeg", q); }
+      cb(out);
+    };
+    img.onerror = function() { toast("이미지를 읽을 수 없습니다. 다른 사진으로 시도해주세요"); };
+    img.src = ev.target.result;
+  };
+  reader.onerror = function() { toast("사진을 불러오지 못했습니다"); };
+  reader.readAsDataURL(file);
+}
+function fundPickReceipt(input) {
+  var f = input.files && input.files[0];
+  input.value = "";
+  if (!f) return;
+  if (!/^image\//.test(f.type) && !/\.(jpe?g|png|gif|webp|heic|heif)$/i.test(f.name)) { toast("이미지 파일만 첨부할 수 있습니다"); return; }
+  toast("사진 처리 중...");
+  fundCompressImage(f, function(dataUrl) {
+    fundReceiptData = dataUrl; fundReceiptRemove = false;
+    fundShowThumb(dataUrl);
+    toast("📷 영수증 사진이 첨부되었습니다 — 저장을 눌러주세요");
+  });
+}
+function fundShowThumb(src) {
+  var box = document.getElementById("fundThumb"), img = document.getElementById("fundThumbImg");
+  if (src) { img.src = src; box.style.display = "flex"; } else { img.removeAttribute("src"); box.style.display = "none"; }
+}
+function fundClearReceipt() {
+  fundReceiptData = null;
+  fundReceiptRemove = true;   // 수정 중이면 기존 사진도 삭제
+  fundShowThumb(null);
+}
+function fundResetForm() {
+  fundEditId = null; fundReceiptData = null; fundReceiptRemove = false;
+  document.getElementById("fundDate").value = fundToday();
+  document.getElementById("fundAmount").value = "";
+  document.getElementById("fundMemo").value = "";
+  fundShowThumb(null);
+  fundSetType("in");
+  document.getElementById("fundSaveBtn").textContent = "저장";
+  document.getElementById("fundCancelBtn").style.display = "none";
+}
+function fundSave() {
+  if (!fundTreasurer) { toast("총무만 작성할 수 있습니다"); return; }
+  var date = document.getElementById("fundDate").value;
+  var amount = Math.round(Number(document.getElementById("fundAmount").value));
+  var memo = document.getElementById("fundMemo").value.trim();
+  if (!date) { toast("날짜를 선택하세요"); return; }
+  if (!amount || amount <= 0) { toast("금액을 입력하세요"); return; }
+  if (!memo) { toast("내역을 입력하세요"); return; }
+  if (!useFirebase) { toast("서버 연결이 필요합니다"); return; }
+  var id = fundEditId || db.ref("fund/entries").push().key;
+  var prev = fundEditId ? fundEntries[fundEditId] : null;
+  var hasReceipt = (fundType === "out") && (!!fundReceiptData || !!(prev && prev.hasReceipt && !fundReceiptRemove));
+  var updates = {};
+  updates["fund/entries/" + id] = { date: date, type: fundType, amount: amount, memo: memo, hasReceipt: hasReceipt, ts: (prev && prev.ts) || Date.now() };
+  if (fundType === "out" && fundReceiptData) updates["fund/receipts/" + id] = fundReceiptData;
+  else if (!hasReceipt) updates["fund/receipts/" + id] = null;
+  var wasEdit = !!fundEditId;
+  db.ref().update(updates, function(err) {
+    if (err) { console.error(err); toast("⚠ 저장 실패 — 연결 또는 DB 규칙을 확인하세요"); return; }
+    toast(wasEdit ? "✅ 수정되었습니다" : (fundType === "in" ? "✅ 입금 내역 저장" : "✅ 출금 내역 저장"));
+    fundResetForm();
+  });
+}
+function fundEdit(id) {
+  if (!fundTreasurer) return;
+  var e = fundEntries[id]; if (!e) return;
+  fundEditId = id; fundReceiptData = null; fundReceiptRemove = false;
+  fundSetType(e.type === "out" ? "out" : "in");
+  document.getElementById("fundDate").value = e.date || fundToday();
+  document.getElementById("fundAmount").value = e.amount;
+  document.getElementById("fundMemo").value = e.memo || "";
+  fundShowThumb(null);
+  if (e.type === "out" && e.hasReceipt) {
+    db.ref("fund/receipts/" + id).once("value", function(s) { if (fundEditId === id && !fundReceiptData && !fundReceiptRemove && s.val()) fundShowThumb(s.val()); });
+  }
+  document.getElementById("fundSaveBtn").textContent = "수정 저장";
+  document.getElementById("fundCancelBtn").style.display = "";
+  var sec = document.getElementById("fundAdminSection");
+  if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function fundDelete(id) {
+  if (!fundTreasurer) return;
+  var e = fundEntries[id]; if (!e) return;
+  if (!confirm("[" + (e.memo || "") + "] " + fundFmt(e.amount) + "원 내역을 삭제할까요?\n(영수증 사진도 함께 삭제되고, 잔액이 다시 계산됩니다)")) return;
+  var u = {}; u["fund/entries/" + id] = null; u["fund/receipts/" + id] = null;
+  db.ref().update(u, function(err) {
+    if (err) { toast("⚠ 삭제 실패"); return; }
+    if (fundEditId === id) fundResetForm();
+    toast("삭제되었습니다");
+  });
+}
+function fundViewReceipt(id) {
+  var v = document.getElementById("receiptViewer"), body = document.getElementById("receiptViewerBody");
+  body.innerHTML = '<div class="rv-msg">불러오는 중...</div>';
+  v.classList.add("open");
+  db.ref("fund/receipts/" + id).once("value", function(s) {
+    var d = s.val();
+    body.innerHTML = d ? '<img alt="영수증" src="' + d + '">' : '<div class="rv-msg">영수증 사진이 없습니다</div>';
+  }, function() { body.innerHTML = '<div class="rv-msg">불러오지 못했습니다</div>'; });
+}
+function fundCloseReceipt() { document.getElementById("receiptViewer").classList.remove("open"); }
+function renderFund() {
+  var wrap = document.getElementById("fundListWrap");
+  if (!wrap) return;
+  var list = Object.keys(fundEntries).map(function(id) {
+    var e = fundEntries[id] || {};
+    return { id: id, date: e.date || "", type: e.type === "out" ? "out" : "in", amount: Number(e.amount) || 0, memo: e.memo || "", has: !!e.hasReceipt, ts: e.ts || 0 };
+  });
+  list.sort(function(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.ts - b.ts); });
+  var bal = 0, tin = 0, tout = 0, years = {};
+  list.forEach(function(e) {
+    if (e.type === "in") { bal += e.amount; tin += e.amount; } else { bal -= e.amount; tout += e.amount; }
+    e.bal = bal; years[e.date.slice(0, 4)] = true;
+  });
+  var multiYear = Object.keys(years).length > 1;
+  var balEl = document.getElementById("fundBalance");
+  if (balEl) balEl.textContent = (bal < 0 ? "-" : "") + fundFmt(Math.abs(bal)) + "원";
+  document.getElementById("fundTotalIn").textContent = fundFmt(tin) + "원";
+  document.getElementById("fundTotalOut").textContent = fundFmt(tout) + "원";
+  if (!list.length) { wrap.innerHTML = '<div class="empty-state" style="padding:16px 0"><p>등록된 내역이 없습니다</p></div>'; return; }
+  list.reverse(); // 최근 내역이 위로
+  wrap.innerHTML = '<table class="fund-table"><thead><tr><th>날짜</th><th>내역</th><th>입금</th><th>출금</th><th>잔액</th></tr></thead><tbody>'
+    + list.map(function(e) {
+        var d = e.date ? (multiYear ? e.date.slice(2).replace(/-/g, "/") : e.date.slice(5).replace("-", "/")) : "-";
+        var acts = '<div class="fund-acts">' + (e.has ? '<button class="rc" onclick="fundViewReceipt(\'' + e.id + '\')">📎 영수증</button>' : '')
+          + (fundTreasurer ? '<button onclick="fundEdit(\'' + e.id + '\')">수정</button><button class="del" onclick="fundDelete(\'' + e.id + '\')">삭제</button>' : '') + '</div>';
+        return '<tr><td class="d">' + d + '</td><td class="m"><div class="memo">' + fundEsc(e.memo) + '</div>' + acts + '</td>'
+          + '<td class="in">' + (e.type === "in" ? fundFmt(e.amount) : '') + '</td>'
+          + '<td class="out">' + (e.type === "out" ? fundFmt(e.amount) : '') + '</td>'
+          + '<td class="bal">' + (e.bal < 0 ? "-" : "") + fundFmt(Math.abs(e.bal)) + '</td></tr>';
+      }).join("") + '</tbody></table>';
+}
+
+// ── 공지 ↔ 운영비 전환 / 열람 권한 / 총무 인증 ──
+function fundCanView() { return !!(admin || loggedInMemberName); }
+function noticeSeg(which) {
+  var isFund = (which === "fund");
+  document.getElementById("nsegNotice").className = isFund ? "" : "active";
+  document.getElementById("nsegFund").className = isFund ? "active" : "";
+  document.getElementById("noticePane").style.display = isFund ? "none" : "";
+  document.getElementById("fundPane").style.display = isFund ? "" : "none";
+  if (isFund) fundRefreshView();
+}
+function fundRefreshView() {
+  var ok = fundCanView();
+  document.getElementById("fundGate").style.display = ok ? "none" : "block";
+  document.getElementById("fundBody").style.display = ok ? "" : "none";
+  if (!ok) return;
+  authReady.then(function() { fundListenGlobal(); });
+  document.getElementById("fundForm").style.display = fundTreasurer ? "" : "none";
+  document.getElementById("fundTLogin").style.display = fundTreasurer ? "none" : "";
+  document.getElementById("fundTLogout").style.display = fundTreasurer ? "" : "none";
+  if (fundTreasurer && !fundEditId) fundResetForm();
+  renderFund();
+}
+function fundTreasurerLogin() {
+  var pw = prompt("총무 비밀번호를 입력하세요");
+  if (pw === null) return;
+  pw = pw.trim();
+  if (!pw) { toast("비밀번호를 입력하세요"); return; }
+  authReady.then(function() {
+    return db.ref("treasKeys/" + myUid()).set(pw).then(function() {
+      fundTreasurer = true;
+      try { localStorage.setItem("cmgTreasurer", "1"); } catch (e) {}
+      toast("✅ 총무 인증 완료 — 작성·수정할 수 있습니다");
+      fundRefreshView();
+    }, function() { toast("비밀번호가 틀렸습니다"); });
+  }).catch(function() { toast("서버 연결을 확인해주세요"); });
+}
+function fundTreasurerLogout() {
+  fundTreasurer = false; fundEditId = null;
+  try { localStorage.removeItem("cmgTreasurer"); } catch (e) {}
+  try { var __t = myUid(); if (__t) db.ref("treasKeys/" + __t).remove(); } catch (e) {}
+  toast("총무 로그아웃");
+  fundRefreshView();
+}
+var memberNamesData = {}, adminMembersData = {}, adminMembersListening = false;
+function rebuildAllMembers() {
+  var m = {};
+  Object.keys(memberNamesData).forEach(function(n) { m[n] = {}; });
+  Object.keys(adminMembersData).forEach(function(n) { m[n] = adminMembersData[n] || {}; });
+  allMembers = m;
+}
+// 모든 사용자: 회원 "이름"만 구독(전화번호·비밀번호 암호값은 못 읽음)
+function membersListenGlobal() {
+  if (!useFirebase) return;
+  db.ref("memberNames").on("value", function(snap) {
+    memberNamesData = snap.val() || {};
+    rebuildAllMembers();
+    if (admin) renderMemberList();
+  });
+}
+// 관리자만: 전체 회원 정보 구독 (서버 규칙이 관리자에게만 허용)
+function adminMembersListen() {
+  if (!useFirebase || adminMembersListening) return;
+  adminMembersListening = true;
+  db.ref("members").on("value", function(snap) {
+    adminMembersData = snap.val() || {};
+    rebuildAllMembers();
+    // 이름 목록(memberNames)에 빠진 기존 회원을 자동으로 채워 넣음
+    var missing = {};
+    Object.keys(adminMembersData).forEach(function(n) { if (!memberNamesData[n]) missing["memberNames/" + n] = true; });
+    if (Object.keys(missing).length) db.ref().update(missing).catch(function() {});
+    renderMemberList();
+  }, function() { adminMembersListening = false; });
+}
+function renderMemberList(showToast) {
+  var wrap = document.getElementById("memberListWrap");
+  var label = document.getElementById("memberListToggleLabel");
+  if (!wrap || !admin) return;
+  var names = Object.keys(allMembers).sort(function(a, b) {
+    return (allMembers[a].createdAt || 0) - (allMembers[b].createdAt || 0);
+  });
+  if (label) label.textContent = "회원 명부 보기 (" + names.length + "명)";
+  if (!names.length) {
+    wrap.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>가입한 회원이 없습니다</p></div>';
+  } else {
+    wrap.innerHTML = names.map(function(name) {
+      var createdAt = allMembers[name] && allMembers[name].createdAt;
+      var dateStr = createdAt ? new Date(createdAt).toLocaleDateString("ko-KR") : "";
+      var phone = (allMembers[name] && allMembers[name].phone) ? allMembers[name].phone : "";
+      var escName = name.replace(/'/g, "\\'");
+      return '<div data-name="' + name.replace(/"/g, "&quot;") + '" style="padding:9px 0; border-bottom:1px solid var(--border-1); font-size:13px;">'
+        + '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">'
+        + '<div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span style="font-weight:600; color:var(--text);">' + name + '</span><span style="font-size:10.5px; color:var(--text-3); margin-left:6px;">' + dateStr + ' 가입</span></div>'
+        + '<button class="btn btn-danger btn-sm" style="width:auto; padding:6px 10px; font-size:11px; flex-shrink:0;" onclick="adminResetMemberPasswordDirect(\'' + escName + '\')">계정재생성</button>'
+        + '<button class="btn btn-danger btn-sm" style="width:auto; padding:6px 10px; font-size:11px; flex-shrink:0;" onclick="adminKickMemberFull(\'' + escName + '\')">강퇴</button>'
+        + '</div>'
+        + '<div style="display:flex; gap:6px;">'
+        + '<input type="tel" class="member-phone-input" value="' + phone.replace(/"/g, "&quot;") + '" placeholder="전화번호 없음 — 입력 후 저장" style="flex:1; padding:8px 10px; border:1px solid var(--border-2); border-radius:6px; background:var(--surface-1); color:var(--text); font-size:12.5px;">'
+        + '<button class="btn btn-gray btn-sm" style="width:auto; padding:8px 12px; font-size:11px; flex-shrink:0;" onclick="adminSaveMemberPhone(this)">저장</button>'
+        + '</div>'
+        + '</div>';
+    }).join("");
+  }
+  if (showToast) toast("회원 목록을 새로고침했습니다");
+}
+function toggleMemberList() {
+  var wrap = document.getElementById("memberListWrap");
+  var icon = document.getElementById("memberListToggleIcon");
+  if (!wrap) return;
+  var open = wrap.style.display !== "none";
+  wrap.style.display = open ? "none" : "block";
+  if (icon) icon.textContent = open ? "▾" : "▴";
+}
+// 목록에서 바로 초기화(이름을 직접 입력할 필요 없음)
+function adminBackfillMemberPhones() {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  db.ref("members").once("value").then(function(snap) {
+    var members = snap.val() || {};
+    var names = Object.keys(members);
+    if (!names.length) { toast("가입된 회원이 없습니다"); return; }
+    return db.ref("memberPhones").once("value").then(function(phoneSnap) {
+      var phoneIndex = phoneSnap.val() || {};
+      var updates = {};
+      var skipped = [];
+      var added = 0;
+      names.forEach(function(name) {
+        var phone = members[name] && members[name].phone;
+        var phoneDigits = phone ? phone.replace(/[^0-9]/g, "") : "";
+        if (!phoneDigits) return; // 전화번호 없는 회원은 건너뜀
+        if (phoneIndex[phoneDigits] && phoneIndex[phoneDigits] !== name) {
+          skipped.push(name + " (전화번호가 [" + phoneIndex[phoneDigits] + "]님과 중복)");
+          return;
+        }
+        if (!phoneIndex[phoneDigits]) {
+          updates["memberPhones/" + phoneDigits] = name;
+          phoneIndex[phoneDigits] = name;
+          added++;
+        }
+      });
+      var applyUpdates = Object.keys(updates).length ? db.ref().update(updates) : Promise.resolve();
+      return applyUpdates.then(function() {
+        var msg = "✅ 전화번호 인덱스 " + added + "건 생성 완료";
+        if (skipped.length) {
+          msg += "\n⚠ 전화번호 중복으로 건너뜀:\n" + skipped.join("\n");
+          alert(msg);
+        } else {
+          toast(msg);
+        }
+      });
+    });
+  }).catch(function(err) {
+    toast("⚠ 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
+  });
+}
+function adminKickMemberFull(name) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  if (!confirm("[" + name + "]님을 강퇴하시겠습니까?\n로그인 정보, 출석기록, 모든 경기방의 참가/점수 기록까지 전부 삭제되며 되돌릴 수 없습니다.")) return;
+  db.ref("members/" + name).once("value").then(function(snap) {
+    var data = snap.val();
+    var phoneDigits = (data && data.phone) ? data.phone.replace(/[^0-9]/g, "") : "";
+    var updates = {};
+    updates["members/" + name] = null;
+    updates["memberNames/" + name] = null;
+    if (phoneDigits) updates["memberPhones/" + phoneDigits] = null;
+    updates["attendance/" + name] = null;
+    return db.ref("rooms").once("value").then(function(roomsSnap) {
+      var rooms = roomsSnap.val() || {};
+      Object.keys(rooms).forEach(function(roomKey) {
+        var players = (rooms[roomKey] && rooms[roomKey].players) || {};
+        Object.keys(players).forEach(function(pName) {
+          if (pName === name || baseName(pName) === baseName(name)) {
+            updates["rooms/" + roomKey + "/players/" + pName] = null;
+          }
+        });
+      });
+      return db.ref().update(updates);
+    });
+  }).then(function() {
+    toast("🚫 " + name + "님을 강퇴하고 모든 기록을 삭제했습니다.");
+    renderMemberHandiStats();
+    refreshAdminPlayerList();
+    renderMemberList();
+    renderRank();
+    renderParticipantList();
+  }).catch(function(err) {
+    toast("⚠ 처리 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
+  });
+}
+function adminResetMemberPasswordDirect(name) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!confirm("[" + name + "]님의 계정을 재생성할까요?\n(기존 로그인 계정은 삭제되고, 출석·점수 기록은 남습니다. 그 회원은 같은 이름으로 다시 회원가입해야 합니다)")) return;
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  db.ref("members/" + name).once("value").then(function(snap) {
+    var data = snap.val();
+    var phoneDigits = (data && data.phone) ? data.phone.replace(/[^0-9]/g, "") : "";
+    return db.ref("members/" + name).remove().then(function() {
+      return db.ref("memberNames/" + name).remove();
+    }).then(function() {
+      if (phoneDigits) return db.ref("memberPhones/" + phoneDigits).remove();
+    });
+  }).then(function() {
+    toast("✅ [" + name + "]님의 계정 재생성 준비 완료 (다시 회원가입하면 됩니다).");
+  }).catch(function() {
+    toast("⚠ 삭제 실패! 서버에 반영되지 않았습니다.");
+  });
+}
+function adminSaveMemberPhone(btn) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  var row = btn.closest("[data-name]");
+  if (!row) return;
+  var name = row.getAttribute("data-name");
+  var input = row.querySelector(".member-phone-input");
+  var phone = input ? input.value.trim() : "";
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  db.ref("members/" + name + "/phone").set(phone).then(function() {
+    toast("✅ [" + name + "]님의 전화번호를 저장했습니다.");
+  }).catch(function() {
+    toast("⚠ 저장 실패! 서버에 반영되지 않았습니다.");
+  });
+}
+var urlRoom = new URLSearchParams(location.search).get("room");
+if (urlRoom) {
+  currentRoom = urlRoom;
+  updateRoomBadge();
+  listenRoom();
+  switchTab('list');
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// 📊 회원별 평균 핸디 관리 (모든 방의 핸디+친타수 기록을 모아 계산)
+// ══════════════════════════════════════════════════════════════
+// ── 특정 이름의 원본 기록을 방별로 그대로 보여주는 진단 도구 (표기가 갈려서 집계에서 빠지는 경우 확인용) ──
+function adminDiagnoseName() {
+  if (!admin) return;
+  var qEl = document.getElementById("nameDiagInput");
+  var resEl = document.getElementById("nameDiagResult");
+  var q = (qEl && qEl.value ? qEl.value : "").trim();
+  if (!q) { resEl.innerHTML = ""; return; }
+  var qBase = baseName(q) || q;
+  var rows = [];
+  Object.keys(allRooms || {}).forEach(function(roomKey) {
+    var room = allRooms[roomKey];
+    if (!room || !room.players) return;
+    Object.keys(room.players).forEach(function(pName) {
+      if (pName.indexOf(q) !== -1 || baseName(pName) === qBase) {
+        var p = room.players[pName] || {};
+        rows.push({
+          room: roomKey, raw: pName, len: String(pName).length, base: baseName(pName),
+          score: (p.score === "" || p.score === undefined || p.score === null) ? "(없음)" : p.score,
+          handi: (p.handi === undefined || p.handi === null) ? "(없음)" : p.handi
+        });
+      }
+    });
+  });
+  if (!rows.length) {
+    resEl.innerHTML = '<div class="empty-state" style="padding:10px 0;"><p>일치하는 원본 기록이 없습니다</p></div>';
+    return;
+  }
+  resEl.innerHTML = '<div style="font-size:11px; color:var(--text-3); margin:8px 0;">총 ' + rows.length + '건 — 글자수(자)가 이름 길이와 다르면 눈에 안 보이는 문자가 섞여 있다는 뜻입니다. "스코어/핸디"가 (없음)인 방은 게임수 집계에서 빠집니다.</div>'
+    + '<div class="table-scroll"><table class="data-table"><thead><tr><th>방</th><th>원본 이름</th><th>글자수</th><th>정규화</th><th>스코어</th><th>핸디</th></tr></thead><tbody>'
+    + rows.map(function(r) {
+        var incomplete = (r.score === "(없음)" || r.handi === "(없음)");
+        return '<tr' + (incomplete ? ' style="opacity:0.55;"' : '') + '><td>' + r.room + '</td><td>' + r.raw + '</td><td>' + r.len + '</td><td>' + r.base + '</td><td>' + r.score + '</td><td>' + r.handi + '</td></tr>';
+      }).join("") + '</tbody></table></div>';
+}
+// ── 과거에 출석이 누락된 기록을 지금 저장된 모든 방 기록을 기준으로 전체 회원 일괄 재생성 ──
+// (이름 뒤에 숫자가 붙은 키로 회원가입되어 baseName이 일치하지 않아 출석이 기록되지 않았던 경우 등을 복구)
+function adminBackfillAttendance() {
+  if (!admin) return;
+  if (!confirm("저장된 모든 경기방의 참가 기록을 기준으로, 누락된 출석 기록을 '전체 회원 일괄'로 다시 만듭니다.\n(이미 있는 출석 기록은 건드리지 않습니다) 계속할까요?")) return;
+  var includeNon = confirm("회원가입하지 않은 이름(참가 기록만 있는 사람)도 출석에 포함할까요?\n\n[확인] 포함   /   [취소] 가입한 회원만");
+  var resEl = document.getElementById("attendBackfillResult");
+  var seen = {}, toCreate = [], skippedNon = {}, roomCount = 0;
+  Object.keys(allRooms || {}).forEach(function(roomKey) {
+    var room = allRooms[roomKey];
+    if (!room || !room.players) return;
+    roomCount++;
+    Object.keys(room.players).forEach(function(pName) {
+      var p = room.players[pName] || {};
+      var attName = baseName(pName) || pName;
+      var isRegisteredMember = !!allMembers[pName] || !!allMembers[attName];
+      if (!isRegisteredMember) {
+        for (var mk in allMembers) {
+          if (baseName(mk) === attName) { isRegisteredMember = true; break; }
+        }
+      }
+      if (!isRegisteredMember && !includeNon) { skippedNon[attName] = true; return; }
+      var key = attName + "\u0001" + roomKey;
+      if (seen[key]) return;   // 같은 방에서 "홍길동"/"홍길동2" 처럼 같은 사람이 두 번 잡히는 경우 1회만
+      seen[key] = true;
+      toCreate.push({ attName: attName, room: roomKey, timestamp: p.timestamp || Date.now() });
+    });
+  });
+  if (!toCreate.length) { toast("대상 기록이 없습니다"); if (resEl) resEl.innerHTML = ""; return; }
+  toast("출석 기록 확인 중... (" + toCreate.length + "건)");
+  var pending = toCreate.length, created = 0, existed = 0, createdBy = {};
+  toCreate.forEach(function(item) {
+    var ref = db.ref("attendance/" + item.attName + "/" + item.room);
+    ref.once("value", function(snap) {
+      if (!snap.exists()) {
+        created++; createdBy[item.attName] = (createdBy[item.attName] || 0) + 1;
+        ref.set({ room: item.room, timestamp: item.timestamp });
+      } else { existed++; }
+      pending--;
+      if (pending === 0) {
+        toast("✅ 출석 기록 " + created + "건 생성 완료");
+        renderAttendance();
+        if (resEl) {
+          var names = Object.keys(createdBy).sort(function(x, y) { return createdBy[y] - createdBy[x] || x.localeCompare(y, "ko"); });
+          var skipNames = Object.keys(skippedNon).sort();
+          resEl.innerHTML = '<div class="notice notice-info" style="margin-top:10px; font-size:12px; line-height:1.7;">'
+            + '<b>결과</b> — 경기방 ' + roomCount + '개 · 확인 ' + toCreate.length + '건 중 <b>새로 생성 ' + created + '건</b>(' + names.length + '명), 이미 있던 기록 ' + existed + '건'
+            + (names.length ? '<br>생성된 회원: ' + names.map(function(n) { return n + ' +' + createdBy[n]; }).join(", ") : '')
+            + (skipNames.length ? '<br>회원이 아니라서 건너뜀: ' + skipNames.join(", ") : '')
+            + '</div>';
+        }
+      }
+    });
+  });
+}
+function computeMemberHandiStats() {
+  var perRoomAvgNet = {}; // roomKey -> 그 방 전체 참가자 평균 넷스코어
+  var records = {};       // baseName -> [{net, handi, score, ts, room}]
+
+  Object.keys(allRooms || {}).forEach(function(roomKey) {
+    var room = allRooms[roomKey];
+    if (!room || !room.players) return;
+    var roomNets = [];
+    Object.keys(room.players).forEach(function(pname) {
+      var p = room.players[pname];
+      if (!p) return;
+      var handi = Number(p.handi);
+      var score = Number(p.score);
+      if (p.score === "" || p.score === undefined || p.score === null || isNaN(score) || isNaN(handi)) return;
+      var net = score - handi;
+      roomNets.push(net);
+      var bn = baseName(pname) || pname;
+      if (!records[bn]) records[bn] = [];
+      records[bn].push({ net: net, handi: handi, score: score, ts: p.timestamp || 0, room: roomKey });
+    });
+    perRoomAvgNet[roomKey] = roomNets.length ? (roomNets.reduce(function(a, b) { return a + b; }, 0) / roomNets.length) : null;
+  });
+
+  var stats = [];
+  Object.keys(records).forEach(function(name) {
+    var rounds = records[name];
+    var gamesCount = rounds.length;
+    var avgScore = rounds.reduce(function(a, r) { return a + r.score; }, 0) / gamesCount;
+    var avgNet = rounds.reduce(function(a, r) { return a + r.net; }, 0) / gamesCount;
+    // 라운드별 "그 방 전체 평균 대비 편차"를 구해서 평균 (같은 날 다른 사람들과 비교한 상대적 실력)
+    var deviations = rounds.map(function(r) {
+      var roomAvg = perRoomAvgNet[r.room];
+      return (roomAvg === null || roomAvg === undefined) ? 0 : (r.net - roomAvg);
+    });
+    var avgDeviation = deviations.reduce(function(a, b) { return a + b; }, 0) / deviations.length;
+    var latest = rounds.slice().sort(function(a, b) { return b.ts - a.ts; })[0];
+    var rawSuggestedHandi = latest.handi + avgDeviation;
+    // 퍼센트 핸디: 계산된 핸디를 100% 그대로 반영하지 않고 설정된 비율만 적용해서 격차를 원천적으로 좁힘
+    var suggestedHandi = Math.round(rawSuggestedHandi * (handiPercent / 100));
+    stats.push({
+      name: name, gamesCount: gamesCount, avgScore: avgScore, avgNet: avgNet,
+      latestHandi: latest.handi, suggestedHandi: suggestedHandi, rawSuggestedHandi: Math.round(rawSuggestedHandi)
+    });
+  });
+  stats.sort(function(a, b) { return b.gamesCount - a.gamesCount; });
+  return stats;
+}
+
+var MEMBER_HANDI_MIN_GAMES = 5; // 이 횟수 미만이면 제안핸디를 신뢰하지 않고 "데이터 부족"으로 표시
+function renderMemberHandiStats(showToast) {
+  var wrap = document.getElementById("memberHandiStatsWrap");
+  if (!wrap || !admin) return;
+  var stats = computeMemberHandiStats();
+  if (!stats.length) {
+    wrap.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>아직 핸디·친타수가 모두 입력된 기록이 없습니다</p></div>';
+  } else {
+    wrap.innerHTML = '<div style="font-size:11px; color:var(--text-3); margin-bottom:8px;">게임수 ' + MEMBER_HANDI_MIN_GAMES + '회 미만은 아직 데이터가 부족해 제안핸디를 적용하지 않습니다. 현재 퍼센트 핸디: <strong>' + handiPercent + '%</strong></div>'
+      + '<div class="table-scroll"><table class="data-table"><thead><tr>'
+      + '<th>이름</th><th>게임수</th><th>평균친타수</th><th>평균넷</th><th>최근핸디</th><th>제안핸디</th><th></th><th></th>'
+      + '</tr></thead><tbody>' + stats.map(function(s) {
+        var enough = s.gamesCount >= MEMBER_HANDI_MIN_GAMES;
+        var pctNote = (handiPercent !== 100 && enough) ? '<div style="font-size:9.5px; color:var(--text-3);">(100%: ' + s.rawSuggestedHandi + ' → ' + handiPercent + '%: ' + s.suggestedHandi + ')</div>' : '';
+        var suggestedCell = enough
+          ? '<strong style="color:var(--gold)">' + s.suggestedHandi + '</strong>' + pctNote
+          : '<span style="color:var(--text-3); font-size:11px;">데이터 부족(' + s.gamesCount + '/' + MEMBER_HANDI_MIN_GAMES + ')</span>';
+        var btnCell = enough
+          ? '<button class="btn btn-gold btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" onclick="applyMemberHandi(\'' + s.name.replace(/'/g, "\\'") + '\', ' + s.suggestedHandi + ')">핸디 반영</button>'
+          : '<button class="btn btn-gray btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" disabled>핸디 반영</button>';
+        var delCell = '<button class="btn btn-danger btn-sm" style="padding:6px 10px; font-size:11px; width:auto;" onclick="adminDeleteHandiName(\'' + s.name.replace(/'/g, "\\'") + '\')">🗑 삭제</button>';
+        return '<tr' + (enough ? '' : ' style="opacity:0.6;"') + '><td>' + s.name + '</td><td>' + s.gamesCount + '</td><td>' + s.avgScore.toFixed(1) + '</td>'
+          + '<td>' + (s.avgNet >= 0 ? "+" : "") + s.avgNet.toFixed(1) + '</td><td>' + s.latestHandi + '</td>'
+          + '<td>' + suggestedCell + '</td>'
+          + '<td>' + btnCell + '</td><td>' + delCell + '</td></tr>';
+      }).join("") + '</tbody></table></div>';
+  }
+  if (showToast) toast("통계를 새로고침했습니다");
+}
+
+function applyMemberHandi(name, handi) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  var stats = computeMemberHandiStats();
+  var row = stats.filter(function(s) { return s.name === name; })[0];
+  if (!row || row.gamesCount < MEMBER_HANDI_MIN_GAMES) {
+    toast("⚠ 게임수가 " + MEMBER_HANDI_MIN_GAMES + "회 미만이라 아직 핸디를 반영할 수 없습니다.");
+    return;
+  }
+  db.ref("memberDefaultHandi/" + name).set({ handi: handi, updatedAt: Date.now() }).then(function() {
+    toast("✅ " + name + "님의 기본 핸디를 " + handi + "로 저장했습니다. 다음 방부터 자동 적용됩니다.");
+  }).catch(function() {
+    toast("저장 실패(연결 확인)");
+  });
+}
+
+// ── 핸디관리 목록에서 특정 이름의 기록을 전부 삭제 (모든 방의 참가/점수 기록 + 출석 기록) ──
+function adminDeleteHandiName(name) {
+  if (!admin) { toast("관리자만 가능합니다"); return; }
+  if (!useFirebase) { toast("온라인 상태에서만 가능합니다"); return; }
+  if (!confirm("[" + name + "]의 모든 경기방 참가/점수 기록과 출석 기록을 완전히 삭제하시겠습니까?\n(회원 명부 자체에는 영향 없습니다 — 이 이름이 정식 회원이라면 회원 정보는 그대로 남습니다)\n되돌릴 수 없습니다.")) return;
+  db.ref("rooms").once("value").then(function(roomsSnap) {
+    var rooms = roomsSnap.val() || {};
+    var updates = {};
+    Object.keys(rooms).forEach(function(roomKey) {
+      var players = (rooms[roomKey] && rooms[roomKey].players) || {};
+      Object.keys(players).forEach(function(pName) {
+        if (baseName(pName) === name) {
+          updates["rooms/" + roomKey + "/players/" + pName] = null;
+        }
+      });
+    });
+    updates["attendance/" + name] = null;
+    return db.ref().update(updates);
+  }).then(function() {
+    toast("🗑 [" + name + "]의 기록을 삭제했습니다.");
+    renderMemberHandiStats();
+    refreshAdminPlayerList();
+    renderRank();
+    renderParticipantList();
+  }).catch(function(err) {
+    toast("⚠ 처리 실패: " + ((err && err.message) ? err.message : "연결을 확인해주세요"));
+  });
+}
+
+// ── 퍼센트 핸디 설정 (제안핸디 계산에 곱해서 적용, 이 기기 화면 설정) ──
+function setHandiPercent(v) {
+  if (!admin) return;
+  handiPercent = Number(v);
+  renderMemberHandiStats();
+  toast("퍼센트 핸디를 " + handiPercent + "%로 설정했습니다.");
+}
+
+// ── 스테이블포드 취지의 순위 캡 설정 (랭킹 탭 순위 계산에만 영향, 화면에 보이는 스코어 자체는 그대로) ──
+function toggleStablefordCap() {
+  if (!admin) return;
+  stablefordCapEnabled = !stablefordCapEnabled;
+  updateStablefordCapUI();
+  renderRank();
+  if (typeof refreshAdminPlayerList === "function") refreshAdminPlayerList();
+  toast(stablefordCapEnabled ? "📊 스테이블포드 취지 순위 캡을 켰습니다 (필드평균+" + stablefordCapAmount + "타 초과분은 순위 계산에서 캡)" : "스테이블포드 취지 순위 캡을 껐습니다(원래 방식)");
+}
+function setStablefordCapAmount(v) {
+  if (!admin) return;
+  var n = Number(v);
+  if (isNaN(n) || n < 0) { toast("0 이상의 숫자를 입력하세요"); return; }
+  stablefordCapAmount = n;
+  if (stablefordCapEnabled) { renderRank(); if (typeof refreshAdminPlayerList === "function") refreshAdminPlayerList(); }
+  toast("캡 기준을 필드평균+" + n + "타로 설정했습니다.");
+}
+function updateStablefordCapUI() {
+  var btn = document.getElementById("stablefordCapBtn");
+  if (btn) {
+    btn.textContent = stablefordCapEnabled ? "🟢 순위 캡 적용 중 (끄려면 클릭)" : "⚫ 순위 캡 꺼짐 (원래 방식)";
+    btn.className = "btn btn-sm " + (stablefordCapEnabled ? "btn-gold" : "btn-gray");
+  }
+}
+</script>
+</body>
+</html>
